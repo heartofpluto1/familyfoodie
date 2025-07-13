@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+# my random stuff
+/no-commit
+
 # testing
 /coverage
 
