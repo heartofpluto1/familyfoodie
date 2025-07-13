@@ -5,14 +5,18 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, run the development server:
 
 ```bash
+nvm use 18.18.0
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+
+or run from the Docker container:
+
+```bash
+nvm use 18.18.0
+docker build -t familyfoodie .
+docker run -p 3000:3000 familyfoodie
+```
+
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
