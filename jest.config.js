@@ -13,6 +13,14 @@ const customJestConfig = {
   moduleNameMapping: {
     '^@/(.*)$': '<rootDir>/src/$1', // Adjust if your components are in src/
   },
+  // for test coverage on pull requests
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['json-summary', 'text', 'lcov', 'html'],
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/*.d.ts',
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config
