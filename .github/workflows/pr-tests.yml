@@ -1,0 +1,98 @@
+name: PR Tests and Coverage
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  test-and-coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run Jest tests with coverage
+      run: npm run test:coverage
+      
+    - name: Check coverage threshold
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Read coverage summary
+          const coveragePath = path.join(process.cwd(), 'coverage/coverage-summary.json');
+          
+          if (!fs.existsSync(coveragePath)) {
+            core.setFailed('Coverage summary file not found. Make sure Jest is configured to generate coverage reports.');
+            return;
+          }
+          
+          const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+          
+          const thresholds = {
+            lines: 95,
+            functions: 95,
+            branches: 95,
+            statements: 95
+          };
+          
+          const results = coverage.total;
+          let failed = false;
+          let message = '## Test Coverage Report\n\n';
+          
+          Object.keys(thresholds).forEach(metric => {
+            const actual = results[metric].pct;
+            const required = thresholds[metric];
+            const status = actual >= required ? '✅' : '❌';
+            
+            message += `- **${metric.charAt(0).toUpperCase() + metric.slice(1)}**: ${actual}% ${status} (Required: ${required}%)\n`;
+            
+            if (actual < required) {
+              failed = true;
+            }
+          });
+          
+          // Add detailed coverage info
+          message += `\n### Coverage Details\n`;
+          message += `- **Lines**: ${results.lines.covered}/${results.lines.total}\n`;
+          message += `- **Functions**: ${results.functions.covered}/${results.functions.total}\n`;
+          message += `- **Branches**: ${results.branches.covered}/${results.branches.total}\n`;
+          message += `- **Statements**: ${results.statements.covered}/${results.statements.total}\n`;
+          
+          // Comment on PR
+          const { context } = require('@actions/github');
+          if (context.payload.pull_request) {
+            await github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+          }
+          
+          if (failed) {
+            core.setFailed('Coverage threshold not met. All metrics must be at least 95%.');
+          } else {
+            console.log('✅ All coverage thresholds met!');
+          }
+    
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: coverage/
+        retention-days: 30

@@ -9,7 +9,7 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage --watchAll=false"
   },
   "dependencies": {
     "lucide-react": "^0.525.0",
