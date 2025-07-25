@@ -73,7 +73,6 @@ jobs:
           message += `- **Statements**: ${results.statements.covered}/${results.statements.total}\n`;
           
           // Comment on PR
-          const { context } = require('@actions/github');
           if (context.payload.pull_request) {
             await github.rest.issues.createComment({
               issue_number: context.payload.pull_request.number,
