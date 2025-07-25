@@ -10,9 +10,6 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1', // Adjust if your components are in src/
-  },
   // for test coverage on pull requests
   collectCoverage: true,
   coverageDirectory: 'coverage',
