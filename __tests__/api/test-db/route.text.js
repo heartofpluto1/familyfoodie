@@ -1,5 +1,5 @@
 // __tests__/api/test-db/route.test.js
-import { GET, POST } from '../../../src/app/api/test-db/route';
+import { GET } from '../../../src/app/api/test-db/route';
 
 // Mock the database pool
 jest.mock('../../../src/lib/db', () => ({

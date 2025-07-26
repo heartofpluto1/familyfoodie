@@ -109,7 +109,6 @@ export default async function RecipeWeeksPage() {
     </div>
   );
 }
-  */
 
 // Recipe Week Card Component
 interface RecipeWeekCardProps {
@@ -166,3 +165,4 @@ function RecipeWeekCard({ year, week, recipes }: RecipeWeekCardProps) {
     </div>
   );
 }
+    */
