@@ -1,6 +1,12 @@
 // lib/recipeWeeks.ts
 import pool from './db.js';
 
+export type RecipeWeeksResult = {
+  data: RecipeWeek[];
+  error?: string;
+  success: boolean;
+};
+
 export interface RecipeWeek {
   id: number;
   week: number;
@@ -34,7 +40,7 @@ function getWeekNumber(date: Date): number {
 /**
  * Get recipe weeks from the last N months
  */
-export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeek[]> {
+export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeeksResult> {
   try {
     // Calculate date range
     const monthsAgo = new Date();
@@ -63,10 +69,16 @@ export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeek[]> 
 
     const [rows] = await pool.execute(query);
 
-    return rows as RecipeWeek[];
+    return {
+      data: rows as RecipeWeek[],
+      success: true
+    };
   } catch (error) {
-    console.error('Error fetching recipe weeks:', error);
-    return [];
+    return {
+      data: [],
+      error: error instanceof Error ? error.message : 'Unknown database error occurred',
+      success: false
+    };
   }
 }
 
@@ -95,22 +107,6 @@ export function groupRecipesByWeek(recipeWeeks: RecipeWeek[]): GroupedWeek[] {
 
   // Convert to array
   return Object.values(grouped);
-}
-
-/**
- * Filter grouped weeks by recipe name or account name
- */
-export function filterGroupedWeeks(groupedWeeks: GroupedWeek[], searchTerm: string): GroupedWeek[] {
-  if (!searchTerm.trim()) return groupedWeeks;
-  
-  const lowerSearchTerm = searchTerm.toLowerCase();
-  
-  return groupedWeeks.map(week => ({
-    ...week,
-    recipes: week.recipes.filter(recipe => 
-      recipe.recipeName.toLowerCase().includes(lowerSearchTerm)
-    )
-  })).filter(week => week.recipes.length > 0);
 }
 
 /**

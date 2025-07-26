@@ -1,4 +1,4 @@
-// app/recipe-weeks/page.tsx
+// app/weeks/page.tsx
 import { 
   getRecipeWeeks, 
   groupRecipesByWeek, 
@@ -8,15 +8,27 @@ import HeaderPage from '../components/HeaderPage';
 
 export default async function RecipeWeeksPage() {
   // Fetch data using library functions
-  const recipeWeeks = await getRecipeWeeks(6); // Last 6 months
-  const groupedRecipes = groupRecipesByWeek(recipeWeeks);
+  const recipeWeeksResult = await getRecipeWeeks(6); // Last 6 months
+  if (!recipeWeeksResult.success) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <HeaderPage>
+            Error fetching recipe weeks
+          </HeaderPage>
+          <p className="text-red-500">{recipeWeeksResult.error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const groupedRecipes = groupRecipesByWeek(recipeWeeksResult.data);
   const stats = getRecipeWeekStats(groupedRecipes);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        {JSON.stringify({ data: recipeWeeks })}
         <div className="mb-8">
           <HeaderPage>
             Past plans
@@ -48,7 +60,6 @@ export default async function RecipeWeeksPage() {
         {groupedRecipes.length === 0 ? (
           <div className="bg-surface border border-custom rounded-lg p-8 text-center">
             <p className="text-secondary">No recipe weeks found.</p>
-            {JSON.stringify({ data: groupedRecipes })}
           </div>
         ) : (
           <div className="flex flex-wrap gap-6">
