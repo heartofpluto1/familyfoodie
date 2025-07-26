@@ -9,6 +9,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  socketPath: process.env.DB_INSTANCE_UNIX_SOCKET ? process.env.DB_INSTANCE_UNIX_SOCKET : undefined,
 });
 
 export default pool;

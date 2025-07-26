@@ -17,8 +17,3 @@ export async function GET() {
     );
   }
 }
-
-export async function POST() {
-  // Handle POST requests if needed
-  return Response.json({ message: 'POST method' });
-}

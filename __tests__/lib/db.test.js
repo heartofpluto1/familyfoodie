@@ -21,6 +21,7 @@ describe('Database Pool', () => {
     delete process.env.DB_USER
     delete process.env.DB_PASSWORD
     delete process.env.DB_NAME
+    delete process.env.DB_INSTANCE_UNIX_SOCKET
     
     // Re-import mysql mock
     mysql = await import('mysql2/promise')
@@ -33,6 +34,7 @@ describe('Database Pool', () => {
     process.env.DB_USER = 'test-user'
     process.env.DB_PASSWORD = 'test-password'
     process.env.DB_NAME = 'test-database'
+    process.env.DB_INSTANCE_UNIX_SOCKET = '/cloudsql/test-instance'
 
     // Import the module after setting env vars
     await import('@/lib/db')
@@ -46,6 +48,7 @@ describe('Database Pool', () => {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      socketPath: '/cloudsql/test-instance',
     })
   })
 
@@ -62,6 +65,7 @@ describe('Database Pool', () => {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      socketPath: undefined,
     })
   })
 

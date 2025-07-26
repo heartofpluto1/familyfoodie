@@ -1,5 +1,5 @@
 // __tests__/api/test-db/route.test.js
-import { GET, POST } from '../../../src/app/api/test-db/route';
+import { GET } from '../../../src/app/api/test-db/route';
 
 // Mock the database pool
 jest.mock('../../../src/lib/db', () => ({
@@ -168,37 +168,6 @@ describe('/api/test-db', () => {
         message: 'Database connected successfully',
         data: mockRows
       });
-    });
-  });
-
-  describe('POST', () => {
-    it('should return POST method message for POST requests', async () => {
-      // Act
-      const response = await POST();
-
-      // Assert
-      expect(Response.json).toHaveBeenCalledWith({
-        message: 'POST method'
-      });
-      expect(response.status).toBe(200);
-    });
-
-    it('should not call database pool for POST requests', async () => {
-      // Act
-      await POST();
-
-      // Assert
-      expect(mockPool.execute).not.toHaveBeenCalled();
-    });
-
-    it('should return response object with correct structure', async () => {
-      // Act
-      const response = await POST();
-
-      // Assert
-      expect(typeof response).toBe('object');
-      expect(response).toHaveProperty('json');
-      expect(typeof response.json).toBe('function');
     });
   });
 

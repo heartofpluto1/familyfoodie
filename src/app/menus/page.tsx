@@ -1,32 +1,61 @@
-// app/recipe-weeks/page.tsx
-import { 
-  getRecipeWeeks, 
-  groupRecipesByWeek, 
-  getRecipeWeekStats
-} from '@/lib/recipeWeeks';
-import HeaderPage from '../components/HeaderPage';
+'use client';
 
-export default async function RecipeWeeksPage() {
-  // Fetch data using library functions
-  const recipeWeeks = await getRecipeWeeks(6); // Last 6 months
-  const groupedRecipes = groupRecipesByWeek(recipeWeeks);
-  const stats = getRecipeWeekStats(groupedRecipes);
+import HeaderPage from '@/app/components/HeaderPage';
+import { useState, useEffect } from 'react';
+import { RecipeWeeksStats } from '@/lib/recipeWeeks';
+
+export default function WeeksPage() {
+  const [plans, setPlans] = useState([]);
+  const [stats, setStats] = useState<RecipeWeeksStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const response = await fetch('/api/plans');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(`Database error! status: ${data.error}`);
+        }
+        setPlans(data.data);
+        setStats(data.stats);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlans();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <HeaderPage>
-            Past plans
+            Menus
           </HeaderPage>
           <p className="text-muted">
-            Last 6 months of planned recipes
+            Last 6 months of meal planning.
           </p>
         </div>
+        
+        {plans.length === 0 && (
+          <div className="bg-surface border border-custom rounded-lg p-8 text-center">
+             <p className="text-secondary">
+              { loading ? 'Loading menus...' : 
+               error ? `Error: ${error}` : 
+               'No menus found.'
+              }
+             </p>
+          </div>
+        )}
 
-        {/* Stats Summary */}
-        {groupedRecipes.length > 0 && (
+        {stats && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-surface border border-custom rounded-lg p-4 text-center">
               <p className="text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
@@ -42,15 +71,10 @@ export default async function RecipeWeeksPage() {
             </div>
           </div>
         )}
-        
-        {/* Recipe Cards */}
-        {groupedRecipes.length === 0 ? (
-          <div className="bg-surface border border-custom rounded-lg p-8 text-center">
-            <p className="text-secondary">No recipe weeks found.</p>
-          </div>
-        ) : (
+
+        {plans.length > 0 && (
           <div className="flex flex-wrap gap-6">
-            {groupedRecipes.map(({ year, week, recipes }) => (
+            {plans.map(({ year, week, recipes }) => (
               <RecipeWeekCard 
                 key={`${year}-${week}`}
                 year={year}
@@ -72,7 +96,6 @@ interface RecipeWeekCardProps {
   recipes: Array<{
     id: number;
     recipeName: string;
-    accountName: string;
   }>;
 }
 
@@ -102,9 +125,6 @@ function RecipeWeekCard({ year, week, recipes }: RecipeWeekCardProps) {
         <h2 className="text-lg font-medium">
           Week {week}, {year}
         </h2>
-        <p className="text-sm opacity-80">
-          {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}
-        </p>
       </div>
       
       <div className="p-4">
