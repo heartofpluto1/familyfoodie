@@ -1,5 +1,6 @@
 'use client';
 
+import HeaderPage from '@/app/components/HeaderPage';
 import { useState, useEffect } from 'react';
 
 export default function WeeksPage() {
@@ -18,7 +19,7 @@ export default function WeeksPage() {
         if (!data.success) {
           throw new Error(`Database error! status: ${data.error}`);
         }
-        setPlans(data);
+        setPlans(data.data);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -28,15 +29,38 @@ export default function WeeksPage() {
     fetchPlans();
   }, []);
 
-  if (loading) return <p>Loading users...</p>;
+  if (loading) return <p>Loading plans...</p>;
   if (error) return <p>Error: {error}</p>;
 
   return (
-    <div>
-      <h1>Plans</h1>
-      <ul>
-        {JSON.stringify(plans)}
-      </ul>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <HeaderPage>
+            Menus
+          </HeaderPage>
+          <p className="text-muted">
+            Last 6 months of planned recipes
+          </p>
+        </div>
+        
+        {plans.length === 0 ? (
+          <div className="bg-surface border border-custom rounded-lg p-8 text-center">
+            <p className="text-secondary">No recipe weeks found.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-6">
+            {plans.map(({ year, week, recipes }) => (
+              <RecipeWeekCard 
+                key={`${year}-${week}`}
+                year={year}
+                week={week}
+                recipes={recipes}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -109,6 +133,7 @@ export default async function RecipeWeeksPage() {
     </div>
   );
 }
+    */
 
 // Recipe Week Card Component
 interface RecipeWeekCardProps {
@@ -165,4 +190,3 @@ function RecipeWeekCard({ year, week, recipes }: RecipeWeekCardProps) {
     </div>
   );
 }
-    */

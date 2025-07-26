@@ -2,7 +2,7 @@
 import pool from './db.js';
 
 export type RecipeWeeksResult = {
-  data: RecipeWeek[];
+  data: GroupedWeek[];
   error?: string;
   success: boolean;
 };
@@ -69,8 +69,9 @@ export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeeksRes
 
     const [rows] = await pool.execute(query);
 
+    // rows is any[], so cast to RecipeWeek[]
     return {
-      data: rows as RecipeWeek[],
+      data: groupRecipesByWeek(rows as RecipeWeek[]),
       success: true
     };
   } catch (error) {
