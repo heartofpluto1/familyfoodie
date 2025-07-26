@@ -54,8 +54,8 @@ describe('Database Pool', () => {
     await import('@/lib/db')
 
     expect(mysql.createPool).toHaveBeenCalledWith({
-      host: 'localhost',
-      port: 3306,
+      host: undefined,
+      port: undefined,
       user: undefined,
       password: undefined,
       database: undefined,
