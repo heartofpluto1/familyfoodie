@@ -8,13 +8,11 @@ export interface RecipeWeek {
   recipe_id: number;
   account_id: number;
   recipe_name: string;
-  account_name: string;
 }
 
 export interface GroupedRecipe {
   id: number;
   recipeName: string;
-  accountName: string;
 }
 
 export interface GroupedWeek {
@@ -50,23 +48,21 @@ export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeek[]> 
 
     const query = `
       SELECT 
-        rw.id,
-        rw.week,
-        rw.year,
-        rw.recipe_id,
-        rw.account_id,
-        r.name as recipe_name,
-        a.name as account_name
-      FROM menus_recipeweek rw
-      JOIN menus_recipe r ON rw.recipe_id = r.id
-      JOIN menus_account a ON rw.account_id = a.id
+        menus_recipeweek.id,
+        week,
+        year,
+        recipe_id,
+        name as recipe_name
+      FROM menus_recipeweek
+      JOIN menus_recipe ON menus_recipeweek.recipe_id = menus_recipe.id
       WHERE 
-        (rw.year = ${currentYear} AND rw.week <= ${currentWeek}) OR
-        (rw.year = ${monthsAgoYear} AND rw.week >= ${monthsAgoWeek})
-      ORDER BY rw.year DESC, rw.week DESC
+        (year = ${currentYear} AND week <= ${currentWeek}) OR
+        (year = ${monthsAgoYear} AND week >= ${monthsAgoWeek})
+      ORDER BY year DESC, week DESC
     `;
 
     const [rows] = await pool.execute(query);
+    console.log('Is something returned?', rows);
 
     return rows as RecipeWeek[];
   } catch (error) {
@@ -92,8 +88,7 @@ export function groupRecipesByWeek(recipeWeeks: RecipeWeek[]): GroupedWeek[] {
     
     acc[key].recipes.push({
       id: recipeWeek.id,
-      recipeName: recipeWeek.recipe_name,
-      accountName: recipeWeek.account_name
+      recipeName: recipeWeek.recipe_name
     });
     
     return acc;
@@ -114,8 +109,7 @@ export function filterGroupedWeeks(groupedWeeks: GroupedWeek[], searchTerm: stri
   return groupedWeeks.map(week => ({
     ...week,
     recipes: week.recipes.filter(recipe => 
-      recipe.recipeName.toLowerCase().includes(lowerSearchTerm) ||
-      recipe.accountName.toLowerCase().includes(lowerSearchTerm)
+      recipe.recipeName.toLowerCase().includes(lowerSearchTerm)
     )
   })).filter(week => week.recipes.length > 0);
 }
@@ -127,19 +121,10 @@ export function getRecipeWeekStats(groupedWeeks: GroupedWeek[]) {
   const totalWeeks = groupedWeeks.length;
   const totalRecipes = groupedWeeks.reduce((sum, week) => sum + week.recipes.length, 0);
   const avgRecipesPerWeek = totalWeeks > 0 ? (totalRecipes / totalWeeks).toFixed(1) : '0';
-  
-  // Get unique accounts
-  const uniqueAccounts = new Set();
-  groupedWeeks.forEach(week => {
-    week.recipes.forEach(recipe => {
-      uniqueAccounts.add(recipe.accountName);
-    });
-  });
 
   return {
     totalWeeks,
     totalRecipes,
-    avgRecipesPerWeek: parseFloat(avgRecipesPerWeek),
-    uniqueAccounts: uniqueAccounts.size
+    avgRecipesPerWeek: parseFloat(avgRecipesPerWeek)
   };
 }
