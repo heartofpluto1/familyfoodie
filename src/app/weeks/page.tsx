@@ -1,13 +1,48 @@
-// app/weeks/page.tsx
-import { 
-  getRecipeWeeks, 
-  groupRecipesByWeek, 
-  getRecipeWeekStats
-} from '@/lib/recipeWeeks';
-import HeaderPage from '../components/HeaderPage';
+'use client';
 
+import { useState, useEffect } from 'react';
+
+export default function WeeksPage() {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const response = await fetch('/api/plans');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(`Database error! status: ${data.error}`);
+        }
+        setPlans(data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlans();
+  }, []);
+
+  if (loading) return <p>Loading users...</p>;
+  if (error) return <p>Error: {error}</p>;
+
+  return (
+    <div>
+      <h1>Plans</h1>
+      <ul>
+        {JSON.stringify(plans)}
+      </ul>
+    </div>
+  );
+}
+
+/*
 export default async function RecipeWeeksPage() {
-  // Fetch data using library functions
   const recipeWeeksResult = await getRecipeWeeks(6); // Last 6 months
   if (!recipeWeeksResult.success) {
     return (
@@ -22,13 +57,12 @@ export default async function RecipeWeeksPage() {
     );
   }
 
-  const groupedRecipes = groupRecipesByWeek(recipeWeeksResult.data);
-  const stats = getRecipeWeekStats(groupedRecipes);
+  //const groupedRecipes = groupRecipesByWeek(recipeWeeksResult.data);
+  //const stats = getRecipeWeekStats(groupedRecipes);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <HeaderPage>
             Past plans
@@ -38,7 +72,6 @@ export default async function RecipeWeeksPage() {
           </p>
         </div>
 
-        {/* Stats Summary */}
         {groupedRecipes.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-surface border border-custom rounded-lg p-4 text-center">
@@ -56,7 +89,6 @@ export default async function RecipeWeeksPage() {
           </div>
         )}
         
-        {/* Recipe Cards */}
         {groupedRecipes.length === 0 ? (
           <div className="bg-surface border border-custom rounded-lg p-8 text-center">
             <p className="text-secondary">No recipe weeks found.</p>
@@ -77,6 +109,7 @@ export default async function RecipeWeeksPage() {
     </div>
   );
 }
+  */
 
 // Recipe Week Card Component
 interface RecipeWeekCardProps {
