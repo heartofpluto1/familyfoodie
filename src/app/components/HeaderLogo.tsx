@@ -37,7 +37,7 @@ const HeaderLogo = () => {
               Shopping
             </Link>
             <Link 
-              href="/weeks" 
+              href="/menus" 
               className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
             >
               Menus

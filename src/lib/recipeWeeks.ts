@@ -3,9 +3,16 @@ import pool from './db.js';
 
 export type RecipeWeeksResult = {
   data: GroupedWeek[];
+  stats?: RecipeWeeksStats;
   error?: string;
   success: boolean;
 };
+
+export interface RecipeWeeksStats {
+  totalWeeks: number;
+  totalRecipes: number;
+  avgRecipesPerWeek: number;
+}
 
 export interface RecipeWeek {
   id: number;
@@ -68,10 +75,11 @@ export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeeksRes
     `;
 
     const [rows] = await pool.execute(query);
+    const groupedWeeks = groupRecipesByWeek(rows as RecipeWeek[]);
 
-    // rows is any[], so cast to RecipeWeek[]
     return {
-      data: groupRecipesByWeek(rows as RecipeWeek[]),
+      data: groupedWeeks,
+      stats: getRecipeWeekStats(groupedWeeks),
       success: true
     };
   } catch (error) {

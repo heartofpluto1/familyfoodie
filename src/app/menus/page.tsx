@@ -2,9 +2,11 @@
 
 import HeaderPage from '@/app/components/HeaderPage';
 import { useState, useEffect } from 'react';
+import { RecipeWeeksStats } from '@/lib/recipeWeeks';
 
 export default function WeeksPage() {
   const [plans, setPlans] = useState([]);
+  const [stats, setStats] = useState<RecipeWeeksStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +22,7 @@ export default function WeeksPage() {
           throw new Error(`Database error! status: ${data.error}`);
         }
         setPlans(data.data);
+        setStats(data.stats);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -29,9 +32,6 @@ export default function WeeksPage() {
     fetchPlans();
   }, []);
 
-  if (loading) return <p>Loading plans...</p>;
-  if (error) return <p>Error: {error}</p>;
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -40,63 +40,22 @@ export default function WeeksPage() {
             Menus
           </HeaderPage>
           <p className="text-muted">
-            Last 6 months of planned recipes
+            Last 6 months of meal planning.
           </p>
         </div>
         
-        {plans.length === 0 ? (
+        {plans.length === 0 && (
           <div className="bg-surface border border-custom rounded-lg p-8 text-center">
-            <p className="text-secondary">No recipe weeks found.</p>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-6">
-            {plans.map(({ year, week, recipes }) => (
-              <RecipeWeekCard 
-                key={`${year}-${week}`}
-                year={year}
-                week={week}
-                recipes={recipes}
-              />
-            ))}
+             <p className="text-secondary">
+              { loading ? 'Loading menus...' : 
+               error ? `Error: ${error}` : 
+               'No menus found.'
+              }
+             </p>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
 
-/*
-export default async function RecipeWeeksPage() {
-  const recipeWeeksResult = await getRecipeWeeks(6); // Last 6 months
-  if (!recipeWeeksResult.success) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <HeaderPage>
-            Error fetching recipe weeks
-          </HeaderPage>
-          <p className="text-red-500">{recipeWeeksResult.error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  //const groupedRecipes = groupRecipesByWeek(recipeWeeksResult.data);
-  //const stats = getRecipeWeekStats(groupedRecipes);
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <HeaderPage>
-            Past plans
-          </HeaderPage>
-          <p className="text-muted">
-            Last 6 months of planned recipes
-          </p>
-        </div>
-
-        {groupedRecipes.length > 0 && (
+        {stats && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-surface border border-custom rounded-lg p-4 text-center">
               <p className="text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
@@ -112,14 +71,10 @@ export default async function RecipeWeeksPage() {
             </div>
           </div>
         )}
-        
-        {groupedRecipes.length === 0 ? (
-          <div className="bg-surface border border-custom rounded-lg p-8 text-center">
-            <p className="text-secondary">No recipe weeks found.</p>
-          </div>
-        ) : (
+
+        {plans.length > 0 && (
           <div className="flex flex-wrap gap-6">
-            {groupedRecipes.map(({ year, week, recipes }) => (
+            {plans.map(({ year, week, recipes }) => (
               <RecipeWeekCard 
                 key={`${year}-${week}`}
                 year={year}
@@ -133,7 +88,6 @@ export default async function RecipeWeeksPage() {
     </div>
   );
 }
-    */
 
 // Recipe Week Card Component
 interface RecipeWeekCardProps {
@@ -171,9 +125,6 @@ function RecipeWeekCard({ year, week, recipes }: RecipeWeekCardProps) {
         <h2 className="text-lg font-medium">
           Week {week}, {year}
         </h2>
-        <p className="text-sm opacity-80">
-          {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}
-        </p>
       </div>
       
       <div className="p-4">
