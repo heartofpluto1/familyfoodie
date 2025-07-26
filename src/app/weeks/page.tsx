@@ -16,6 +16,7 @@ export default async function RecipeWeeksPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
+        {JSON.stringify({ data: recipeWeeks })}
         <div className="mb-8">
           <HeaderPage>
             Past plans
