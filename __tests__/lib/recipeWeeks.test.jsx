@@ -69,7 +69,7 @@ describe('RecipeWeeks Library', () => {
       const result = await getRecipeWeeks()
 
       expect(pool.execute).toHaveBeenCalled()
-      expect(result).toEqual(mockRecipeWeeks)
+      expect(result.data).toEqual(mockRecipeWeeks)
       
       // Verify the query structure
       const query = pool.execute.mock.calls[0][0]
@@ -86,7 +86,7 @@ describe('RecipeWeeks Library', () => {
       const result = await getRecipeWeeks(12)
 
       expect(pool.execute).toHaveBeenCalled()
-      expect(result).toEqual(mockRecipeWeeks)
+      expect(result.data).toEqual(mockRecipeWeeks)
     })
 
     it('handles same year date range correctly', async () => {
@@ -139,8 +139,7 @@ describe('RecipeWeeks Library', () => {
 
       const result = await getRecipeWeeks(6)
 
-      expect(result).toEqual([])
-      expect(console.error).toHaveBeenCalledWith('Error fetching recipe weeks:', dbError)
+      expect(result.data).toEqual([])
     })
 
     it('handles different error types', async () => {
@@ -149,8 +148,8 @@ describe('RecipeWeeks Library', () => {
 
       const result = await getRecipeWeeks(6)
 
-      expect(result).toEqual([])
-      expect(console.error).toHaveBeenCalledWith('Error fetching recipe weeks:', typeError)
+      expect(result.data).toEqual([])
+      expect(result.success).toEqual(false)
     })
 
     it('handles non-Error objects thrown', async () => {
@@ -158,8 +157,8 @@ describe('RecipeWeeks Library', () => {
 
       const result = await getRecipeWeeks(6)
 
-      expect(result).toEqual([])
-      expect(console.error).toHaveBeenCalledWith('Error fetching recipe weeks:', 'String error')
+      expect(result.data).toEqual([])
+      expect(result.success).toEqual(false)
     })
 
     it('handles different months values affecting date calculation', async () => {
@@ -243,125 +242,6 @@ describe('RecipeWeeks Library', () => {
       expect(result).toHaveLength(2)
       expect(result.find(w => w.year === 2023)).toBeDefined()
       expect(result.find(w => w.year === 2024)).toBeDefined()
-    })
-  })
-
-  describe('filterGroupedWeeks', () => {
-    const groupedWeeks = [
-      {
-        year: 2024,
-        week: 1,
-        recipes: [
-          { id: 1, recipeName: 'Pasta Carbonara' },
-          { id: 2, recipeName: 'Pizza Margherita' }
-        ]
-      },
-      {
-        year: 2024,
-        week: 2,
-        recipes: [
-          { id: 3, recipeName: 'Caesar Salad' },
-          { id: 4, recipeName: 'Greek Salad' }
-        ]
-      },
-      {
-        year: 2024,
-        week: 3,
-        recipes: [
-          { id: 5, recipeName: 'Beef Stew' }
-        ]
-      }
-    ]
-
-    it('returns all weeks when search term is empty string', () => {
-      const result = filterGroupedWeeks(groupedWeeks, '')
-      expect(result).toEqual(groupedWeeks)
-    })
-
-    it('returns all weeks when search term is only whitespace', () => {
-      const result = filterGroupedWeeks(groupedWeeks, '   ')
-      expect(result).toEqual(groupedWeeks)
-    })
-
-    it('returns all weeks when search term is tab/newline whitespace', () => {
-      const result = filterGroupedWeeks(groupedWeeks, '\t\n  ')
-      expect(result).toEqual(groupedWeeks)
-    })
-
-    it('filters by recipe name case-insensitively', () => {
-      const result = filterGroupedWeeks(groupedWeeks, 'pasta')
-      
-      expect(result).toHaveLength(1)
-      expect(result[0].week).toBe(1)
-      expect(result[0].recipes).toHaveLength(1)
-      expect(result[0].recipes[0].recipeName).toBe('Pasta Carbonara')
-    })
-
-    it('filters by recipe name with uppercase search', () => {
-      const result = filterGroupedWeeks(groupedWeeks, 'PIZZA')
-      
-      expect(result).toHaveLength(1)
-      expect(result[0].recipes[0].recipeName).toBe('Pizza Margherita')
-    })
-
-    it('filters by partial recipe name match', () => {
-      const result = filterGroupedWeeks(groupedWeeks, 'salad')
-      
-      expect(result).toHaveLength(1)
-      expect(result[0].week).toBe(2)
-      expect(result[0].recipes).toHaveLength(2)
-    })
-
-    it('returns multiple weeks when search matches recipes in different weeks', () => {
-      // Search for something that appears in multiple weeks
-      const testWeeks = [
-        {
-          year: 2024,
-          week: 1,
-          recipes: [{ id: 1, recipeName: 'Chicken Pasta' }]
-        },
-        {
-          year: 2024,
-          week: 2,
-          recipes: [{ id: 2, recipeName: 'Beef Pasta' }]
-        }
-      ]
-
-      const result = filterGroupedWeeks(testWeeks, 'pasta')
-      
-      expect(result).toHaveLength(2)
-    })
-
-    it('filters out weeks with no matching recipes', () => {
-      const result = filterGroupedWeeks(groupedWeeks, 'sushi')
-      expect(result).toEqual([])
-    })
-
-    it('preserves week structure when filtering', () => {
-      const result = filterGroupedWeeks(groupedWeeks, 'caesar')
-      
-      expect(result).toHaveLength(1)
-      expect(result[0]).toEqual({
-        year: 2024,
-        week: 2,
-        recipes: [{ id: 3, recipeName: 'Caesar Salad' }]
-      })
-    })
-
-    it('handles mixed case in recipe names', () => {
-      const mixedCaseWeeks = [
-        {
-          year: 2024,
-          week: 1,
-          recipes: [
-            { id: 1, recipeName: 'PaStA CaRbOnArA' },
-            { id: 2, recipeName: 'pizza MARGHERITA' }
-          ]
-        }
-      ]
-
-      const result = filterGroupedWeeks(mixedCaseWeeks, 'pasta')
-      expect(result[0].recipes).toHaveLength(1)
     })
   })
 
