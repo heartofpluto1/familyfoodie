@@ -62,7 +62,6 @@ export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeek[]> 
     `;
 
     const [rows] = await pool.execute(query);
-    console.log('Is something returned?', rows);
 
     return rows as RecipeWeek[];
   } catch (error) {
