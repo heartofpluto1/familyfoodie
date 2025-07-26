@@ -1,0 +1,24 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: nextjs_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: A4sWjhCkgF5RPyhQ
+      MYSQL_DATABASE: familyfoodie
+      MYSQL_USER: familyfoodie
+      MYSQL_PASSWORD: A4sWjhCkgF5RPyhQ
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Optional: for initial SQL scripts
+    networks:
+      - nextjs_network
+
+volumes:
+  mysql_data:
+
+networks:
+  nextjs_network:
+    driver: bridge
