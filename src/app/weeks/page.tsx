@@ -72,7 +72,6 @@ interface RecipeWeekCardProps {
   recipes: Array<{
     id: number;
     recipeName: string;
-    accountName: string;
   }>;
 }
 
