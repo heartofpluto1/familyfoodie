@@ -47,6 +47,7 @@ export default async function RecipeWeeksPage() {
         {groupedRecipes.length === 0 ? (
           <div className="bg-surface border border-custom rounded-lg p-8 text-center">
             <p className="text-secondary">No recipe weeks found.</p>
+            {JSON.stringify({ data: groupedRecipes })}
           </div>
         ) : (
           <div className="flex flex-wrap gap-6">
