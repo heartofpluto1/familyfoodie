@@ -61,17 +61,12 @@ export async function getRecipeWeeks(months: number = 6): Promise<RecipeWeek[]> 
       JOIN menus_recipe r ON rw.recipe_id = r.id
       JOIN menus_account a ON rw.account_id = a.id
       WHERE 
-        (rw.year = ? AND rw.week <= ?) OR
-        (rw.year = ? AND rw.week >= ?)
+        (rw.year = ${currentYear} AND rw.week <= ${currentWeek}) OR
+        (rw.year = ${monthsAgoYear} AND rw.week >= ${monthsAgoWeek})
       ORDER BY rw.year DESC, rw.week DESC
     `;
 
-    const [rows] = await pool.execute(query, [
-      currentYear,
-      currentWeek,
-      monthsAgoYear,
-      monthsAgoWeek
-    ]);
+    const [rows] = await pool.execute(query);
 
     return rows as RecipeWeek[];
   } catch (error) {
