@@ -12,7 +12,7 @@ const HeaderPage = ({
   children: React.ReactNode;
 }>) => {
   return (
-    <h2 className={`${crimsonText.className} text-3xl font-bold text-foreground mb-2`}>
+    <h2 className={`${crimsonText.className} text-2xl font-bold text-foreground mb-1`}>
     {children}
     </h2>
   );
