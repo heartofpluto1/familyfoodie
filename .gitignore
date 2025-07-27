@@ -7,6 +7,8 @@
 
 # my random stuff
 /no-commit
+*.sql
+cloud-sql-proxy
 
 # testing
 /coverage
