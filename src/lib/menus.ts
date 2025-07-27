@@ -86,10 +86,7 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
 	} catch (error) {
 		return {
 			data: [],
-			error:
-				error instanceof Error
-					? error.message
-					: 'Unknown database error occurred',
+			error: error instanceof Error ? error.message : 'Unknown database error occurred',
 			success: false,
 		};
 	}
@@ -131,12 +128,8 @@ export function groupRecipesByWeek(recipeWeeks: PlannedMeal[]): Menu[] {
  */
 export function getRecipeWeekStats(groupedWeeks: Menu[]) {
 	const totalWeeks = groupedWeeks.length;
-	const totalRecipes = groupedWeeks.reduce(
-		(sum, week) => sum + week.meals.length,
-		0
-	);
-	const avgRecipesPerWeek =
-		totalWeeks > 0 ? (totalRecipes / totalWeeks).toFixed(1) : '0';
+	const totalRecipes = groupedWeeks.reduce((sum, week) => sum + week.meals.length, 0);
+	const avgRecipesPerWeek = totalWeeks > 0 ? (totalRecipes / totalWeeks).toFixed(1) : '0';
 
 	return {
 		totalWeeks,

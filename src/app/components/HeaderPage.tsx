@@ -6,17 +6,17 @@ const crimsonText = Crimson_Text({
 	display: 'swap',
 });
 
-const HeaderPage = ({
-	children,
-}: Readonly<{
-	children: React.ReactNode;
-}>) => {
+type HeaderPageProps = {
+	title: string;
+	subtitle: string;
+};
+
+const HeaderPage = ({ title, subtitle }: HeaderPageProps) => {
 	return (
-		<h2
-			className={`${crimsonText.className} text-2xl font-bold text-foreground mb-1`}
-		>
-			{children}
-		</h2>
+		<>
+			<h2 className={`${crimsonText.className} text-2xl font-bold text-foreground`}>{title}</h2>
+			<p className="text-sm text-muted">{subtitle}</p>
+		</>
 	);
 };
 
