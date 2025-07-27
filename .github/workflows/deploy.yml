@@ -75,5 +75,5 @@ jobs:
             --region=${{ env.REGION }} \
             --platform=managed \
             --add-cloudsql-instances familyfoodie-project:australia-southeast1:familyfoodie \
-            --set-env-vars DB_INSTANCE_UNIX_SOCKET=${{secrets.DB_INSTANCE_UNIX_SOCKET}},DB_HOST=${{secrets.DB_HOST}},DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }},DATABASE_URL=${{ secrets.DATABASE_URL }} \
+            --set-env-vars SESSION_SECRET_KEY=${{secrets.SESSION_SECRET_KEY}},DB_INSTANCE_UNIX_SOCKET=${{secrets.DB_INSTANCE_UNIX_SOCKET}},DB_HOST=${{secrets.DB_HOST}},DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }} \
             --allow-unauthenticated

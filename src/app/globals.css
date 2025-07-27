@@ -12,6 +12,10 @@
 	--foreground-muted: #737373;
 	--accent: rgba(0, 0, 0, 0.1);
 	--accent-hover: rgba(0, 0, 0, 0.25);
+	/* Red variants for light mode */
+	--red-text: rgba(220, 38, 38, 1); /* red-600 equivalent */
+	--red-bg: rgba(220, 38, 38, 0.1);
+	--red-border: rgba(220, 38, 38, 0.2);
 }
 
 @theme inline {
@@ -24,6 +28,9 @@
 	--color-foreground-muted: var(--foreground-muted);
 	--color-accent: var(--accent);
 	--color-accent-hover: var(--accent-hover);
+	--color-red-text: var(--red-text);
+	--color-red-bg: var(--red-bg);
+	--color-red-border: var(--red-border);
 	--font-sans: var(--font-geist-sans);
 	--font-mono: var(--font-geist-mono);
 }
@@ -41,6 +48,10 @@
 		--foreground-muted: #a3a3a3;
 		--accent: rgba(255, 255, 255, 0.1);
 		--accent-hover: rgba(255, 255, 255, 0.25);
+		/* Red variants for dark mode */
+		--red-text: rgba(248, 113, 113, 1); /* red-400 equivalent - softer in dark mode */
+		--red-bg: rgba(248, 113, 113, 0.1);
+		--red-border: rgba(248, 113, 113, 0.2);
 	}
 }
 
@@ -92,6 +103,19 @@ body {
 	background-color: var(--accent);
 }
 
+/* Adaptive red utility classes */
+.text-red {
+	color: var(--red-text);
+}
+
+.bg-red {
+	background-color: var(--red-bg);
+}
+
+.border-red {
+	border-color: var(--red-border);
+}
+
 /* Override some default Tailwind colors to use our theme */
 .bg-white {
 	background-color: var(--surface) !important;
@@ -119,6 +143,27 @@ body {
 
 .text-gray-500 {
 	color: var(--foreground-muted) !important;
+}
+
+/* Override Tailwind red classes to use adaptive variants */
+.bg-red-50 {
+	background-color: var(--red-bg) !important;
+}
+
+.border-red-200 {
+	border-color: var(--red-border) !important;
+}
+
+.text-red-600 {
+	color: var(--red-text) !important;
+}
+
+.text-red-700 {
+	color: var(--red-text) !important;
+}
+
+.text-red-400 {
+	color: var(--red-text) !important;
 }
 
 /* Card hover effects */

@@ -1,5 +1,6 @@
-import type { Metadata } from 'next';
 import './globals.css';
+import type { Metadata } from 'next';
+import { AuthProvider } from '@/lib/auth-context';
 import HeaderLogo from './components/HeaderLogo';
 
 export const metadata: Metadata = {
@@ -15,8 +16,10 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body className={`antialiased`}>
-				<HeaderLogo />
-				{children}
+				<AuthProvider>
+					<HeaderLogo />
+					{children}
+				</AuthProvider>
 			</body>
 		</html>
 	);
