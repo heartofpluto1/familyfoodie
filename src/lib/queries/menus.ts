@@ -1,38 +1,5 @@
-import pool from './db.js';
-
-export type QueryResult = {
-	data: Menu[];
-	stats?: Stats;
-	error?: string;
-	success: boolean;
-};
-
-export interface Menu {
-	year: number;
-	week: number;
-	meals: Meal[];
-}
-
-export interface Stats {
-	totalWeeks: number;
-	totalRecipes: number;
-	avgRecipesPerWeek: number;
-}
-
-export interface PlannedMeal {
-	id: number;
-	week: number;
-	year: number;
-	recipe_id: number;
-	recipe_name: string;
-	filename: string;
-}
-
-export interface Meal {
-	id: number;
-	name: string;
-	filename: string;
-}
+import pool from '../db.js';
+import { QueryResult, Menu, PlannedMeal } from '@/types/menus.js';
 
 /**
  * Calculate week number from date
@@ -48,18 +15,17 @@ function getWeekNumber(date: Date): number {
  * Get recipe weeks from the last N months
  */
 export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
-	try {
-		// Calculate date range
-		const monthsAgo = new Date();
-		monthsAgo.setMonth(monthsAgo.getMonth() - months);
+	// Calculate date range
+	const monthsAgo = new Date();
+	monthsAgo.setMonth(monthsAgo.getMonth() - months);
 
-		const currentYear = new Date().getFullYear();
-		const monthsAgoYear = monthsAgo.getFullYear();
+	const currentYear = new Date().getFullYear();
+	const monthsAgoYear = monthsAgo.getFullYear();
 
-		const monthsAgoWeek = getWeekNumber(monthsAgo);
-		const currentWeek = getWeekNumber(new Date());
+	const monthsAgoWeek = getWeekNumber(monthsAgo);
+	const currentWeek = getWeekNumber(new Date());
 
-		const query = `
+	const query = `
       SELECT 
         menus_recipeweek.id,
         week,
@@ -75,21 +41,13 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
       ORDER BY year DESC, week DESC
     `;
 
-		const [rows] = await pool.execute(query);
-		const groupedWeeks = groupRecipesByWeek(rows as PlannedMeal[]);
+	const [rows] = await pool.execute(query);
+	const groupedWeeks = groupRecipesByWeek(rows as PlannedMeal[]);
 
-		return {
-			data: groupedWeeks,
-			stats: getRecipeWeekStats(groupedWeeks),
-			success: true,
-		};
-	} catch (error) {
-		return {
-			data: [],
-			error: error instanceof Error ? error.message : 'Unknown database error occurred',
-			success: false,
-		};
-	}
+	return {
+		data: groupedWeeks,
+		stats: getRecipeWeekStats(groupedWeeks),
+	};
 }
 
 /**

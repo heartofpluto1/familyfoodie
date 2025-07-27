@@ -1,9 +1,10 @@
 // app/shop/page.tsx (App Router version)
-import { Metadata } from 'next';
-import ShoppingListClient from './shop-client';
-import { ShoppingListData, Ingredient, DateStamp } from '../../types/shop';
-import { getEncryptedSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
+import { Metadata } from 'next';
+import { getIngredients, getShoppingList } from '@/lib/queries/shop';
+import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
+import { getEncryptedSession } from '@/lib/session';
+import ShoppingListClient from './shop-client';
 
 interface PageProps {
 	searchParams: Promise<{ week?: string; year?: string }>;
@@ -17,52 +18,16 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 	};
 }
 
-function getBaseUrl() {
-	if (process.env.GOOGLE_CLOUD_PROJECT || process.env.K_SERVICE) {
-		// Running on Cloud Run - use internal port
-		const port = process.env.PORT || 8080;
-		return `http://localhost:${port}`;
-	}
-
-	// Development
-	return 'http://localhost:3000';
-}
-
 async function getShoppingData(
 	week: string,
-	year: string,
-	session: string
+	year: string
 ): Promise<{
 	shoppingData: ShoppingListData;
 	allIngredients: Ingredient[];
 }> {
 	try {
-		// Build the correct URL for server-side requests
-		const baseUrl = getBaseUrl();
-
-		const [shoppingResponse, ingredientsResponse] = await Promise.all([
-			await fetch(`${baseUrl}/api/shop?week=${week}&year=${year}&endpoint=week`, {
-				cache: 'no-store',
-				headers: { 'Content-Type': 'application/json', Cookie: `session=${session}` },
-			}),
-			await fetch(`${baseUrl}/api/shop?week=${week}&year=${year}&endpoint=ingredients`, {
-				headers: { 'Content-Type': 'application/json', Cookie: `session=${session}` },
-			}),
-		]);
-
-		const shoppingRes = await shoppingResponse.json();
-		const allIngRes = await ingredientsResponse.json();
-
-		if (!shoppingRes.success) {
-			throw new Error(`Database error! status: ${shoppingRes.error}`);
-		}
-		if (!allIngRes.success) {
-			throw new Error(`Database error! status: ${allIngRes.error}`);
-		}
-
-		const shoppingData = shoppingRes.data;
-		const allIngredients = allIngRes.data;
-
+		const shoppingData = await getShoppingList(week, year);
+		const allIngredients = await getIngredients();
 		return { shoppingData, allIngredients };
 	} catch (error) {
 		console.error('Error fetching data:', error);
@@ -113,7 +78,7 @@ export default async function ShopPage({ searchParams }: PageProps) {
 	const actualWeek = week || currentWeek.toString();
 	const actualYear = year || currentYear.toString();
 
-	const { shoppingData, allIngredients } = await getShoppingData(actualWeek, actualYear, session);
+	const { shoppingData, allIngredients } = await getShoppingData(actualWeek, actualYear);
 
 	// Calculate week dates
 	const { firstDay, lastDay } = getWeekDates(parseInt(actualWeek), parseInt(actualYear));
