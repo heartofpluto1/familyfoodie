@@ -84,10 +84,6 @@ body {
   background-color: var(--accent);
 }
 
-.bg-accent:hover {
-  background-color: var(--accent-hover);
-}
-
 /* Override some default Tailwind colors to use our theme */
 .bg-white {
   background-color: var(--surface) !important;
