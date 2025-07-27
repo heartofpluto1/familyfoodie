@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Config files
+.env*
+.*
+docker*
+*config*
+*setup*
+*.md
+package*
+
+# Logs
+*.log
+
+# Other
+.DS_Store
+*.tsbuildinfo
