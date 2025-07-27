@@ -31,16 +31,16 @@ const HeaderLogo = () => {
               Home
             </Link>
             <Link 
-              href="/shopping" 
+              href="/shop" 
               className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
             >
-              Shopping
+              Shop
             </Link>
             <Link 
               href="/menus" 
               className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
             >
-              Menus
+              Menu
             </Link>
           </div>
         </nav>

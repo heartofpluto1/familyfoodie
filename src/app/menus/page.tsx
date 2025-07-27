@@ -2,18 +2,20 @@
 
 import HeaderPage from '@/app/components/HeaderPage';
 import { useState, useEffect } from 'react';
-import { RecipeWeeksStats } from '@/lib/recipeWeeks';
+import Image from 'next/image';
+import type { Stats, Meal, Menu } from '@/lib/menus';
+
 
 export default function WeeksPage() {
   const [plans, setPlans] = useState([]);
-  const [stats, setStats] = useState<RecipeWeeksStats | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPlans() {
       try {
-        const response = await fetch('/api/plans');
+        const response = await fetch('/api/menus');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -63,7 +65,7 @@ export default function WeeksPage() {
             </div>
             <div className="bg-surface border border-custom rounded-lg p-4 text-center">
               <p className="text-2xl font-semibold text-foreground">{stats.totalRecipes}</p>
-              <p className="text-xs text-muted">Recipes</p>
+              <p className="text-xs text-muted">Meals</p>
             </div>
             <div className="bg-surface border border-custom rounded-lg p-4 text-center">
               <p className="text-2xl font-semibold text-foreground">{stats.avgRecipesPerWeek}</p>
@@ -73,13 +75,13 @@ export default function WeeksPage() {
         )}
 
         {plans.length > 0 && (
-          <div className="flex flex-wrap gap-6">
-            {plans.map(({ year, week, recipes }) => (
-              <RecipeWeekCard 
+<div className="flex flex-wrap gap-6 items-start">
+            {plans.map(({ year, week, meals }) => (
+              <MenuCard 
                 key={`${year}-${week}`}
                 year={year}
                 week={week}
-                recipes={recipes}
+                meals={meals}
               />
             ))}
           </div>
@@ -89,51 +91,54 @@ export default function WeeksPage() {
   );
 }
 
-// Recipe Week Card Component
-interface RecipeWeekCardProps {
-  year: number;
-  week: number;
-  recipes: Array<{
-    id: number;
-    recipeName: string;
-  }>;
-}
-
-// Recipe Item Component
-interface RecipeItemProps {
-  recipe: {
-    id: number;
-    recipeName: string;
-  };
+function Meal({ meal, isLast }: {
+  meal: Meal;
   isLast: boolean;
-}
-
-function RecipeItem({ recipe, isLast }: RecipeItemProps) {
+}) {
   return (
-    <div className={`${!isLast ? 'border-b border-light pb-3' : ''}`}>
-      <p className="font-medium text-foreground text-sm leading-snug">
-        {recipe.recipeName}
+    <div className={`${!isLast ? 'border-b border-light' : ''}`}>
+      <p className="font-sm text-foreground text-sm leading-snug flex items-center gap-3 pr-3">
+        <div className="w-12 h-12 bg-gray-200 overflow-hidden flex-shrink-0">
+          <Image 
+            src={`/static/${meal.filename}.jpg`}
+            alt="thumb" 
+            width="48" 
+            height="48" 
+            className="w-full h-full object-cover"
+            unoptimized={true}
+          />
+        </div>
+        {meal.name}
       </p>
     </div>
   );
 }
 
-function RecipeWeekCard({ year, week, recipes }: RecipeWeekCardProps) {
+function MenuCard({ year, week, meals }: Menu) {
   return (
     <div className="flex-1 min-w-80 max-w-sm bg-surface border border-custom rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-      <div className="bg-accent text-background px-4 py-3">
-        <h2 className="text-lg font-medium">
+      <div className="bg-accent text-background px-4 py-3 flex items-center justify-between">
+        <h2 className="text-base font-medium">
           Week {week}, {year}
         </h2>
+        <a 
+          href="#" 
+          className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+          title="Shopping list"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5-6m0 0h16M17 21a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4z" />
+          </svg>
+        </a>
       </div>
       
-      <div className="p-4">
-        <div className="space-y-3">
-          {recipes.map((recipe) => (
-            <RecipeItem 
-              key={recipe.id}
-              recipe={recipe}
-              isLast={recipes[recipes.length - 1].id === recipe.id}
+      <div className="">
+        <div className="">
+          {meals.map((meal) => (
+            <Meal 
+              key={meal.id}
+              meal={meal}
+              isLast={meals[meals.length - 1].id === meal.id}
             />
           ))}
         </div>
