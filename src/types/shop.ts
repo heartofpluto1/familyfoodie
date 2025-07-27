@@ -11,7 +11,6 @@ export interface ShoppingListItem {
 	ingredient: string;
 	name: string;
 	cost?: number;
-	defaultCost?: number;
 	stockcode?: number;
 	purchased: boolean;
 	sort: number;
