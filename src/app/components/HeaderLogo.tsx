@@ -1,11 +1,11 @@
-import Link from "next/link";
-import { Crimson_Text } from "next/font/google";
+import Link from 'next/link';
+import { Crimson_Text } from 'next/font/google';
 
 const crimsonText = Crimson_Text({
   subsets: ['latin'],
   weight: ['400', '600', '700'],
   display: 'swap',
-})
+});
 
 const HeaderLogo = () => {
   return (
@@ -14,7 +14,9 @@ const HeaderLogo = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           {/* Title Section */}
           <div className="mb-3 md:mb-0">
-            <h1 className={`${crimsonText.className} font-bold text-2xl md:text-3xl text-foreground tracking-wide`}>
+            <h1
+              className={`${crimsonText.className} font-bold text-2xl md:text-3xl text-foreground tracking-wide`}
+            >
               Family Foodie
             </h1>
             <p className="text-sm text-muted italic">
@@ -25,32 +27,32 @@ const HeaderLogo = () => {
           {/* Navigation */}
           <nav>
             <div className="flex space-x-4 md:space-x-6">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
               >
                 Home
               </Link>
-              <Link 
-                href="/#" 
+              <Link
+                href="/#"
                 className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
               >
                 Shop
               </Link>
-              <Link 
-                href="/menus" 
+              <Link
+                href="/menus"
                 className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
               >
                 Menu
               </Link>
-              <Link 
-                href="/#" 
+              <Link
+                href="/#"
                 className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
               >
                 Recipes
               </Link>
-              <Link 
-                href="/#" 
+              <Link
+                href="/#"
                 className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
               >
                 Ingredients

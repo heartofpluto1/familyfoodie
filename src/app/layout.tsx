@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import HeaderLogo from "./components/HeaderLogo";
+import type { Metadata } from 'next';
+import './globals.css';
+import HeaderLogo from './components/HeaderLogo';
 
 export const metadata: Metadata = {
-  title: "Family Foodie",
-  description: "Shift left on meal planning and shopping lists",
+  title: 'Family Foodie',
+  description: 'Shift left on meal planning and shopping lists',
 };
 
 export default function RootLayout({
@@ -14,10 +14,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`antialiased`}
-      >
-        <HeaderLogo/>
+      <body className={`antialiased`}>
+        <HeaderLogo />
         {children}
       </body>
     </html>

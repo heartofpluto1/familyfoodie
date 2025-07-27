@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   /* Light mode - Clean greys */
@@ -10,8 +10,8 @@
   --foreground: #171717;
   --foreground-secondary: #525252;
   --foreground-muted: #737373;
-  --accent: rgba(0,0,0,0.1);
-  --accent-hover: rgba(0,0,0,0.25);
+  --accent: rgba(0, 0, 0, 0.1);
+  --accent-hover: rgba(0, 0, 0, 0.25);
 }
 
 @theme inline {
@@ -39,16 +39,24 @@
     --foreground: #fafafa;
     --foreground-secondary: #d4d4d4;
     --foreground-muted: #a3a3a3;
-    --accent: rgba(255,255,255,0.1);
-    --accent-hover: rgba(255,255,255,0.25);
+    --accent: rgba(255, 255, 255, 0.1);
+    --accent-hover: rgba(255, 255, 255, 0.25);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family:
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Custom utility classes for the theme */
@@ -115,18 +123,25 @@ body {
 
 /* Card hover effects */
 .hover\:shadow-md:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
   .hover\:shadow-md:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2);
   }
 }
 
 /* Smooth transitions for interactive elements */
 .transition-colors {
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .transition-shadow {

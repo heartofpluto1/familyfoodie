@@ -52,10 +52,10 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
     // Calculate date range
     const monthsAgo = new Date();
     monthsAgo.setMonth(monthsAgo.getMonth() - months);
-    
+
     const currentYear = new Date().getFullYear();
     const monthsAgoYear = monthsAgo.getFullYear();
-    
+
     const monthsAgoWeek = getWeekNumber(monthsAgo);
     const currentWeek = getWeekNumber(new Date());
 
@@ -81,13 +81,16 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
     return {
       data: groupedWeeks,
       stats: getRecipeWeekStats(groupedWeeks),
-      success: true
+      success: true,
     };
   } catch (error) {
     return {
       data: [],
-      error: error instanceof Error ? error.message : 'Unknown database error occurred',
-      success: false
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unknown database error occurred',
+      success: false,
     };
   }
 }
@@ -96,25 +99,28 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
  * Group recipe weeks by week and year
  */
 export function groupRecipesByWeek(recipeWeeks: PlannedMeal[]): Menu[] {
-  const grouped = recipeWeeks.reduce((acc, recipeWeek) => {
-    const key = `${recipeWeek.year}-${recipeWeek.week}`;
-    
-    if (!acc[key]) {
-      acc[key] = {
-        year: recipeWeek.year,
-        week: recipeWeek.week,
-        meals: []
-      };
-    }
-    
-    acc[key].meals.push({
-      id: recipeWeek.recipe_id,
-      name: recipeWeek.recipe_name,
-      filename: recipeWeek.filename
-    });
-    
-    return acc;
-  }, {} as Record<string, Menu>);
+  const grouped = recipeWeeks.reduce(
+    (acc, recipeWeek) => {
+      const key = `${recipeWeek.year}-${recipeWeek.week}`;
+
+      if (!acc[key]) {
+        acc[key] = {
+          year: recipeWeek.year,
+          week: recipeWeek.week,
+          meals: [],
+        };
+      }
+
+      acc[key].meals.push({
+        id: recipeWeek.recipe_id,
+        name: recipeWeek.recipe_name,
+        filename: recipeWeek.filename,
+      });
+
+      return acc;
+    },
+    {} as Record<string, Menu>
+  );
 
   // Convert to array
   return Object.values(grouped);
@@ -125,12 +131,16 @@ export function groupRecipesByWeek(recipeWeeks: PlannedMeal[]): Menu[] {
  */
 export function getRecipeWeekStats(groupedWeeks: Menu[]) {
   const totalWeeks = groupedWeeks.length;
-  const totalRecipes = groupedWeeks.reduce((sum, week) => sum + week.meals.length, 0);
-  const avgRecipesPerWeek = totalWeeks > 0 ? (totalRecipes / totalWeeks).toFixed(1) : '0';
+  const totalRecipes = groupedWeeks.reduce(
+    (sum, week) => sum + week.meals.length,
+    0
+  );
+  const avgRecipesPerWeek =
+    totalWeeks > 0 ? (totalRecipes / totalWeeks).toFixed(1) : '0';
 
   return {
     totalWeeks,
     totalRecipes,
-    avgRecipesPerWeek: parseFloat(avgRecipesPerWeek)
+    avgRecipesPerWeek: parseFloat(avgRecipesPerWeek),
   };
 }
