@@ -1,8 +1,6 @@
 import { getRecipeWeeks } from '@/lib/menus';
 import { withAuth } from '@/lib/auth-middleware';
 
-export const dynamic = 'force-dynamic';
-
 async function handler() {
 	return Response.json(await getRecipeWeeks(6));
 }

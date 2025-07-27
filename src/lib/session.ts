@@ -103,6 +103,28 @@ export async function getSession() {
 	}
 }
 
+export async function getEncryptedSession() {
+	// Return null during build time when cookies aren't available
+	if (isBuildTime || !key) {
+		return null;
+	}
+
+	try {
+		const { cookies } = await import('next/headers');
+		const cookieStore = await cookies();
+		const sessionCookie = cookieStore.get('session');
+
+		if (!sessionCookie?.value) {
+			return null;
+		}
+
+		return sessionCookie.value;
+	} catch (error) {
+		console.error('Session verification error:', error);
+		return null;
+	}
+}
+
 // Helper to require authentication (throws error if not authenticated)
 export async function requireAuth() {
 	const session = await getSession();

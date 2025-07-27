@@ -207,7 +207,11 @@ function MenuCard({ year, week, meals }: Menu) {
 				<h2 className="text-base font-medium">
 					Week {week}, {year}
 				</h2>
-				<a href="#" className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded" title="Shopping list">
+				<a
+					href={`/shop?week=${week}&year=${year}`}
+					className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+					title="Shopping list"
+				>
 					<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							strokeLinecap="round"
