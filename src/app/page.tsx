@@ -4,7 +4,7 @@ import HeaderPage from '@/app/components/HeaderPage';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Stats, Meal, Menu } from '@/lib/menus';
+import type { Stats, Meal, Menu } from '@/types/menus';
 import { useAuth } from '@/lib/auth-context';
 
 export default function Home() {
