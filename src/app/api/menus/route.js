@@ -1,5 +1,10 @@
 import { getRecipeWeeks } from '@/lib/menus';
+import { withAuth } from '@/lib/auth-middleware';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+async function handler() {
 	return Response.json(await getRecipeWeeks(6));
 }
+
+export const GET = withAuth(handler);
