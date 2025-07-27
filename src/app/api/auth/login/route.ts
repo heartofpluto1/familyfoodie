@@ -4,8 +4,6 @@ import { authenticateUser } from '@/lib/auth';
 import { encrypt } from '@/lib/session';
 import { rateLimiter } from '@/lib/rate-limiter';
 
-export const dynamic = 'force-dynamic'; // Prevent static generation
-
 // Helper function to add delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
