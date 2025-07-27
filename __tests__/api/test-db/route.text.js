@@ -28,7 +28,7 @@ describe('/api/test-db', () => {
       const mockRows = [
         { week: 45, year: 2024 },
         { week: 44, year: 2024 },
-        { week: 43, year: 2024 }
+        { week: 43, year: 2024 },
       ];
       mockPool.execute.mockResolvedValue([mockRows]);
 
@@ -41,7 +41,7 @@ describe('/api/test-db', () => {
       );
       expect(Response.json).toHaveBeenCalledWith({
         message: 'Database connected successfully',
-        data: mockRows
+        data: mockRows,
       });
       expect(response.status).toBe(200);
     });
@@ -60,7 +60,7 @@ describe('/api/test-db', () => {
       );
       expect(Response.json).toHaveBeenCalledWith({
         message: 'Database connected successfully',
-        data: mockRows
+        data: mockRows,
       });
       expect(response.status).toBe(200);
     });
@@ -80,7 +80,7 @@ describe('/api/test-db', () => {
       expect(Response.json).toHaveBeenCalledWith(
         {
           error: 'Database connection failed',
-          details: 'Connection timeout'
+          details: 'Connection timeout',
         },
         { status: 500 }
       );
@@ -99,7 +99,7 @@ describe('/api/test-db', () => {
       expect(Response.json).toHaveBeenCalledWith(
         {
           error: 'Database connection failed',
-          details: 'Table does not exist'
+          details: 'Table does not exist',
         },
         { status: 500 }
       );
@@ -117,7 +117,7 @@ describe('/api/test-db', () => {
       expect(Response.json).toHaveBeenCalledWith(
         {
           error: 'Database connection failed',
-          details: "Unknown error"
+          details: 'Unknown error',
         },
         { status: 500 }
       );
@@ -134,7 +134,7 @@ describe('/api/test-db', () => {
       expect(Response.json).toHaveBeenCalledWith(
         {
           error: 'Database connection failed',
-          details: "Unknown error"
+          details: 'Unknown error',
         },
         { status: 500 }
       );
@@ -166,7 +166,7 @@ describe('/api/test-db', () => {
       // Assert
       expect(Response.json).toHaveBeenCalledWith({
         message: 'Database connected successfully',
-        data: mockRows
+        data: mockRows,
       });
     });
   });
@@ -183,7 +183,7 @@ describe('/api/test-db', () => {
       expect(Response.json).toHaveBeenCalledWith(
         {
           error: 'Database connection failed',
-          details: "Unknown error"
+          details: 'Unknown error',
         },
         { status: 500 }
       );
@@ -191,7 +191,7 @@ describe('/api/test-db', () => {
 
     it('should handle unknown error', async () => {
       // Arrange
-      mockPool.execute.mockRejectedValue("Unknown error");
+      mockPool.execute.mockRejectedValue('Unknown error');
 
       // Act
       const response = await GET();
@@ -200,7 +200,7 @@ describe('/api/test-db', () => {
       expect(Response.json).toHaveBeenCalledWith(
         {
           error: 'Database connection failed',
-          details: "Unknown error"
+          details: 'Unknown error',
         },
         { status: 500 }
       );
