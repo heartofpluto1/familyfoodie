@@ -1,5 +1,6 @@
 // app/lib/session.ts
 import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
+import { addToast } from '@/lib/toast';
 
 // Make sure to set this in your .env.local file
 const SECRET_KEY = process.env.SESSION_SECRET_KEY;
@@ -115,11 +116,13 @@ export async function getEncryptedSession() {
 		const sessionCookie = cookieStore.get('session');
 
 		if (!sessionCookie?.value) {
+			addToast('error', 'Session cookie', 'Session cookie not found');
 			return null;
 		}
 
 		return sessionCookie.value;
 	} catch (error) {
+		addToast('error', 'Session Error', error as string);
 		console.error('Session verification error:', error);
 		return null;
 	}
