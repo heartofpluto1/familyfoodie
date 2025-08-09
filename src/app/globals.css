@@ -70,7 +70,7 @@ body {
 		color 0.2s ease;
 }
 
-h3 {
+article h3 {
 	height: 60px;
 	line-height: 1.1;
 
@@ -101,6 +101,35 @@ h3 {
 }
 .pantry-category-other {
 	border-left: 4px solid rgb(255, 255, 255) !important;
+}
+
+/* Supermarket category styles */
+.supermarket-category-meat {
+	border-left: 4px solid #ef4444 !important;
+}
+.supermarket-category-fresh-fruitvege {
+	border-left: 4px solid #22c55e !important;
+}
+.supermarket-category-fresh-herbs {
+	border-left: 4px solid #84cc16 !important;
+}
+.supermarket-category-nuts-root-vege {
+	border-left: 4px solid #a3a3a3 !important;
+}
+.supermarket-category-deli {
+	border-left: 4px solid #f59e0b !important;
+}
+.supermarket-category-bakery {
+	border-left: 4px solid #d97706 !important;
+}
+.supermarket-category-center-aisles {
+	border-left: 4px solid #6b7280 !important;
+}
+.supermarket-category-dairy {
+	border-left: 4px solid #3b82f6 !important;
+}
+.supermarket-category-other {
+	border-left: 4px solid #8b5cf6 !important;
 }
 
 /* Custom utility classes for the theme */
@@ -224,4 +253,11 @@ h3 {
 
 .transition-shadow {
 	transition: box-shadow 0.15s ease;
+}
+
+/* Cursor pointer for interactive elements */
+button,
+a,
+[role='button'] {
+	cursor: pointer;
 }

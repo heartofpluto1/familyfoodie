@@ -31,4 +31,4 @@ async function RecipeDetailsPage({ params }: PageProps) {
 
 // Force dynamic rendering for authenticated pages
 export const dynamic = 'force-dynamic';
-export default withAuth<PageProps>(RecipeDetailsPage);
+export default withAuth(RecipeDetailsPage);

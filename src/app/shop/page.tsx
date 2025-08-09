@@ -108,4 +108,4 @@ async function ShopPage({ searchParams }: PageProps) {
 	);
 }
 
-export default withAuth<PageProps>(ShopPage);
+export default withAuth(ShopPage);

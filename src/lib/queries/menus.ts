@@ -179,6 +179,271 @@ interface RecipeDetailRow {
 }
 
 /**
+ * Get current week number and year
+ */
+export function getCurrentWeek(): { week: number; year: number } {
+	const now = new Date();
+	return {
+		week: getWeekNumber(now),
+		year: now.getFullYear(),
+	};
+}
+
+/**
+ * Get next week number and year
+ */
+export function getNextWeek(): { week: number; year: number } {
+	const now = new Date();
+	// Add 7 days to get next week
+	const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+	return {
+		week: getWeekNumber(nextWeek),
+		year: nextWeek.getFullYear(),
+	};
+}
+
+/**
+ * Get recipes for the current week
+ */
+export async function getCurrentWeekRecipes(): Promise<Recipe[]> {
+	const { week, year } = getCurrentWeek();
+
+	const query = `
+		SELECT 
+			r.id,
+			r.name,
+			r.filename,
+			r.prepTime,
+			r.cookTime,
+			r.description
+		FROM menus_recipeweek rw
+		JOIN menus_recipe r ON rw.recipe_id = r.id
+		WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1
+		ORDER BY rw.id ASC
+	`;
+
+	const [rows] = await pool.execute(query, [week, year]);
+	return rows as Recipe[];
+}
+
+/**
+ * Get recipes for next week
+ */
+export async function getNextWeekRecipes(): Promise<Recipe[]> {
+	const { week, year } = getNextWeek();
+
+	const query = `
+		SELECT 
+			r.id,
+			r.name,
+			r.filename,
+			r.prepTime,
+			r.cookTime,
+			r.description
+		FROM menus_recipeweek rw
+		JOIN menus_recipe r ON rw.recipe_id = r.id
+		WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1
+		ORDER BY rw.id ASC
+	`;
+
+	const [rows] = await pool.execute(query, [week, year]);
+	return rows as Recipe[];
+}
+
+/**
+ * Save recipes for a specific week
+ */
+export async function saveWeekRecipes(week: number, year: number, recipeIds: number[]): Promise<void> {
+	const connection = await pool.getConnection();
+
+	try {
+		await connection.beginTransaction();
+
+		// Delete existing recipes for the week
+		await connection.execute('DELETE FROM menus_recipeweek WHERE week = ? AND year = ? AND account_id = 1', [week, year]);
+
+		// Insert new recipes
+		if (recipeIds.length > 0) {
+			const values = recipeIds.map(id => [week, year, id, 1]);
+			const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
+			const flatValues = values.flat();
+
+			await connection.execute(`INSERT INTO menus_recipeweek (week, year, recipe_id, account_id) VALUES ${placeholders}`, flatValues);
+		}
+
+		await connection.commit();
+	} catch (error) {
+		await connection.rollback();
+		throw error;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
+ * Delete all recipes for a specific week
+ */
+export async function deleteWeekRecipes(week: number, year: number): Promise<void> {
+	await pool.execute('DELETE FROM menus_recipeweek WHERE week = ? AND year = ? AND account_id = 1', [week, year]);
+}
+
+/**
+ * Get recipes for randomization (excluding recent weeks and with ingredient constraints)
+ */
+export async function getRecipesForRandomization(): Promise<Recipe[]> {
+	const { year: currentYear } = getCurrentWeek();
+
+	// Calculate 6 months ago
+	const sixMonthsAgo = new Date();
+	sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+	const sixMonthsAgoWeek = getWeekNumber(sixMonthsAgo);
+	const sixMonthsAgoYear = sixMonthsAgo.getFullYear();
+
+	const query = `
+		SELECT DISTINCT
+			r.id,
+			r.name,
+			r.filename,
+			r.prepTime,
+			r.cookTime,
+			r.description,
+			GROUP_CONCAT(DISTINCT i.name ORDER BY ri.id ASC SEPARATOR ', ') as ingredients
+		FROM menus_recipe r
+		LEFT JOIN menus_recipeingredient ri ON r.id = ri.recipe_id
+		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
+		WHERE r.duplicate = 0
+		AND r.id NOT IN (
+			SELECT DISTINCT recipe_id 
+			FROM menus_recipeweek 
+			WHERE ((year = ? AND week >= ?) OR (year > ? AND year <= ?)) AND account_id = 1
+		)
+		GROUP BY r.id, r.name, r.filename, r.prepTime, r.cookTime, r.description
+		ORDER BY r.name ASC
+	`;
+
+	const [rows] = await pool.execute(query, [sixMonthsAgoYear, sixMonthsAgoWeek, sixMonthsAgoYear, currentYear]);
+
+	const recipes = rows as (Recipe & { ingredients: string })[];
+	return recipes.map(row => ({
+		...row,
+		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
+	}));
+}
+
+interface ShoppingIngredientRow {
+	recipeIngredient_id: number;
+	ingredient_id: number;
+	quantity: string;
+	quantity4: string;
+	quantityMeasure_id: number | null;
+	ingredient_name: string;
+	pantryCategory_id: number | null;
+	fresh: number;
+	measure_name: string | null;
+}
+
+interface GroupedIngredient {
+	recipeIngredient_id: number;
+	ingredient_id: number;
+	ingredient_name: string;
+	quantity: number;
+	quantity4: number;
+	quantityMeasure_id: number | null;
+	pantryCategory_id: number | null;
+	fresh: number;
+	measure_name: string | null;
+}
+
+/**
+ * Reset and rebuild shopping list from planned recipes for a given week
+ */
+export async function resetShoppingListFromRecipes(week: number, year: number): Promise<void> {
+	const connection = await pool.getConnection();
+
+	try {
+		await connection.beginTransaction();
+
+		// Delete existing shopping list items for the week
+		await connection.execute('DELETE FROM menus_shoppinglist WHERE week = ? AND year = ? AND account_id = 1', [week, year]);
+
+		// Get all ingredients from recipes planned for this week
+		const ingredientsQuery = `
+			SELECT 
+				ri.id as recipeIngredient_id,
+				ri.ingredient_id,
+				ri.quantity,
+				ri.quantity4,
+				ri.quantityMeasure_id,
+				i.name as ingredient_name,
+				i.pantryCategory_id,
+				i.fresh,
+				m.name as measure_name
+			FROM menus_recipeweek rw
+			JOIN menus_recipeingredient ri ON rw.recipe_id = ri.recipe_id
+			JOIN menus_ingredient i ON ri.ingredient_id = i.id
+			LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
+			WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1
+		`;
+
+		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year]);
+		const ingredients = ingredientRows as ShoppingIngredientRow[];
+
+		// Group ingredients by ingredient_id and sum quantities
+		const groupedIngredients = ingredients.reduce((acc: Record<number, GroupedIngredient>, ingredient) => {
+			const key = ingredient.ingredient_id;
+			if (!acc[key]) {
+				acc[key] = {
+					recipeIngredient_id: ingredient.recipeIngredient_id,
+					ingredient_id: ingredient.ingredient_id,
+					ingredient_name: ingredient.ingredient_name,
+					quantity: 0,
+					quantity4: 0,
+					quantityMeasure_id: ingredient.quantityMeasure_id,
+					pantryCategory_id: ingredient.pantryCategory_id,
+					fresh: ingredient.fresh,
+					measure_name: ingredient.measure_name,
+				};
+			}
+			acc[key].quantity += parseFloat(ingredient.quantity || '');
+			acc[key].quantity4 += parseFloat(ingredient.quantity4 || '');
+			return acc;
+		}, {});
+
+		// Insert grouped ingredients into shopping list
+		if (Object.keys(groupedIngredients).length > 0) {
+			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient) => [
+				week,
+				year,
+				ingredient.fresh, // Use fresh value from menus_ingredient table
+				ingredient.ingredient_name,
+				0, // sort = 0 (default)
+				null, // cost = null (default)
+				ingredient.recipeIngredient_id,
+				0, // purchased = false
+				1, // account_id = 1
+				null, // stockcode = null (default)
+				null, // supermarketCategory_id = null (default)
+			]);
+
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const flatValues = insertValues.flat();
+
+			await connection.execute(
+				`INSERT INTO menus_shoppinglist (week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, account_id, stockcode, supermarketCategory_id) VALUES ${placeholders}`,
+				flatValues
+			);
+		}
+
+		await connection.commit();
+	} catch (error) {
+		await connection.rollback();
+		throw error;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
  * Get recipe details with ingredients ordered by pantry category
  */
 export async function getRecipeDetails(id: string): Promise<RecipeDetail | null> {

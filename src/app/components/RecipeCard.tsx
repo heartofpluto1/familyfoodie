@@ -3,10 +3,12 @@ import { Recipe } from '@/types/menus';
 
 interface RecipeCardProps {
 	recipe: Recipe;
-	small?: boolean;
+	showControls?: boolean;
+	onSwapRecipe?: (recipe: Recipe) => void;
+	onRemoveRecipe?: (recipe: Recipe) => void;
 }
 
-const RecipeCard = ({ recipe, small = false }: RecipeCardProps) => {
+const RecipeCard = ({ recipe, showControls = false, onSwapRecipe, onRemoveRecipe }: RecipeCardProps) => {
 	const { id, name, filename, prepTime, cookTime, cost } = recipe;
 	const totalTime = (prepTime || 0) + (cookTime || 0);
 
@@ -24,7 +26,7 @@ const RecipeCard = ({ recipe, small = false }: RecipeCardProps) => {
 
 	return (
 		<article
-			className={`bg-surface border border-custom rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${small ? 'max-w-sm' : 'max-w-md'} flex flex-col`}
+			className={`relative bg-surface border border-custom rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow max-w-[310px] w-full flex flex-col`}
 		>
 			<Link href={`/recipe/${id}`} className="block">
 				<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`/static/${filename}.jpg`} />
@@ -49,6 +51,38 @@ const RecipeCard = ({ recipe, small = false }: RecipeCardProps) => {
 					)}
 				</div>
 			</div>
+
+			{showControls && (
+				<>
+					{onSwapRecipe && (
+						<button
+							onClick={() => onSwapRecipe(recipe)}
+							className="absolute top-2 left-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
+							title="Swap recipe"
+						>
+							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+								/>
+							</svg>
+						</button>
+					)}
+					{onRemoveRecipe && (
+						<button
+							onClick={() => onRemoveRecipe(recipe)}
+							className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
+							title="Remove recipe"
+						>
+							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					)}
+				</>
+			)}
 		</article>
 	);
 };
