@@ -70,6 +70,17 @@ body {
 		color 0.2s ease;
 }
 
+h3 {
+	height: 70px;
+	line-height: 1.1;
+
+	display: block;
+	font-size: 1.17em;
+	font-weight: 500;
+	unicode-bidi: isolate;
+	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
 /* Custom utility classes for the theme */
 .bg-surface {
 	background-color: var(--surface);

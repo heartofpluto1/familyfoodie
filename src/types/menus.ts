@@ -30,3 +30,15 @@ export interface Meal {
 	name: string;
 	filename: string;
 }
+
+export interface Recipe {
+	id: number;
+	name: string;
+	filename: string;
+	prepTime?: number;
+	cookTime?: number;
+	cost?: number;
+	description?: string;
+	seasonName?: string;
+	ingredients?: string[];
+}
