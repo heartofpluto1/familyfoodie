@@ -38,4 +38,7 @@ export interface Recipe {
 	prepTime?: number;
 	cookTime?: number;
 	cost?: number;
+	description?: string;
+	seasonName?: string;
+	ingredients?: string[];
 }

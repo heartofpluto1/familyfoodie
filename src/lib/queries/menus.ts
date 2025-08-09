@@ -115,3 +115,46 @@ export async function getAllRecipes(): Promise<Recipe[]> {
 	const [rows] = await pool.execute(query);
 	return rows as Recipe[];
 }
+
+interface RecipeRow {
+	id: number;
+	name: string;
+	filename: string;
+	prepTime?: number;
+	cookTime?: number;
+	description?: string;
+	seasonName?: string;
+	ingredients?: string;
+}
+
+/**
+ * Get all recipes with related season and ingredient data for search functionality
+ */
+export async function getAllRecipesWithDetails(): Promise<Recipe[]> {
+	const query = `
+		SELECT DISTINCT
+			r.id,
+			r.name,
+			r.filename,
+			r.prepTime,
+			r.cookTime,
+			r.description,
+			s.name as seasonName,
+			GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
+		FROM menus_recipe r
+		LEFT JOIN menus_season s ON r.season_id = s.id
+		LEFT JOIN menus_recipeingredient ri ON r.id = ri.recipe_id
+		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
+		WHERE r.duplicate = 0
+		GROUP BY r.id, r.name, r.filename, r.prepTime, r.cookTime, r.description, s.name
+		ORDER BY r.name ASC
+	`;
+
+	const [rows] = await pool.execute(query);
+	const recipes = rows as RecipeRow[];
+
+	return recipes.map(row => ({
+		...row,
+		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
+	}));
+}
