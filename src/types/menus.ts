@@ -42,3 +42,34 @@ export interface Recipe {
 	seasonName?: string;
 	ingredients?: string[];
 }
+
+export interface RecipeDetail {
+	id: number;
+	name: string;
+	filename: string;
+	description: string;
+	prepTime?: number;
+	cookTime?: number;
+	seasonName?: string;
+	ingredients: RecipeIngredient[];
+}
+
+export interface RecipeIngredient {
+	id: number;
+	quantity: string;
+	quantity4: string;
+	ingredient: {
+		id: number;
+		name: string;
+		pantryCategory: {
+			id: number;
+			name: string;
+		};
+	};
+	preperation?: {
+		name: string;
+	};
+	measure?: {
+		name: string;
+	};
+}

@@ -218,28 +218,6 @@ export default function ShoppingListClient({ initialData, allIngredients, datest
 				.supermarket-category-other {
 					border-left: 4px solid #8b5cf6;
 				}
-
-				.pantry-category-pantry {
-					border-left: 4px solid #059669;
-				}
-				.pantry-category-kitchen-cupboard {
-					border-left: 4px solid #dc2626;
-				}
-				.pantry-category-fridge {
-					border-left: 4px solid #2563eb;
-				}
-				.pantry-category-freezer {
-					border-left: 4px solid #7c3aed;
-				}
-				.pantry-category-breezeway-cupboard {
-					border-left: 4px solid #db2777;
-				}
-				.pantry-category-garden {
-					border-left: 4px solid #16a34a;
-				}
-				.pantry-category-other {
-					border-left: 4px solid #6b7280;
-				}
 			`}</style>
 		</>
 	);

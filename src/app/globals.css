@@ -71,7 +71,7 @@ body {
 }
 
 h3 {
-	height: 70px;
+	height: 60px;
 	line-height: 1.1;
 
 	display: block;
@@ -79,6 +79,28 @@ h3 {
 	font-weight: 500;
 	unicode-bidi: isolate;
 	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.pantry-category-pantry {
+	border-left: 4px solid rgb(102, 102, 102) !important;
+}
+.pantry-category-kitchen-cupboard {
+	border-left: 4px solid rgb(170, 170, 170) !important;
+}
+.pantry-category-fridge {
+	border-left: 4px solid rgb(149, 205, 219) !important;
+}
+.pantry-category-freezer {
+	border-left: 4px solid rgb(149, 205, 219) !important;
+}
+.pantry-category-breezeway-cupboard {
+	border-left: 4px solid rgb(221, 221, 221) !important;
+}
+.pantry-category-garden {
+	border-left: 4px solid rgb(19, 164, 11) !important;
+}
+.pantry-category-other {
+	border-left: 4px solid rgb(255, 255, 255) !important;
 }
 
 /* Custom utility classes for the theme */
