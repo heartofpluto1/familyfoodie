@@ -1,11 +1,8 @@
-//import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { getIngredients, getShoppingList } from '@/lib/queries/shop';
 import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
-import { getEncryptedSession } from '@/lib/session';
 import ShoppingListClient from './shop-client';
-import { addToast, getPendingToasts } from '@/lib/toast';
-import ToastServer from '../components/ToastServer';
+import withAuth from '../components/withAuth';
 
 interface PageProps {
 	searchParams: Promise<{ week?: string; year?: string }>;
@@ -63,19 +60,7 @@ function getWeekDates(week: number, year: number) {
 	};
 }
 
-export default async function ShopPage({ searchParams }: PageProps) {
-	// Add debug toast messages
-	addToast('info', 'Environment Check', `NODE_ENV: ${process.env.NODE_ENV}, Has Session Key: ${!!process.env.SESSION_SECRET_KEY}`);
-
-	const session = await getEncryptedSession();
-	addToast(session ? 'success' : 'error', 'Session Status', session ? 'Session found' : 'No session found');
-
-	if (!session) {
-		addToast('error', 'Authentication Failed', 'Redirecting to login');
-		//redirect('login');
-		return <p>error</p>;
-	}
-
+async function ShopPage({ searchParams }: PageProps) {
 	const { week, year } = await searchParams;
 
 	// Default to current week if no params provided
@@ -110,11 +95,8 @@ export default async function ShopPage({ searchParams }: PageProps) {
 		day: 'numeric',
 	});
 
-	const pendingToasts = getPendingToasts();
-
 	return (
 		<>
-			<ToastServer toasts={pendingToasts} />
 			<ShoppingListClient
 				initialData={shoppingData}
 				allIngredients={allIngredients}
@@ -125,3 +107,5 @@ export default async function ShopPage({ searchParams }: PageProps) {
 		</>
 	);
 }
+
+export default withAuth<PageProps>(ShopPage);
