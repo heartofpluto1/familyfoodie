@@ -56,25 +56,34 @@ const HeaderLogo = () => {
 
 					{/* Navigation and Auth */}
 					<div className="flex items-center space-x-6">
-						<nav>
-							<div className="flex space-x-6">
-								<Link href="/" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
-									Home
-								</Link>
-								<Link href="/shop" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
-									Shop
-								</Link>
-								<Link href="/recipes" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
-									Recipes
-								</Link>
-								<Link href="/#" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
-									Ingredients
-								</Link>
-							</div>
-						</nav>
+						{/* Navigation - only show when authenticated */}
+						{isAuthenticated && (
+							<nav>
+								<div className="flex space-x-6">
+									<Link href="/" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
+										Home
+									</Link>
+									<Link href="/plan" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
+										Plan
+									</Link>
+									<Link href="/shop" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
+										Shop
+									</Link>
+									<Link
+										href="/recipes"
+										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
+									>
+										Recipes
+									</Link>
+									<Link href="/#" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
+										Ingredients
+									</Link>
+								</div>
+							</nav>
+						)}
 
 						{/* Auth Section */}
-						<div className="border-l border-custom pl-4">
+						<div className={isAuthenticated ? 'border-l border-custom pl-4' : ''}>
 							{loading ? (
 								<div className="text-sm text-secondary">...</div>
 							) : isAuthenticated ? (

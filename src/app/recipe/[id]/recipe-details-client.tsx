@@ -39,6 +39,25 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 					<div className="space-y-4">
 						<img src={`/static/${recipe.filename}.jpg`} alt={recipe.name} className="w-full rounded-lg shadow-md" />
 
+						{/* Timing */}
+						{totalTime > 0 && (
+							<div>
+								<div className="flex items-center text-muted text-sm">
+									<svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<circle cx="12" cy="12" r="10" />
+										<polyline points="12,6 12,12 16,14" />
+									</svg>
+									{recipe.prepTime && recipe.cookTime ? (
+										<span>
+											Prep: {formatTime(recipe.prepTime)} • Cook: {formatTime(recipe.cookTime)} • Total: {formatTime(totalTime)}
+										</span>
+									) : (
+										<span>Total Time: {formatTime(totalTime)}</span>
+									)}
+								</div>
+							</div>
+						)}
+
 						{/* Description */}
 						<div>
 							<p className="text-foreground whitespace-pre-wrap">{recipe.description}</p>
@@ -63,25 +82,6 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 								View PDF Recipe
 							</a>
 						</div>
-
-						{/* Timing */}
-						{totalTime > 0 && (
-							<div>
-								<div className="flex items-center text-muted">
-									<svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<circle cx="12" cy="12" r="10" />
-										<polyline points="12,6 12,12 16,14" />
-									</svg>
-									{recipe.prepTime && recipe.cookTime ? (
-										<span>
-											Prep: {formatTime(recipe.prepTime)} • Cook: {formatTime(recipe.cookTime)} • Total: {formatTime(totalTime)}
-										</span>
-									) : (
-										<span>Total Time: {formatTime(totalTime)}</span>
-									)}
-								</div>
-							</div>
-						)}
 					</div>
 
 					{/* Recipe Details */}

@@ -27,15 +27,16 @@ export async function getShoppingList(week: string, year: string) {
             ri.quantity,
             m.name as quantityMeasure,
             ri.ingredient_id as ingredientId,
-            sc.name as supermarketCategory,
+            COALESCE(sc1.name, sc2.name) as supermarketCategory,
             sl.fresh
         FROM menus_shoppinglist sl
         LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
         LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
         LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
-        LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
+        LEFT JOIN menus_supermarketcategory sc1 ON sl.supermarketCategory_id = sc1.id
+        LEFT JOIN menus_supermarketcategory sc2 ON i.supermarketCategory_id = sc2.id
         WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 1 AND sl.account_id = 1
-        ORDER BY sl.sort, sl.id;
+        ORDER BY COALESCE(sl.supermarketCategory_id, i.supermarketCategory_id), sl.sort, sl.id;
       `,
 		[week, year]
 	);
@@ -57,7 +58,7 @@ export async function getShoppingList(week: string, year: string) {
         LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
         LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 0 AND sl.account_id = 1
-        ORDER BY sl.sort, sl.id;
+        ORDER BY i.pantryCategory_id, sl.sort, sl.id;
     `,
 		[week, year]
 	);
