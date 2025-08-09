@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import { QueryResult, Menu, PlannedMeal, Recipe } from '@/types/menus.js';
+import { QueryResult, Menu, PlannedMeal, Recipe, RecipeDetail } from '@/types/menus.js';
 
 /**
  * Calculate week number from date
@@ -157,4 +157,110 @@ export async function getAllRecipesWithDetails(): Promise<Recipe[]> {
 		...row,
 		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
 	}));
+}
+
+interface RecipeDetailRow {
+	id: number;
+	name: string;
+	filename: string;
+	description: string;
+	prepTime?: number;
+	cookTime?: number;
+	seasonName?: string;
+	ingredient_id?: number;
+	quantity?: string;
+	quantity4?: string;
+	ingredient_table_id?: number;
+	ingredient_name?: string;
+	pantry_category_id?: number;
+	pantry_category_name?: string;
+	preperation_name?: string;
+	measure_name?: string;
+}
+
+/**
+ * Get recipe details with ingredients ordered by pantry category
+ */
+export async function getRecipeDetails(id: string): Promise<RecipeDetail | null> {
+	const query = `
+		SELECT 
+			r.id,
+			r.name,
+			r.filename,
+			r.description,
+			r.prepTime,
+			r.cookTime,
+			s.name as seasonName,
+			ri.id as ingredient_id,
+			ri.quantity,
+			ri.quantity4,
+			i.id as ingredient_table_id,
+			i.name as ingredient_name,
+			pc.id as pantry_category_id,
+			pc.name as pantry_category_name,
+			p.name as preperation_name,
+			m.name as measure_name
+		FROM menus_recipe r
+		LEFT JOIN menus_season s ON r.season_id = s.id
+		LEFT JOIN menus_recipeingredient ri ON r.id = ri.recipe_id
+		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
+		LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
+		LEFT JOIN menus_preperation p ON ri.preperation_id = p.id
+		LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
+		WHERE r.id = ? AND r.duplicate = 0
+		ORDER BY pc.id ASC, i.name ASC
+	`;
+
+	const [rows] = await pool.execute(query, [id]);
+	const results = rows as RecipeDetailRow[];
+
+	if (results.length === 0) {
+		return null;
+	}
+
+	const recipe = results[0];
+	const ingredients = results
+		.filter(
+			row =>
+				row.ingredient_id !== null &&
+				row.ingredient_id !== undefined &&
+				row.quantity !== null &&
+				row.quantity !== undefined &&
+				row.quantity4 !== null &&
+				row.quantity4 !== undefined &&
+				row.ingredient_table_id !== null &&
+				row.ingredient_table_id !== undefined &&
+				row.ingredient_name !== null &&
+				row.ingredient_name !== undefined &&
+				row.pantry_category_id !== null &&
+				row.pantry_category_id !== undefined &&
+				row.pantry_category_name !== null &&
+				row.pantry_category_name !== undefined
+		)
+		.map(row => ({
+			id: row.ingredient_id!,
+			quantity: row.quantity!,
+			quantity4: row.quantity4!,
+			ingredient: {
+				id: row.ingredient_table_id!,
+				name: row.ingredient_name!,
+				pantryCategory: {
+					id: row.pantry_category_id!,
+					name: row.pantry_category_name!,
+				},
+			},
+			preperation: row.preperation_name ? { name: row.preperation_name } : undefined,
+			measure: row.measure_name ? { name: row.measure_name } : undefined,
+		}));
+
+	return {
+		id: recipe.id,
+		name: recipe.name,
+		filename: recipe.filename,
+		description: recipe.description || '',
+		prepTime: recipe.prepTime,
+		cookTime: recipe.cookTime,
+		seasonName: recipe.seasonName,
+		ingredients,
+	};
 }
