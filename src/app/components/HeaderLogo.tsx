@@ -64,7 +64,7 @@ const HeaderLogo = () => {
 								<Link href="/shop" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
 									Shop
 								</Link>
-								<Link href="/#" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
+								<Link href="/recipes" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">
 									Recipes
 								</Link>
 								<Link href="/#" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline">

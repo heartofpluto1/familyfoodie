@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import { QueryResult, Menu, PlannedMeal } from '@/types/menus.js';
+import { QueryResult, Menu, PlannedMeal, Recipe } from '@/types/menus.js';
 
 /**
  * Calculate week number from date
@@ -94,4 +94,24 @@ export function getRecipeWeekStats(groupedWeeks: Menu[]) {
 		totalRecipes,
 		avgRecipesPerWeek: parseFloat(avgRecipesPerWeek),
 	};
+}
+
+/**
+ * Get all recipes from the database
+ */
+export async function getAllRecipes(): Promise<Recipe[]> {
+	const query = `
+		SELECT
+			id,
+			name,
+			filename,
+			prepTime,
+			cookTime
+		FROM menus_recipe
+		WHERE duplicate = 0
+		ORDER BY name ASC
+	`;
+
+	const [rows] = await pool.execute(query);
+	return rows as Recipe[];
 }
