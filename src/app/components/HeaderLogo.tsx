@@ -43,7 +43,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										Shop
 									</Link>
 									<Link
-										href="/recipes"
+										href="/recipe"
 										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline"
 									>
 										Recipes
