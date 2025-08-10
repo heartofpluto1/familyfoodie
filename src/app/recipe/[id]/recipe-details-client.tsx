@@ -38,7 +38,7 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					{/* Recipe Image */}
 					<div className="space-y-4">
-						<img src={`/static/${recipe.filename}.jpg`} alt={recipe.name} className="w-full rounded-lg shadow-md" />
+						<img src={`/static/${recipe.filename}.jpg`} alt={recipe.name} className="w-full rounded-sm shadow-md" />
 
 						{/* Timing */}
 						{totalTime > 0 && (
@@ -79,7 +79,7 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 					<div className="space-y-6">
 						{/* Ingredients */}
 						<div>
-							<div className="bg-white border border-custom rounded-lg shadow-md overflow-hidden">
+							<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden">
 								<div className="overflow-x-auto">
 									<table className="w-full">
 										<thead>

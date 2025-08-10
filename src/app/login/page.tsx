@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				</div>
 
 				{/* Login Form */}
-				<div className="bg-surface border border-custom rounded-lg shadow-sm p-8">
+				<div className="bg-surface border border-custom rounded-sm shadow-sm p-8">
 					<form action="/login/submit" method="POST" className="space-y-6">
 						{/* Username Field */}
 						<div>
@@ -39,7 +39,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 								placeholder="Enter your username"
 								required
 								autoComplete="username"
-								className="w-full px-4 py-3 border border-custom rounded-lg bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
+								className="w-full px-4 py-3 border border-custom rounded-sm bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
 							/>
 						</div>
 
@@ -55,13 +55,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 								placeholder="Enter your password"
 								required
 								autoComplete="current-password"
-								className="w-full px-4 py-3 border border-custom rounded-lg bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
+								className="w-full px-4 py-3 border border-custom rounded-sm bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
 							/>
 						</div>
 
 						{/* Error Message */}
 						{error && (
-							<div className="bg-red-50 border border-red-200 rounded-lg p-4">
+							<div className="bg-red-50 border border-red-200 rounded-sm p-4">
 								<div className="flex items-center">
 									<ErrorIconSmall />
 									<p className="text-red-700 text-sm">{error}</p>
@@ -72,7 +72,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 						{/* Submit Button */}
 						<button
 							type="submit"
-							className="w-full bg-accent text-background py-3 px-4 rounded-lg font-medium text-base hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-colors"
+							className="w-full bg-accent text-background py-3 px-4 rounded-sm font-medium text-base hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-colors"
 						>
 							Login
 						</button>
