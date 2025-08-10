@@ -1,13 +1,11 @@
 // Global toast utility for server-side components
 // This allows server components to queue toast messages that will be displayed on the client
 
-let pendingToasts: Array<{
-	type: 'info' | 'error' | 'warning' | 'success';
-	title: string;
-	message: string;
-}> = [];
+import { ToastData } from '@/types/toast';
 
-export function addToast(type: 'info' | 'error' | 'warning' | 'success', title: string, message: string) {
+let pendingToasts: ToastData[] = [];
+
+export function addToast(type: ToastData['type'], title: string, message: string) {
 	pendingToasts.push({ type, title, message });
 }
 

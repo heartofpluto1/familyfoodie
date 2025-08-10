@@ -56,8 +56,7 @@ async function handler(request: NextRequest) {
 			connection.release();
 		}
 	} catch (error) {
-		console.error('Error moving item:', error);
-		return NextResponse.json({ error: 'Failed to move item' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to move item' }, { status: 500 });
 	}
 }
 

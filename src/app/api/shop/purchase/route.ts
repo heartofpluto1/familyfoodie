@@ -15,8 +15,7 @@ async function handler(request: NextRequest) {
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Error updating shopping list item:', error);
-		return NextResponse.json({ error: 'Failed to update shopping list item' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update shopping list item' }, { status: 500 });
 	}
 }
 

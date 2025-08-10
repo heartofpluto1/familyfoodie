@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ToastErrorIcon, ToastWarningIcon, ToastSuccessIcon, ToastInfoIcon, CloseIcon } from './Icons';
-
-export interface ToastMessage {
-	id: string;
-	type: 'info' | 'error' | 'warning' | 'success';
-	title: string;
-	message: string;
-}
+import { ToastMessage } from '@/types/toast';
 
 interface ToastProps {
 	toast: ToastMessage;

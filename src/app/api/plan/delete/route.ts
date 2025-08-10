@@ -14,8 +14,7 @@ async function handler(request: NextRequest) {
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Error deleting week recipes:', error);
-		return NextResponse.json({ error: 'Failed to delete week recipes' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete week recipes' }, { status: 500 });
 	}
 }
 

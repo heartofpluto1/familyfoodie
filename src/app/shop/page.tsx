@@ -27,8 +27,7 @@ async function getShoppingData(
 		const shoppingData = await getShoppingList(week, year);
 		const allIngredients = await getIngredients();
 		return { shoppingData, allIngredients };
-	} catch (error) {
-		console.error('Error fetching data:', error);
+	} catch {
 		return {
 			shoppingData: { fresh: [], pantry: [] },
 			allIngredients: [],

@@ -27,6 +27,15 @@ This file contains specific learnings and preferences for this Family Foodie cod
 - **PREFER**: `useToast()` from `@/app/components/ToastProvider` over `console.log`
 - **AVOID**: Silent failures - always show user feedback for actions
 - **PATTERN**: Use toast notifications for success/error states in client components
+- **TYPES**: Import toast types from `@/types/toast` - `ToastData` (base) and `ToastMessage` (with id)
+
+### Console Usage Guidelines
+- **AVOID**: `console.error()` and `console.log()` in production code
+- **CLIENT-SIDE**: Use `useToast()` hook for user-facing error feedback
+- **SERVER-SIDE**: Use `addToast()` from `@/lib/toast` for debugging (lib files only)
+- **API ROUTES**: Return actual error messages in JSON responses - NO console logging
+- **ERROR PATTERN**: `error instanceof Error ? error.message : 'Fallback message'`
+- **DEBUGGING**: Server-side toasts are preserved for development/debugging purposes
 
 ### Component Organization
 - **ICONS**: Centralized in `@/app/components/Icons.tsx` with descriptive names (e.g., `ToastErrorIcon`, `IntroPlanIcon`)
@@ -95,5 +104,23 @@ This file contains specific learnings and preferences for this Family Foodie cod
 - **Database Connection**: Check Cloud SQL instance connection in deployment configuration
 - **Rate Limiting**: Progressive delays and IP blocking may affect login attempts in production
 
+## Toast System Architecture
+
+### Client-Side Toasts (Primary Usage)
+- **ToastProvider.tsx**: Context provider wrapping the app, provides `useToast()` hook
+- **ToastClient.tsx**: Individual toast component with animations and auto-dismiss
+- **USAGE**: Extensively used in shop hooks and plan-client components for user feedback
+- **PATTERN**: `const { showToast } = useToast(); showToast('success', 'Title', 'Message');`
+
+### Server-Side Toasts (Debugging/Development)
+- **lib/toast.ts**: Server-side toast queue using `addToast()`, `getPendingToasts()`, `clearPendingToasts()`
+- **ToastServer.tsx**: Bridge component to display server-queued toasts on client
+- **USAGE**: Currently dormant but preserved for debugging server-side operations
+- **INTEGRATION**: Server components call `getPendingToasts()` and pass to `ToastServer` component
+
+### Type System
+- **types/toast.ts**: Shared type definitions - `ToastData` (base) and `ToastMessage` (with id)
+- **CONSISTENCY**: All toast-related code uses centralized types from `@/types/toast`
+
 ## Development Notes
-- **ToastServer.tsx**: Keep for debugging purposes - used by developer for testing toast messages
+- **ToastServer.tsx**: Keep for debugging purposes - bridges server-side toast queue to client display

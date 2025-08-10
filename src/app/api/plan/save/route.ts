@@ -14,8 +14,7 @@ async function handler(request: NextRequest) {
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Error saving week recipes:', error);
-		return NextResponse.json({ error: 'Failed to save week recipes' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to save week recipes' }, { status: 500 });
 	}
 }
 

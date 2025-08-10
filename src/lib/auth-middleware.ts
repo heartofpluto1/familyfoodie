@@ -1,5 +1,6 @@
 // lib/auth-middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { addToast } from '@/lib/toast';
 
 export async function getSessionFromRequest(request: NextRequest) {
 	try {
@@ -16,7 +17,7 @@ export async function getSessionFromRequest(request: NextRequest) {
 		const sessionData = decrypt(sessionCookie.value);
 		return JSON.parse(sessionData);
 	} catch (error) {
-		console.error('Session verification error:', error);
+		addToast('error', 'Session Verification Error', error instanceof Error ? error.message : String(error));
 		return null;
 	}
 }
