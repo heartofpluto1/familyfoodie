@@ -1,49 +1,20 @@
-'use client';
+import { ErrorIconSmall } from '@/app/components/Icons';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/session';
 
-import { FormEvent, useState } from 'react';
-import { ErrorIconSmall, SpinnerIcon } from '@/app/components/Icons';
+interface LoginPageProps {
+	searchParams: Promise<{ error?: string }>;
+}
 
-export default function LoginPage() {
-	const [error, setError] = useState('');
-	const [loading, setLoading] = useState(false);
-
-	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		setLoading(true);
-		setError('');
-
-		const formData = new FormData(event.currentTarget);
-		const username = formData.get('username');
-		const password = formData.get('password');
-
-		try {
-			const response = await fetch('/api/auth/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username, password }),
-			});
-
-			const data = await response.json();
-
-			if (data.success) {
-				// Use full page reload to trigger server-side session check
-				window.location.href = '/';
-			} else {
-				// Handle rate limiting and other errors
-				if (response.status === 429) {
-					const retryAfter = data.retryAfter || 1800;
-					const minutes = Math.ceil(retryAfter / 60);
-					setError(`Too many failed attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
-				} else {
-					setError(data.error || 'Login failed');
-				}
-			}
-		} catch (e) {
-			setError(`Network error: ${e instanceof Error ? e.message : 'Unknown error'}`);
-		} finally {
-			setLoading(false);
-		}
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+	// Redirect if already authenticated
+	const session = await getSession();
+	if (session) {
+		redirect('/');
 	}
+
+	// Get error from URL params (from failed login attempts)
+	const { error } = await searchParams;
 
 	return (
 		<div className="min-h-[calc(100vh-120px)] bg-background flex items-center justify-center px-4 py-8">
@@ -55,7 +26,7 @@ export default function LoginPage() {
 
 				{/* Login Form */}
 				<div className="bg-surface border border-custom rounded-lg shadow-sm p-8">
-					<form onSubmit={handleSubmit} className="space-y-6">
+					<form action="/login/submit" method="POST" className="space-y-6">
 						{/* Username Field */}
 						<div>
 							<label htmlFor="username" className="block text-sm font-medium text-foreground mb-2">
@@ -67,8 +38,8 @@ export default function LoginPage() {
 								name="username"
 								placeholder="Enter your username"
 								required
-								disabled={loading}
-								className="w-full px-4 py-3 border border-custom rounded-lg bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								autoComplete="username"
+								className="w-full px-4 py-3 border border-custom rounded-lg bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
 							/>
 						</div>
 
@@ -83,8 +54,8 @@ export default function LoginPage() {
 								name="password"
 								placeholder="Enter your password"
 								required
-								disabled={loading}
-								className="w-full px-4 py-3 border border-custom rounded-lg bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								autoComplete="current-password"
+								className="w-full px-4 py-3 border border-custom rounded-lg bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors"
 							/>
 						</div>
 
@@ -101,17 +72,9 @@ export default function LoginPage() {
 						{/* Submit Button */}
 						<button
 							type="submit"
-							disabled={loading}
-							className="w-full bg-accent text-background py-3 px-4 rounded-lg font-medium text-base hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+							className="w-full bg-accent text-background py-3 px-4 rounded-lg font-medium text-base hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-colors"
 						>
-							{loading ? (
-								<div className="flex items-center justify-center">
-									<SpinnerIcon />
-									Logging In...
-								</div>
-							) : (
-								'Login'
-							)}
+							Login
 						</button>
 					</form>
 

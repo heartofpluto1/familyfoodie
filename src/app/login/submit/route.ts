@@ -1,45 +1,44 @@
-// app/api/auth/login/route.ts - Rate Limited Login API
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/auth';
 import { encrypt } from '@/lib/session';
 import { rateLimiter } from '@/lib/rate-limiter';
 
-// Helper function to add delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function POST(request: NextRequest) {
+	// Helper function to construct URLs using Host header
+	const constructUrl = (path: string) => {
+		const host = request.headers.get('host') || 'localhost:3000';
+		const protocol = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+		return `${protocol}://${host}${path}`;
+	};
+
 	try {
 		// Check rate limit before processing
 		const limitCheck = await rateLimiter.checkLimit(request);
 
 		if (!limitCheck.allowed) {
-			return NextResponse.json(
-				{
-					success: false,
-					error: limitCheck.message || 'Too many attempts. Please try again later.',
-					retryAfter: limitCheck.retryAfter,
-				},
-				{
-					status: 429,
-					headers: {
-						'Retry-After': limitCheck.retryAfter?.toString() || '1800',
-					},
-				}
-			);
+			// Redirect back to login with error parameters
+			const loginUrl = new URL(constructUrl('/login'));
+			loginUrl.searchParams.set('error', limitCheck.message || 'Too many attempts. Please try again later.');
+			if (limitCheck.retryAfter) {
+				const minutes = Math.ceil(limitCheck.retryAfter / 60);
+				loginUrl.searchParams.set('error', `Too many failed attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+			}
+			return NextResponse.redirect(loginUrl);
 		}
 
-		const { username, password } = await request.json();
+		// Get form data
+		const formData = await request.formData();
+		const username = formData.get('username') as string;
+		const password = formData.get('password') as string;
 
 		if (!username || !password) {
-			// Record failed attempt for missing credentials
+			// Record failed attempt and redirect with error
 			await rateLimiter.recordAttempt(request, false);
-			return NextResponse.json(
-				{
-					success: false,
-					error: 'Username and password are required',
-				},
-				{ status: 400 }
-			);
+			const loginUrl = new URL(constructUrl('/login'));
+			loginUrl.searchParams.set('error', 'Username and password are required');
+			return NextResponse.redirect(loginUrl);
 		}
 
 		// Add progressive delay based on previous failed attempts
@@ -48,6 +47,7 @@ export async function POST(request: NextRequest) {
 			await delay(delayMs);
 		}
 
+		// Authenticate user
 		const authResult = await authenticateUser(username, password);
 
 		if (!authResult.success) {
@@ -63,14 +63,9 @@ export async function POST(request: NextRequest) {
 					? `${errorMessage}. ${remainingCheck.remainingAttempts} attempts remaining.`
 					: errorMessage;
 
-			return NextResponse.json(
-				{
-					success: false,
-					error: finalMessage,
-					remainingAttempts: remainingCheck.remainingAttempts,
-				},
-				{ status: 401 }
-			);
+			const loginUrl = new URL(constructUrl('/login'));
+			loginUrl.searchParams.set('error', finalMessage);
+			return NextResponse.redirect(loginUrl);
 		}
 
 		// Record successful login (clears failed attempts)
@@ -84,12 +79,9 @@ export async function POST(request: NextRequest) {
 
 		const encryptedSessionData = encrypt(sessionData);
 
-		// Create response and set cookie
-		const response = NextResponse.json({
-			success: true,
-			user: authResult.user,
-		});
-
+		// Redirect to home with session cookie
+		const homeUrl = constructUrl('/');
+		const response = NextResponse.redirect(homeUrl);
 		response.cookies.set('session', encryptedSessionData, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
@@ -100,17 +92,13 @@ export async function POST(request: NextRequest) {
 
 		return response;
 	} catch (error) {
-		console.error('Login API error:', error);
+		console.error('Login route error:', error);
 
 		// Record failed attempt for server errors too
 		await rateLimiter.recordAttempt(request, false);
 
-		return NextResponse.json(
-			{
-				success: false,
-				error: 'Something went wrong.',
-			},
-			{ status: 500 }
-		);
+		const loginUrl = new URL(constructUrl('/login'));
+		loginUrl.searchParams.set('error', 'Something went wrong.');
+		return NextResponse.redirect(loginUrl);
 	}
 }
