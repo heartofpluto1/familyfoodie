@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { getNextWeekRecipes, getNextWeek, getAllRecipesWithDetails } from '@/lib/queries/menus';
 import withAuth from '@/app/components/withAuth';
 import PlanClient from './plan-client';
+import { formatWeekDateRange } from '@/lib/utils/weekDates';
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -15,26 +16,9 @@ async function PlanPage() {
 	const nextWeekRecipes = await getNextWeekRecipes();
 	const allRecipes = await getAllRecipesWithDetails();
 
-	// Calculate week dates
-	const startDate = new Date(nextWeek.year, 0, 1 + (nextWeek.week - 1) * 7);
-	const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+	const weekDateRange = formatWeekDateRange(nextWeek.week, nextWeek.year);
 
-	const formatDate = (date: Date) => {
-		return date.toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-		});
-	};
-
-	return (
-		<PlanClient
-			week={nextWeek.week}
-			year={nextWeek.year}
-			weekDates={`${formatDate(startDate)} → ${formatDate(endDate)}`}
-			initialRecipes={nextWeekRecipes}
-			allRecipes={allRecipes}
-		/>
-	);
+	return <PlanClient week={nextWeek.week} year={nextWeek.year} weekDates={weekDateRange} initialRecipes={nextWeekRecipes} allRecipes={allRecipes} />;
 }
 
 // Force dynamic rendering for authenticated pages

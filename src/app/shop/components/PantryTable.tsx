@@ -18,8 +18,8 @@ export function PantryTable({ items, dragOverIndex, isDragging, onDragStart, onD
 			<table className="w-full">
 				<thead>
 					<tr className="border-b border-light">
-						<th className="px-2 py-3 text-left text-sm font-medium">Ingredients</th>
-						<th className="px-2 py-3 text-center text-sm font-medium w-30">2p</th>
+						<th className="px-4 py-3 text-left text-sm font-medium">Ingredients</th>
+						<th className="px-4 py-3 text-center text-sm font-medium w-30">2p</th>
 					</tr>
 				</thead>
 				<tbody onDragLeave={onDragLeave}>

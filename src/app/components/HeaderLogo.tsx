@@ -1,13 +1,6 @@
 import Link from 'next/link';
-import { Crimson_Text } from 'next/font/google';
 import { LogoutIcon } from './Icons';
 import type { SessionData } from '@/types/auth';
-
-const crimsonText = Crimson_Text({
-	subsets: ['latin'],
-	weight: ['400', '600', '700'],
-	display: 'swap',
-});
 
 interface HeaderLogoProps {
 	session: SessionData | null;
@@ -23,7 +16,9 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 				<div className="flex items-center justify-between">
 					{/* Title Section */}
 					<div>
-						<h1 className={`${crimsonText.className} font-bold text-2xl md:text-3xl text-foreground tracking-wide`}>Family Foodie</h1>
+						<h1 className="text-2xl md:text-3xl text-foreground tracking-wide" style={{ fontFamily: 'var(--font-heading)' }}>
+							Family Foodie
+						</h1>
 						<p className="text-sm text-muted font-light italic">What the fork is for dinner?</p>
 					</div>
 

@@ -1,8 +1,16 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { Crimson_Text } from 'next/font/google';
 import { getSession } from '@/lib/session';
 import HeaderLogo from './components/HeaderLogo';
 import { ToastProvider } from './components/ToastProvider';
+
+const crimsonText = Crimson_Text({
+	subsets: ['latin'],
+	weight: ['400', '600', '700'],
+	variable: '--font-heading',
+	display: 'swap',
+});
 
 export const metadata: Metadata = {
 	title: 'Family Foodie',
@@ -19,7 +27,7 @@ export default async function RootLayout({
 
 	return (
 		<html lang="en">
-			<body className={`antialiased`}>
+			<body className={`${crimsonText.variable} antialiased`}>
 				<ToastProvider>
 					<HeaderLogo session={session} />
 					{children}
