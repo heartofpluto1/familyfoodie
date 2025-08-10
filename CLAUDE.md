@@ -71,8 +71,8 @@ This is a Next.js 15 application using the App Router pattern with TypeScript, f
 - Protected routes use authentication middleware
 
 ### API Structure
-- `/api/auth/` - Login, logout, session management
-- `/api/menus/` - Recipe and meal planning data
+- `/api/auth/` - Session management
+- `/api/plan/` - Meal planner functionality
 - `/api/shop/` - Shopping list functionality
 - All API routes return JSON responses
 
