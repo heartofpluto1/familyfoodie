@@ -1,10 +1,7 @@
-'use client';
-
 import Link from 'next/link';
 import { Crimson_Text } from 'next/font/google';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import { LogoutIcon } from './Icons';
+import type { SessionData } from '@/types/auth';
 
 const crimsonText = Crimson_Text({
 	subsets: ['latin'],
@@ -12,38 +9,13 @@ const crimsonText = Crimson_Text({
 	display: 'swap',
 });
 
-const HeaderLogo = () => {
-	const { user, loading, isAuthenticated } = useAuth();
-	const router = useRouter();
+interface HeaderLogoProps {
+	session: SessionData | null;
+}
 
-	// Handle logout button click
-	const handleLogoutClick = async (e: React.MouseEvent) => {
-		e.preventDefault();
-
-		try {
-			const response = await fetch('/api/auth/logout', {
-				method: 'POST',
-			});
-
-			const data = await response.json();
-
-			if (data.success) {
-				// Dispatch custom event - context will handle the rest
-				window.dispatchEvent(new CustomEvent('userLogout'));
-				router.push('/');
-			} else {
-				console.error('Logout failed:', data.error);
-				// Even if API fails, dispatch event
-				window.dispatchEvent(new CustomEvent('userLogout'));
-				router.push('/');
-			}
-		} catch (error) {
-			console.error('Logout failed:', error);
-			// Even if the API call fails, dispatch event
-			window.dispatchEvent(new CustomEvent('userLogout'));
-			router.push('/');
-		}
-	};
+const HeaderLogo = ({ session }: HeaderLogoProps) => {
+	const isAuthenticated = !!session;
+	const user = session;
 
 	return (
 		<header className="bg-surface border-b border-custom">
@@ -85,18 +57,17 @@ const HeaderLogo = () => {
 
 						{/* Auth Section */}
 						<div className={isAuthenticated ? 'border-l border-custom pl-4' : ''}>
-							{loading ? (
-								<div className="text-sm text-secondary">...</div>
-							) : isAuthenticated ? (
+							{isAuthenticated ? (
 								<div className="flex items-center space-x-3">
 									<span className="text-sm text-foreground">{user?.username}</span>
-									<button
-										onClick={handleLogoutClick}
-										className="bg-accent text-background p-2 rounded-md hover:bg-accent/90 transition-colors"
+									<Link
+										href="/logout"
+										prefetch={false}
+										className="bg-accent text-background p-2 rounded-md hover:bg-accent/90 transition-colors inline-block"
 										title="Logout"
 									>
 										<LogoutIcon />
-									</button>
+									</Link>
 								</div>
 							) : (
 								<Link href="/login" className="bg-accent text-background px-4 py-2 rounded-md text-sm font-medium hover:bg-accent/90 transition-colors">

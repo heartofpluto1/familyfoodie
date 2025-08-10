@@ -1,4 +1,4 @@
-import pool from '../db.js';
+import pool from '@/lib/db.js';
 import { QueryResult, Menu, PlannedMeal, Recipe, RecipeDetail } from '@/types/menus.js';
 
 /**

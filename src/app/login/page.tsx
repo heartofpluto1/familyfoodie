@@ -1,11 +1,9 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ErrorIconSmall, SpinnerIcon } from '@/app/components/Icons';
 
 export default function LoginPage() {
-	const router = useRouter();
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
 
@@ -28,11 +26,8 @@ export default function LoginPage() {
 			const data = await response.json();
 
 			if (data.success) {
-				// Dispatch custom event to notify header about login
-				window.dispatchEvent(new CustomEvent('userLogin'));
-
-				// Redirect to home
-				router.push('/');
+				// Use full page reload to trigger server-side session check
+				window.location.href = '/';
 			} else {
 				// Handle rate limiting and other errors
 				if (response.status === 429) {
