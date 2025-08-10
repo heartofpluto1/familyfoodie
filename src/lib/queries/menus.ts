@@ -338,7 +338,10 @@ interface ShoppingIngredientRow {
 	quantityMeasure_id: number | null;
 	ingredient_name: string;
 	pantryCategory_id: number | null;
+	supermarketCategory_id: number | null;
 	fresh: number;
+	cost: number | null;
+	stockcode: string | null;
 	measure_name: string | null;
 }
 
@@ -350,7 +353,10 @@ interface GroupedIngredient {
 	quantity4: number;
 	quantityMeasure_id: number | null;
 	pantryCategory_id: number | null;
+	supermarketCategory_id: number | null;
 	fresh: number;
+	cost: number | null;
+	stockcode: string | null;
 	measure_name: string | null;
 }
 
@@ -376,21 +382,32 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 				ri.quantityMeasure_id,
 				i.name as ingredient_name,
 				i.pantryCategory_id,
+				i.supermarketCategory_id,
 				i.fresh,
+				i.cost,
+				i.stockcode,
 				m.name as measure_name
 			FROM menus_recipeweek rw
 			JOIN menus_recipeingredient ri ON rw.recipe_id = ri.recipe_id
 			JOIN menus_ingredient i ON ri.ingredient_id = i.id
 			LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
 			WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1
+			ORDER BY 
+				CASE 
+					WHEN i.fresh = 1 THEN i.supermarketCategory_id
+					WHEN i.fresh = 0 THEN i.pantryCategory_id
+					ELSE 999
+				END,
+				i.name
 		`;
 
 		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
 
-		// Group ingredients by ingredient_id and sum quantities
-		const groupedIngredients = ingredients.reduce((acc: Record<number, GroupedIngredient>, ingredient) => {
-			const key = ingredient.ingredient_id;
+		// Group ingredients by ingredient_id AND quantityMeasure_id (only group if same ingredient with same measurement)
+		const groupedIngredients = ingredients.reduce((acc: Record<string, GroupedIngredient>, ingredient) => {
+			// Create composite key from ingredient_id and quantityMeasure_id to ensure we only group same ingredients with same measurements
+			const key = `${ingredient.ingredient_id}-${ingredient.quantityMeasure_id || 'null'}`;
 			if (!acc[key]) {
 				acc[key] = {
 					recipeIngredient_id: ingredient.recipeIngredient_id,
@@ -400,7 +417,10 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 					quantity4: 0,
 					quantityMeasure_id: ingredient.quantityMeasure_id,
 					pantryCategory_id: ingredient.pantryCategory_id,
+					supermarketCategory_id: ingredient.supermarketCategory_id,
 					fresh: ingredient.fresh,
+					cost: ingredient.cost,
+					stockcode: ingredient.stockcode,
 					measure_name: ingredient.measure_name,
 				};
 			}
@@ -411,18 +431,18 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 
 		// Insert grouped ingredients into shopping list
 		if (Object.keys(groupedIngredients).length > 0) {
-			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient) => [
+			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient, index: number) => [
 				week,
 				year,
 				ingredient.fresh, // Use fresh value from menus_ingredient table
 				ingredient.ingredient_name,
-				0, // sort = 0 (default)
-				null, // cost = null (default)
+				index, // sort = increasing integer
+				ingredient.cost, // cost from menus_ingredient table
 				ingredient.recipeIngredient_id,
 				0, // purchased = false
 				1, // account_id = 1
-				null, // stockcode = null (default)
-				null, // supermarketCategory_id = null (default)
+				ingredient.stockcode, // stockcode from menus_ingredient table
+				ingredient.supermarketCategory_id, // supermarketCategory_id from menus_ingredient table
 			]);
 
 			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');

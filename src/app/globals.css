@@ -187,6 +187,16 @@ article h3 {
 	background-color: var(--surface-secondary) !important;
 }
 
+.hover\:bg-gray-50:hover {
+	background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+	.hover\:bg-gray-50:hover {
+		background-color: rgba(255, 255, 255, 0.05) !important;
+	}
+}
+
 .border-gray-200 {
 	border-color: var(--border) !important;
 }
