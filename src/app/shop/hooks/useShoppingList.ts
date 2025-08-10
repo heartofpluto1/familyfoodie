@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingListData, ShoppingListItem, Ingredient, DateStamp } from '@/types/shop';
-import { ShoppingListService } from '../services/shoppingListService';
-import { useToast } from '../../components/ToastProvider';
+import { ShoppingListService } from '@/app/shop/services/shoppingListService';
+import { useToast } from '@/app/components/ToastProvider';
 
 export function useShoppingList(initialData: ShoppingListData, datestamp: DateStamp) {
 	const [ingredients, setIngredients] = useState<ShoppingListData>(initialData);

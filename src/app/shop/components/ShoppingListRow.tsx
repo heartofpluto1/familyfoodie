@@ -1,9 +1,9 @@
 import React from 'react';
 import { ShoppingListItem } from '@/types/shop';
-import { DragHandleIcon, LinkIcon, DeleteIcon } from './Icons';
-import Tooltip from '../../components/Tooltip';
-import { getSupermarketCategoryColor } from '../utils/categoryColors';
-import { roundToTwo, formatPrice, capitalizeFirstLetter } from '../utils/shoppingListUtils';
+import { DragHandleIcon, LinkIcon, DeleteIcon } from '@/app/components/Icons';
+import Tooltip from '@/app/components/Tooltip';
+import { getSupermarketCategoryColor } from '@/app/shop/utils/categoryColors';
+import { roundToTwo, formatPrice, capitalizeFirstLetter } from '@/app/shop/utils/shoppingListUtils';
 
 interface ShoppingListRowProps {
 	item: ShoppingListItem;

@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import RecipesPageClient from './recipes-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
-import withAuth from '../components/withAuth';
+import withAuth from '@/app/components/withAuth';
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {

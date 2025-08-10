@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getRecipeDetails } from '@/lib/queries/menus';
-import withAuth from '../../components/withAuth';
+import withAuth from '@/app/components/withAuth';
 import RecipeDetailsClient from './recipe-details-client';
 
 interface PageProps {

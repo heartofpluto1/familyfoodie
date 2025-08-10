@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { Recipe } from '@/types/menus';
-import HeaderPage from '../components/HeaderPage';
-import RecipeCard from '../components/RecipeCard';
+import HeaderPage from '@/app/components/HeaderPage';
+import RecipeCard from '@/app/components/RecipeCard';
+import { PlusIcon } from '@/app/components/Icons';
 
 interface PlanClientProps {
 	week: number;
@@ -376,9 +377,7 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 										className="w-10 h-10 rounded-full bg-accent hover:bg-accent/90 text-background flex items-center justify-center transition-all disabled:opacity-50"
 										title="Add random compatible recipe"
 									>
-										<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-										</svg>
+										<PlusIcon />
 									</button>
 								</div>
 								<RecipeSearch recipes={allRecipes} onAddRecipe={handleAddRecipe} excludeIds={recipes.map(r => r.id)} />

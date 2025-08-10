@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { getIngredients, getShoppingList } from '@/lib/queries/shop';
 import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import ShoppingListClient from './shop-client';
-import withAuth from '../components/withAuth';
+import withAuth from '@/app/components/withAuth';
 
 interface PageProps {
 	searchParams: Promise<{ week?: string; year?: string }>;

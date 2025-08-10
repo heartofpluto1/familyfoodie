@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { SearchIcon, RemoveIcon } from './Icons';
 
 interface RecipeSearchProps {
 	onSearch: (searchTerm: string) => void;
@@ -32,9 +33,7 @@ const RecipeSearch = ({ onSearch, resultsCount, totalCount }: RecipeSearchProps)
 		<div className="w-full max-w-md">
 			<div className="relative">
 				<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-					<svg className="h-5 w-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-					</svg>
+					<SearchIcon />
 				</div>
 				<input
 					type="text"
@@ -50,9 +49,7 @@ const RecipeSearch = ({ onSearch, resultsCount, totalCount }: RecipeSearchProps)
 						type="button"
 						aria-label="Clear search"
 					>
-						<svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-						</svg>
+						<RemoveIcon className="h-5 w-5" />
 					</button>
 				)}
 			</div>

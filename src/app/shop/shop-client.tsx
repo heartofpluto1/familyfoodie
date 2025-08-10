@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShoppingListData, Ingredient, DateStamp } from '../../types/shop';
+import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import { ShoppingListProvider, useShoppingListContext } from './contexts/ShoppingListContext';
 import { ShoppingListTable } from './components/ShoppingListTable';
 import { PantryTable } from './components/PantryTable';
