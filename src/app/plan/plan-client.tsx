@@ -5,6 +5,7 @@ import { Recipe } from '@/types/menus';
 import HeaderPage from '@/app/components/HeaderPage';
 import RecipeCard from '@/app/components/RecipeCard';
 import { PlusIcon } from '@/app/components/Icons';
+import { useToast } from '@/app/components/ToastProvider';
 
 interface PlanClientProps {
 	week: number;
@@ -89,6 +90,7 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 	const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes);
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const { showToast } = useToast();
 
 	const handleEdit = async () => {
 		setIsEditMode(true);
@@ -103,10 +105,10 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 				if (response.ok) {
 					setRecipes(data.recipes);
 				} else {
-					console.error('Failed to randomize recipes:', data.error);
+					showToast('error', 'Failed to randomize recipes: ' + (data.error || 'Unknown error'), 'error');
 				}
 			} catch (error) {
-				console.error('Error randomizing recipes:', error);
+				showToast('error', 'Error randomizing recipes: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
 			} finally {
 				setIsLoading(false);
 			}
@@ -127,10 +129,10 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 			if (response.ok) {
 				setRecipes(data.recipes);
 			} else {
-				console.error('Failed to randomize recipes:', data.error);
+				showToast('error', 'Failed to randomize recipes: ' + (data.error || 'Unknown error'), 'error');
 			}
 		} catch (error) {
-			console.error('Error randomizing recipes:', error);
+			showToast('error', 'Error randomizing recipes: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -168,17 +170,17 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 					});
 
 					if (!resetResponse.ok) {
-						console.error('Failed to reset shopping list');
+						showToast('error', 'Failed to reset shopping list', 'error');
 					}
 				} catch (resetError) {
-					console.error('Error resetting shopping list:', resetError);
+					showToast('error', 'Error resetting shopping list: ' + (resetError instanceof Error ? resetError.message : 'Unknown error'), 'error');
 				}
 			} else {
 				const data = await response.json();
-				console.error('Failed to save recipes:', data.error);
+				showToast('error', 'Failed to save recipes: ' + (data.error || 'Unknown error'), 'error');
 			}
 		} catch (error) {
-			console.error('Error saving recipes:', error);
+			showToast('error', 'Error saving recipes: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -217,17 +219,17 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 					});
 
 					if (!resetResponse.ok) {
-						console.error('Failed to reset shopping list');
+						showToast('error', 'Failed to reset shopping list', 'error');
 					}
 				} catch (resetError) {
-					console.error('Error resetting shopping list:', resetError);
+					showToast('error', 'Error resetting shopping list: ' + (resetError instanceof Error ? resetError.message : 'Unknown error'), 'error');
 				}
 			} else {
 				const data = await response.json();
-				console.error('Failed to delete recipes:', data.error);
+				showToast('error', 'Failed to delete recipes: ' + (data.error || 'Unknown error'), 'error');
 			}
 		} catch (error) {
-			console.error('Error deleting recipes:', error);
+			showToast('error', 'Error deleting recipes: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -250,7 +252,7 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 				}
 			}
 		} catch (error) {
-			console.error('Error swapping recipe:', error);
+			showToast('error', 'Error swapping recipe: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -304,7 +306,7 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 				}
 			}
 		} catch (error) {
-			console.error('Error adding random recipe:', error);
+			showToast('error', 'Error adding random recipe: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
 		} finally {
 			setIsLoading(false);
 		}
