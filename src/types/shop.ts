@@ -2,8 +2,12 @@
 // Place this file in your project root under a 'types' folder
 
 export interface Ingredient {
-	id: number;
-	ingredient__name: string;
+	ingredientId: number;
+	name: string;
+	cost?: number;
+	stockcode?: string;
+	supermarketCategory?: string;
+	pantryCategory?: string;
 }
 
 export interface ShoppingListItem {

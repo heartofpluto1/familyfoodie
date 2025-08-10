@@ -46,6 +46,8 @@ export default function ShoppingListClient({ initialData, allIngredients, datest
 	const [isResetting, setIsResetting] = useState<boolean>(false);
 	const [dragOverIndex, setDragOverIndex] = useState<{ list: 'fresh' | 'pantry'; index: number } | null>(null);
 	const [isDragging, setIsDragging] = useState<boolean>(false);
+	const [addItemValue, setAddItemValue] = useState<string>('');
+	const [selectedIngredientId, setSelectedIngredientId] = useState<number | null>(null);
 	const { showToast } = useToast();
 
 	// Calculate total cost
@@ -332,6 +334,94 @@ export default function ShoppingListClient({ initialData, allIngredients, datest
 		}
 	};
 
+	const handleAddItem = async () => {
+		if (!addItemValue.trim()) return;
+
+		const itemName = addItemValue.trim();
+
+		try {
+			const response = await fetch('/api/shop/add', {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					week: datestamp.week,
+					year: datestamp.year,
+					name: itemName,
+					ingredient_id: selectedIngredientId,
+				}),
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+
+				// Get the matching ingredient data for local state if one was selected
+				const matchingIngredient = selectedIngredientId ? allIngredients.find(ing => ing.ingredientId === selectedIngredientId) : null;
+
+				// Create new item for local state using the returned ID and proper values
+				const newItem: ShoppingListItem = {
+					id: data.id,
+					ingredient: itemName,
+					name: itemName,
+					purchased: false,
+					sort: ingredients.fresh.length,
+					fresh: true,
+					// Use actual values from the selected ingredient or defaults for manual entry
+					cost: matchingIngredient?.cost,
+					stockcode: matchingIngredient?.stockcode ? Number(matchingIngredient.stockcode) : undefined,
+					supermarketCategory: matchingIngredient?.supermarketCategory || '',
+					pantryCategory: matchingIngredient?.pantryCategory || '',
+				};
+
+				// Update local state - add to bottom of shopping list
+				setIngredients(prev => ({
+					...prev,
+					fresh: [...prev.fresh, newItem],
+				}));
+
+				// Clear the input and selection
+				setAddItemValue('');
+				setSelectedIngredientId(null);
+				showToast('success', 'Saved new item', '');
+			} else {
+				const data = await response.json();
+				showToast('error', 'Error', `Failed to add item: ${data.error}`);
+			}
+		} catch (error) {
+			showToast('error', 'Error', error instanceof Error ? error.message : 'Error adding item');
+		}
+	};
+
+	const handleRemove = async (itemId: number, itemName: string) => {
+		try {
+			const response = await fetch('/api/shop/remove', {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					id: itemId,
+				}),
+			});
+
+			if (response.ok) {
+				// Update local state - remove item from shopping list
+				setIngredients(prev => ({
+					...prev,
+					fresh: prev.fresh.filter(item => item.id !== itemId),
+				}));
+
+				showToast('success', 'Removed', itemName);
+			} else {
+				const data = await response.json();
+				showToast('error', 'Error', `Failed to remove item: ${data.error}`);
+			}
+		} catch (error) {
+			showToast('error', 'Error', error instanceof Error ? error.message : 'Error removing item');
+		}
+	};
+
 	return (
 		<div className="container mx-auto px-4 py-6">
 			<div className="mb-6">
@@ -443,8 +533,12 @@ export default function ShoppingListClient({ initialData, allIngredients, datest
 												)}
 											</td>
 											<td className="text-center">
-												{item.ingredientId === null && (
-													<button title="Remove item">
+												{(item.quantity === null || typeof item.quantity === 'undefined') && (
+													<button
+														title="Remove item"
+														onClick={() => handleRemove(item.id, item.name)}
+														className="text-red-500 hover:text-red-700 focus:outline-none"
+													>
 														<DeleteIcon className="w-6 h-6" />
 													</button>
 												)}
@@ -472,13 +566,28 @@ export default function ShoppingListClient({ initialData, allIngredients, datest
 					<div className="p-4 bg-gray-50">
 						<input
 							type="text"
+							value={addItemValue}
+							onChange={e => {
+								const newValue = e.target.value;
+								setAddItemValue(newValue);
+
+								// Check if the new value matches an ingredient from the datalist
+								const matchingIngredient = allIngredients.find(ing => ing.name === newValue);
+								setSelectedIngredientId(matchingIngredient ? matchingIngredient.ingredientId : null);
+							}}
+							onKeyDown={e => {
+								if (e.key === 'Enter') {
+									e.preventDefault();
+									handleAddItem();
+								}
+							}}
 							className="w-full px-2 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 							placeholder="add item..."
 							list="all-ingredients"
 						/>
 						<datalist id="all-ingredients">
 							{allIngredients.map(ing => (
-								<option key={ing.id} value={ing.ingredient__name} />
+								<option key={ing.ingredientId} value={ing.name} />
 							))}
 						</datalist>
 					</div>
