@@ -18,6 +18,7 @@ export interface ShoppingListItem {
 	quantityMeasure?: string;
 	ingredientId?: number;
 	supermarketCategory?: string;
+	pantryCategory?: string;
 	fresh: boolean;
 	isPurchasable?: boolean;
 	dragover?: boolean;
@@ -30,6 +31,7 @@ export interface PantryItem {
 	sort: number;
 	quantity?: string;
 	quantityMeasure?: string;
+	supermarketCategory?: string;
 	pantryCategory?: string;
 	fresh: boolean;
 	dragover?: boolean;

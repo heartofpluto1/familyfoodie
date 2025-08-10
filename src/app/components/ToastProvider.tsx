@@ -45,7 +45,7 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
 			{children}
 
 			{/* Toast Container */}
-			<div className="fixed top-0 left-0 w-full z-50 pointer-events-none">
+			<div className="fixed top-4 right-4 z-50 pointer-events-none flex flex-col space-y-2">
 				{toasts.map((toast, index) => (
 					<Toast key={index} toast={toast} onRemove={removeToast} />
 				))}
