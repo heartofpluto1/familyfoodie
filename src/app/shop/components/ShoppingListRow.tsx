@@ -51,7 +51,7 @@ export function ShoppingListRow({
 							className="relative group h-full flex items-center justify-center"
 							style={{
 								backgroundColor: getSupermarketCategoryColor(item.supermarketCategory || '', true),
-								width: '15px',
+								width: '8px',
 								paddingTop: '12px',
 								paddingBottom: '12px',
 								cursor: 'grab',

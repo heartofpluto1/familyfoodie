@@ -39,7 +39,7 @@ export function PantryRow({ item, index, dragOverIndex, isDragging, onDragStart,
 							className="relative group h-full flex items-center justify-center"
 							style={{
 								backgroundColor: getPantryCategoryColor(item.pantryCategory || '', true),
-								width: '15px',
+								width: '8px',
 								paddingTop: '12px',
 								paddingBottom: '12px',
 								cursor: 'grab',

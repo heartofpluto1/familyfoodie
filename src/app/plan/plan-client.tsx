@@ -316,7 +316,7 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 		<>
 			<main className="container mx-auto px-4 py-8">
 				<div className="mb-8">
-					<HeaderPage title={`Week ${week} Plan`} subtitle={weekDates} />
+					<HeaderPage title={`Week ${week} Meal Plan`} subtitle={weekDates} />
 				</div>
 
 				{!isEditMode && (

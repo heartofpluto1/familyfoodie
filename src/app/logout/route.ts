@@ -40,7 +40,7 @@ export async function GET() {
 		body {
 			background-color: var(--background);
 			color: var(--foreground);
-			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
 			display: flex;
 			align-items: center;
 			justify-content: center;

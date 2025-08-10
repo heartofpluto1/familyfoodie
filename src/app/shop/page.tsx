@@ -3,6 +3,7 @@ import { getIngredients, getShoppingList } from '@/lib/queries/shop';
 import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import ShoppingListClient from './shop-client';
 import withAuth from '@/app/components/withAuth';
+import { formatWeekDateRange } from '@/lib/utils/weekDates';
 
 interface PageProps {
 	searchParams: Promise<{ week?: string; year?: string }>;
@@ -41,24 +42,6 @@ function getWeekNumber(date: Date): number {
 	return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 }
 
-function getWeekDates(week: number, year: number) {
-	const firstDayOfYear = new Date(year, 0, 1);
-	const daysToAdd = (week - 1) * 7;
-	const firstDay = new Date(firstDayOfYear.getTime() + daysToAdd * 86400000);
-
-	// Adjust to start on Monday
-	const dayOfWeek = firstDay.getDay();
-	const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-	const monday = new Date(firstDay.getTime() + mondayOffset * 86400000);
-
-	const sunday = new Date(monday.getTime() + 6 * 86400000);
-
-	return {
-		firstDay: monday,
-		lastDay: sunday,
-	};
-}
-
 async function ShopPage({ searchParams }: PageProps) {
 	const { week, year } = await searchParams;
 
@@ -72,37 +55,16 @@ async function ShopPage({ searchParams }: PageProps) {
 
 	const { shoppingData, allIngredients } = await getShoppingData(actualWeek, actualYear);
 
-	// Calculate week dates
-	const { firstDay, lastDay } = getWeekDates(parseInt(actualWeek), parseInt(actualYear));
-
 	const datestamp: DateStamp = {
 		week: parseInt(actualWeek),
 		year: parseInt(actualYear),
 	};
 
-	const firstDayFormatted = firstDay.toLocaleDateString('en-AU', {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-	});
-
-	const lastDayFormatted = lastDay.toLocaleDateString('en-AU', {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-	});
+	const weekDateRange = formatWeekDateRange(parseInt(actualWeek), parseInt(actualYear));
 
 	return (
 		<>
-			<ShoppingListClient
-				initialData={shoppingData}
-				allIngredients={allIngredients}
-				datestamp={datestamp}
-				firstDay={firstDayFormatted}
-				lastDay={lastDayFormatted}
-			/>
+			<ShoppingListClient initialData={shoppingData} allIngredients={allIngredients} datestamp={datestamp} weekDateRange={weekDateRange} />
 		</>
 	);
 }

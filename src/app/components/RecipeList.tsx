@@ -45,7 +45,7 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 
 	return (
 		<>
-			<div className="mb-8 flex justify-end">
+			<div className="mb-6">
 				<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} />
 			</div>
 

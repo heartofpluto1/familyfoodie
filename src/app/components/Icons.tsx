@@ -17,14 +17,11 @@ export const DeleteIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 	</svg>
 );
 
-export const DragHandleIcon = ({ className = 'w-3 h-6' }: IconProps) => (
-	<svg className={className} viewBox="0 0 12 24" fill="currentColor">
+export const DragHandleIcon = ({ className = 'w-2 h-6' }: IconProps) => (
+	<svg className={className} viewBox="0 0 6 24" fill="currentColor">
 		<circle cx="3" cy="4" r="1.5" />
 		<circle cx="3" cy="12" r="1.5" />
 		<circle cx="3" cy="20" r="1.5" />
-		<circle cx="9" cy="4" r="1.5" />
-		<circle cx="9" cy="12" r="1.5" />
-		<circle cx="9" cy="20" r="1.5" />
 	</svg>
 );
 
