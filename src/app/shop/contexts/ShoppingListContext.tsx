@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { ShoppingListData, ShoppingListItem, PantryItem, Ingredient, DateStamp } from '@/types/shop';
-import { useShoppingList } from '../hooks/useShoppingList';
-import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { useAddItem } from '../hooks/useAddItem';
+import { useShoppingList } from '@/app/shop/hooks/useShoppingList';
+import { useDragAndDrop } from '@/app/shop/hooks/useDragAndDrop';
+import { useAddItem } from '@/app/shop/hooks/useAddItem';
 
 interface ShoppingListContextType {
 	// Shopping list state

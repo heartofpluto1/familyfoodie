@@ -1,9 +1,9 @@
 import React from 'react';
 import { PantryItem } from '@/types/shop';
-import { DragHandleIcon } from './Icons';
-import Tooltip from '../../components/Tooltip';
-import { getPantryCategoryColor } from '../utils/categoryColors';
-import { roundToTwo, capitalizeFirstLetter } from '../utils/shoppingListUtils';
+import { DragHandleIcon } from '@/app/components/Icons';
+import Tooltip from '@/app/components/Tooltip';
+import { getPantryCategoryColor } from '@/app/shop/utils/categoryColors';
+import { roundToTwo, capitalizeFirstLetter } from '@/app/shop/utils/shoppingListUtils';
 
 interface PantryRowProps {
 	item: PantryItem;

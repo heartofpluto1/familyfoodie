@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { Recipe } from '@/types/menus';
-import HeaderPage from '../components/HeaderPage';
-import RecipeSearch from '../components/RecipeSearch';
-import RecipeCard from '../components/RecipeCard';
+import HeaderPage from '@/app/components/HeaderPage';
+import RecipeSearch from '@/app/components/RecipeSearch';
+import RecipeCard from '@/app/components/RecipeCard';
 
 interface RecipesPageClientProps {
 	recipes: Recipe[];

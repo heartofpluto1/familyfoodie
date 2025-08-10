@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { getNextWeekRecipes, getNextWeek, getAllRecipesWithDetails } from '@/lib/queries/menus';
-import withAuth from '../components/withAuth';
+import withAuth from '@/app/components/withAuth';
 import PlanClient from './plan-client';
 
 export async function generateMetadata(): Promise<Metadata> {

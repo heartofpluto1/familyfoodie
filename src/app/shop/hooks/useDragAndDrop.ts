@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingListData, ShoppingListItem, PantryItem, DateStamp } from '@/types/shop';
-import { ShoppingListService } from '../services/shoppingListService';
-import { useToast } from '../../components/ToastProvider';
+import { ShoppingListService } from '@/app/shop/services/shoppingListService';
+import { useToast } from '@/app/components/ToastProvider';
 
 export function useDragAndDrop(ingredients: ShoppingListData, setIngredients: (value: React.SetStateAction<ShoppingListData>) => void, datestamp: DateStamp) {
 	const [isDragging, setIsDragging] = useState<boolean>(false);
