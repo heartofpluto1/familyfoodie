@@ -54,7 +54,7 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Shopping List */}
-				<div className="bg-white border border-custom rounded-lg shadow-md overflow-visible">
+				<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
 					<div className="bg-gray-50 px-4 py-4">
 						<div className="flex justify-between items-center">
 							<h3 className="text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -80,7 +80,7 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 				</div>
 
 				{/* Pantry */}
-				<div className="bg-white border border-custom rounded-lg shadow-md overflow-visible">
+				<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
 					<div className="bg-gray-50 px-4 py-4">
 						<h3 className="text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
 							Pantry

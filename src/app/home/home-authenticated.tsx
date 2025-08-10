@@ -18,7 +18,7 @@ export default function HomeAuthenticated({ plans, stats }: HomeAuthenticatedPro
 				</div>
 
 				{plans.length === 0 && (
-					<div className="bg-surface border border-custom rounded-lg p-8 text-center">
+					<div className="bg-surface border border-custom rounded-sm p-8 text-center">
 						<p className="text-secondary">No menus found. Start planning your first meal!</p>
 						<Link
 							href="/plan"
@@ -31,15 +31,15 @@ export default function HomeAuthenticated({ plans, stats }: HomeAuthenticatedPro
 
 				{stats && (
 					<div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-						<div className="bg-surface border border-custom rounded-lg p-4 text-center">
+						<div className="bg-surface border border-custom rounded-sm p-4 text-center">
 							<p className="text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
 							<p className="text-xs text-muted">Weeks</p>
 						</div>
-						<div className="bg-surface border border-custom rounded-lg p-4 text-center">
+						<div className="bg-surface border border-custom rounded-sm p-4 text-center">
 							<p className="text-2xl font-semibold text-foreground">{stats.totalRecipes}</p>
 							<p className="text-xs text-muted">Meals</p>
 						</div>
-						<div className="bg-surface border border-custom rounded-lg p-4 text-center">
+						<div className="bg-surface border border-custom rounded-sm p-4 text-center">
 							<p className="text-2xl font-semibold text-foreground">{stats.avgRecipesPerWeek}</p>
 							<p className="text-xs text-muted">Avg per Week</p>
 						</div>
@@ -73,7 +73,7 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 
 function MenuCard({ year, week, meals }: Menu) {
 	return (
-		<div className="flex-1 min-w-80 max-w-sm bg-surface border border-custom rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+		<div className="flex-1 min-w-80 max-w-sm bg-surface border border-custom rounded-sm overflow-hidden hover:shadow-md transition-shadow">
 			<div className="bg-accent text-background px-4 py-3 flex items-center justify-between">
 				<h2 className="text-base font-medium">
 					Week {week}, {year}

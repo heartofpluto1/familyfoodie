@@ -27,7 +27,7 @@ const RecipeCard = ({ recipe, showControls = false, onSwapRecipe, onRemoveRecipe
 
 	return (
 		<article
-			className={`relative bg-surface border border-custom rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow max-w-[310px] w-full flex flex-col`}
+			className={`relative bg-surface border border-custom rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow max-w-[310px] w-full flex flex-col`}
 		>
 			<Link href={`/recipe/${id}`} className="block">
 				<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`/static/${filename}.jpg`} />
