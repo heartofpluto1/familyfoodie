@@ -1,5 +1,6 @@
 // lib/auth.ts - Authentication utilities
 import pool from './db.js';
+import { addToast } from '@/lib/toast';
 
 export interface User {
 	id: number;
@@ -38,7 +39,7 @@ async function verifyDjangoPassword(password: string, hashedPassword: string): P
 
 		return derivedHash === hash;
 	} catch (error) {
-		console.error('Password verification error:', error);
+		addToast('error', 'Password Verification Error', 'Password verification failed: ' + (error instanceof Error ? error.message : String(error)));
 		return false;
 	}
 }
@@ -72,7 +73,7 @@ export async function authenticateUser(username: string, password: string): Prom
 			user: userWithoutPassword,
 		};
 	} catch (error) {
-		console.error('Authentication error:', error);
+		addToast('error', 'Authentication Error', 'Authentication failed: ' + (error instanceof Error ? error.message : String(error)));
 		return { success: false, error: 'Authentication failed' };
 	}
 }

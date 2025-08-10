@@ -92,13 +92,11 @@ export async function POST(request: NextRequest) {
 
 		return response;
 	} catch (error) {
-		console.error('Login route error:', error);
-
 		// Record failed attempt for server errors too
 		await rateLimiter.recordAttempt(request, false);
 
 		const loginUrl = new URL(constructUrl('/login'));
-		loginUrl.searchParams.set('error', 'Something went wrong.');
+		loginUrl.searchParams.set('error', error instanceof Error ? error.message : 'Something went wrong.');
 		return NextResponse.redirect(loginUrl);
 	}
 }

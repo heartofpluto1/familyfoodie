@@ -92,8 +92,7 @@ async function handler(request: NextRequest) {
 			connection.release();
 		}
 	} catch (error) {
-		console.error('Error adding shopping list item:', error);
-		return NextResponse.json({ error: 'Failed to add item' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to add item' }, { status: 500 });
 	}
 }
 

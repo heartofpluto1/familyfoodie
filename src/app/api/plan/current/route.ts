@@ -13,8 +13,7 @@ async function handler() {
 			recipes,
 		});
 	} catch (error) {
-		console.error('Error fetching current week recipes:', error);
-		return NextResponse.json({ error: 'Failed to fetch current week recipes' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to fetch current week recipes' }, { status: 500 });
 	}
 }
 

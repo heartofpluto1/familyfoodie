@@ -51,8 +51,7 @@ async function handler() {
 			totalAvailable: availableRecipes.length,
 		});
 	} catch (error) {
-		console.error('Error randomizing recipes:', error);
-		return NextResponse.json({ error: 'Failed to randomize recipes' }, { status: 500 });
+		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to randomize recipes' }, { status: 500 });
 	}
 }
 

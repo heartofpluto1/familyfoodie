@@ -11,7 +11,7 @@ const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
 if (isRuntime && !isBuildTime) {
 	if (!SECRET_KEY) {
-		console.warn('SESSION_SECRET_KEY not set - authentication will not work in production');
+		addToast('warning', 'Session Configuration', 'SESSION_SECRET_KEY not set - authentication will not work in production');
 	} else if (SECRET_KEY.length !== 64) {
 		throw new Error('SESSION_SECRET_KEY must be a 64-character hex string. Generate one with: openssl rand -hex 32');
 	}
@@ -44,7 +44,7 @@ export function encrypt(text: string): string {
 
 		return result;
 	} catch (error) {
-		console.error('Encryption error:', error);
+		addToast('error', 'Session Encryption Error', 'Failed to encrypt session data: ' + (error instanceof Error ? error.message : String(error)));
 		throw new Error('Failed to encrypt session data');
 	}
 }
@@ -75,7 +75,7 @@ export function decrypt(encryptedText: string): string {
 
 		return decrypted;
 	} catch (error) {
-		console.error('Decryption error:', error);
+		addToast('error', 'Session Decryption Error', 'Failed to decrypt session data: ' + (error instanceof Error ? error.message : String(error)));
 		throw new Error('Failed to decrypt session data');
 	}
 }
@@ -99,7 +99,7 @@ export async function getSession() {
 		const sessionData = decrypt(sessionCookie.value);
 		return JSON.parse(sessionData);
 	} catch (error) {
-		console.error('Session verification error:', error);
+		addToast('error', 'Session Verification Error', 'Session verification failed: ' + (error instanceof Error ? error.message : String(error)));
 		return null;
 	}
 }
@@ -122,8 +122,7 @@ export async function getEncryptedSession() {
 
 		return sessionCookie.value;
 	} catch (error) {
-		addToast('error', 'Session Error', error as string);
-		console.error('Session verification error:', error);
+		addToast('error', 'Session Error', 'Session verification error: ' + (error instanceof Error ? error.message : String(error)));
 		return null;
 	}
 }

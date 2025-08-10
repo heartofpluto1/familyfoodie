@@ -2,13 +2,10 @@
 
 import { useEffect } from 'react';
 import { useToast } from './ToastProvider';
+import { ToastData } from '@/types/toast';
 
 interface ServerToastsProps {
-	toasts: Array<{
-		type: 'info' | 'error' | 'warning' | 'success';
-		title: string;
-		message: string;
-	}>;
+	toasts: ToastData[];
 }
 
 const ToastServer = ({ toasts }: ServerToastsProps) => {
