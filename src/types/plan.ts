@@ -31,6 +31,20 @@ export interface ApiResponse<T = unknown> {
 	data?: T;
 }
 
+export interface WeekPlan {
+	week: number;
+	year: number;
+	weekDates: string;
+	recipes: Recipe[];
+	initialRecipes: Recipe[];
+	initialEditMode?: boolean;
+}
+
+export interface MultiWeekPlanState {
+	weeks: WeekPlan[];
+	allRecipes: Recipe[];
+}
+
 export interface PlanContextType {
 	// State
 	state: PlanState;
@@ -47,6 +61,18 @@ export interface PlanContextType {
 	// Animation state for automate
 	animatingAutomate?: boolean;
 	pendingRecipes?: Recipe[] | null;
+}
+
+export interface MultiWeekPlanContextType {
+	// State
+	multiWeekState: MultiWeekPlanState;
+
+	// Actions
+	addNextWeek: () => Promise<void>;
+	removeWeek: (weekId: string) => void;
+
+	// Individual week contexts
+	getWeekContext: (weekId: string) => PlanContextType;
 }
 
 export interface SearchState {
