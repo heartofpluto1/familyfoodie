@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Stats, Meal, Menu } from '@/types/menus';
 import { IntroShoppingCartIcon } from '@/app/components/Icons';
+import { formatWeekDateRange } from '@/lib/utils/weekDates';
 
 interface HomeAuthenticatedProps {
 	plans: Menu[];
@@ -30,24 +31,24 @@ export default function HomeAuthenticated({ plans, stats }: HomeAuthenticatedPro
 				)}
 
 				{stats && (
-					<div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-						<div className="bg-surface border border-custom rounded-sm p-4 text-center">
-							<p className="text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
+					<div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+						<div className="bg-surface border border-custom rounded-sm p-2 sm:p-4 text-center">
+							<p className="text-lg sm:text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
 							<p className="text-xs text-muted">Weeks</p>
 						</div>
-						<div className="bg-surface border border-custom rounded-sm p-4 text-center">
-							<p className="text-2xl font-semibold text-foreground">{stats.totalRecipes}</p>
+						<div className="bg-surface border border-custom rounded-sm p-2 sm:p-4 text-center">
+							<p className="text-lg sm:text-2xl font-semibold text-foreground">{stats.totalRecipes}</p>
 							<p className="text-xs text-muted">Meals</p>
 						</div>
-						<div className="bg-surface border border-custom rounded-sm p-4 text-center">
-							<p className="text-2xl font-semibold text-foreground">{stats.avgRecipesPerWeek}</p>
+						<div className="bg-surface border border-custom rounded-sm p-2 sm:p-4 text-center">
+							<p className="text-lg sm:text-2xl font-semibold text-foreground">{stats.avgRecipesPerWeek}</p>
 							<p className="text-xs text-muted">Avg per Week</p>
 						</div>
 					</div>
 				)}
 
 				{plans.length > 0 && (
-					<div className="flex flex-wrap gap-6 items-start">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
 						{plans.map(({ year, week, meals }) => (
 							<MenuCard key={`${year}-${week}`} year={year} week={week} meals={meals} />
 						))}
@@ -72,19 +73,26 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 }
 
 function MenuCard({ year, week, meals }: Menu) {
+	const weekDateRange = formatWeekDateRange(week, year);
+
 	return (
-		<div className="flex-1 min-w-80 max-w-sm bg-surface border border-custom rounded-sm overflow-hidden hover:shadow-md transition-shadow">
-			<div className="bg-accent text-background px-4 py-3 flex items-center justify-between">
-				<h2 className="text-base font-medium">
-					Week {week}, {year}
-				</h2>
-				<a
-					href={`/shop?week=${week}&year=${year}`}
-					className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
-					title="Shopping list"
-				>
-					<IntroShoppingCartIcon className="w-5 h-5" />
-				</a>
+		<div className="bg-surface border border-custom rounded-sm overflow-hidden hover:shadow-md transition-shadow">
+			<div className="bg-accent text-background px-4 py-3">
+				<div className="flex items-center justify-between">
+					<div>
+						<h2 className="text-base font-medium">
+							Week {week}, {year}
+						</h2>
+						<p className="text-xs text-muted mt-0.5">{weekDateRange}</p>
+					</div>
+					<a
+						href={`/shop?week=${week}&year=${year}`}
+						className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+						title="Shopping list"
+					>
+						<IntroShoppingCartIcon className="w-5 h-5" />
+					</a>
+				</div>
 			</div>
 
 			<div className="">

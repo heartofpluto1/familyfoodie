@@ -69,22 +69,22 @@ export function ShoppingListRow({
 								forceHide={isDragging}
 							/>
 						</button>
-						<div className="flex items-center px-2 py-2 flex-1">
+						<div className="flex items-center px-1 py-1 flex-1">
 							<input
 								type="checkbox"
 								checked={item.purchased}
 								onChange={() => onTogglePurchase(item.id, item.purchased)}
-								className="mr-3 h-4 w-4 text-blue-600 rounded cursor-pointer"
+								className="ml-2 mr-2 sm:ml-2 sm:mr-3 h-4 w-4 text-blue-600 rounded cursor-pointer"
 							/>
-							<span className={`text-sm ${item.purchased ? 'opacity-50 line-through' : ''}`}>{item.name}</span>
+							<span className={`text-xs sm:text-sm ${item.purchased ? 'opacity-50 line-through' : ''}`}>{item.name}</span>
 						</div>
 					</div>
 				</td>
-				<td className="text-center text-sm">
+				<td className="text-center text-xs sm:text-sm px-1 py-1">
 					{roundToTwo(parseFloat(item.quantity || '0'))} {item.quantityMeasure}
 					{parseFloat(item.quantity || '0') > 1 ? 's' : ''}
 				</td>
-				<td className="px-2 py-2 text-right text-sm">{item.cost ? formatPrice(item.cost) : ''}</td>
+				<td className="px-1 py-1 text-right text-xs sm:text-sm">{item.cost ? formatPrice(item.cost) : ''}</td>
 				<td className="text-center">
 					{item.stockcode && (
 						<a
@@ -100,7 +100,7 @@ export function ShoppingListRow({
 				<td className="text-center">
 					{(item.quantity === null || typeof item.quantity === 'undefined') && (
 						<button title="Remove item" onClick={() => onRemoveItem(item.id, item.name)} className="text-red-500 hover:text-red-700 focus:outline-none">
-							<DeleteIcon className="w-6 h-6" />
+							<DeleteIcon className="w-5 h-5 mt-2" />
 						</button>
 					)}
 				</td>

@@ -51,6 +51,8 @@ export interface RecipeDetail {
 	prepTime?: number;
 	cookTime?: number;
 	seasonName?: string;
+	primaryTypeName?: string;
+	secondaryTypeName?: string;
 	ingredients: RecipeIngredient[];
 }
 

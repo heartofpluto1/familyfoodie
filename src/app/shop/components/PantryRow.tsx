@@ -57,12 +57,12 @@ export function PantryRow({ item, index, dragOverIndex, isDragging, onDragStart,
 								forceHide={isDragging}
 							/>
 						</button>
-						<div className="flex items-center px-2 py-2 flex-1">
-							<span className="text-sm">{item.name}</span>
+						<div className="flex items-center px-1 sm:px-2 py-1.5 sm:py-2 flex-1">
+							<span className="text-xs sm:text-sm">{item.name}</span>
 						</div>
 					</div>
 				</td>
-				<td className="px-2 py-2 text-center text-sm">
+				<td className="px-1 sm:px-2 py-1.5 sm:py-2 text-center text-xs sm:text-sm">
 					{roundToTwo(parseFloat(item.quantity || '0'))} {item.quantityMeasure}
 					{parseFloat(item.quantity || '0') > 1 ? 's' : ''}
 				</td>

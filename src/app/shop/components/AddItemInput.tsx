@@ -10,7 +10,7 @@ interface AddItemInputProps {
 
 export function AddItemInput({ value, onChange, onAddItem, allIngredients }: AddItemInputProps) {
 	return (
-		<div className="p-4 bg-gray-50">
+		<div className="p-2 sm:p-4 bg-gray-50">
 			<input
 				type="text"
 				value={value}
@@ -21,7 +21,7 @@ export function AddItemInput({ value, onChange, onAddItem, allIngredients }: Add
 						onAddItem();
 					}
 				}}
-				className="w-full px-2 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+				className="w-full px-2 py-1.5 sm:py-2 rounded-sm text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 				placeholder="add item..."
 				list="all-ingredients"
 			/>

@@ -16,22 +16,41 @@ export function getWeekDates(week: number, year: number) {
 	};
 }
 
+function getOrdinalSuffix(day: number): string {
+	if (day > 3 && day < 21) return 'th';
+	switch (day % 10) {
+		case 1:
+			return 'st';
+		case 2:
+			return 'nd';
+		case 3:
+			return 'rd';
+		default:
+			return 'th';
+	}
+}
+
+function formatDateWithOrdinal(date: Date, includeYear: boolean): string {
+	const weekday = date.toLocaleDateString('en-AU', { weekday: 'long' });
+	const month = date.toLocaleDateString('en-AU', { month: 'short' });
+	const day = date.getDate();
+	const year = date.getFullYear();
+
+	const dayWithOrdinal = `${day}${getOrdinalSuffix(day)}`;
+
+	if (includeYear) {
+		return `${weekday}, ${dayWithOrdinal} ${month} ${year}`;
+	}
+	return `${weekday}, ${dayWithOrdinal} ${month}`;
+}
+
 export function formatWeekDateRange(week: number, year: number): string {
 	const { firstDay, lastDay } = getWeekDates(week, year);
+	const currentYear = new Date().getFullYear();
+	const includeYear = year < currentYear;
 
-	const firstDayFormatted = firstDay.toLocaleDateString('en-AU', {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-	});
-
-	const lastDayFormatted = lastDay.toLocaleDateString('en-AU', {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-	});
+	const firstDayFormatted = formatDateWithOrdinal(firstDay, includeYear);
+	const lastDayFormatted = formatDateWithOrdinal(lastDay, includeYear);
 
 	return `${firstDayFormatted} → ${lastDayFormatted}`;
 }

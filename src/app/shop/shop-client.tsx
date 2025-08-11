@@ -38,11 +38,11 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 	} = useShoppingListContext();
 
 	return (
-		<div className="container mx-auto px-4 py-8">
-			<div className="mb-8">
+		<div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+			<div className="mb-4 sm:mb-8">
 				<HeaderPage title={`Week ${datestamp.week} Shop`} subtitle={weekDateRange} />
 			</div>
-			<div className="mb-6">
+			<div className="mb-4 sm:mb-6">
 				<button
 					onClick={resetList}
 					disabled={isResetting}
@@ -52,15 +52,17 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 				</button>
 			</div>
 
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
 				{/* Shopping List */}
 				<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
-					<div className="bg-gray-50 px-4 py-4">
+					<div className="bg-gray-50 px-2 sm:px-4 py-3 sm:py-4">
 						<div className="flex justify-between items-center">
-							<h3 className="text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
+							<h3 className="text-lg sm:text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
 								Shopping List
 							</h3>
-							<span className="text-lg font-bold">{formatPrice(cost)}</span>
+							<h3 className="text-lg sm:text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
+								{formatPrice(cost)}
+							</h3>
 						</div>
 					</div>
 
@@ -81,8 +83,8 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 
 				{/* Pantry */}
 				<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
-					<div className="bg-gray-50 px-4 py-4">
-						<h3 className="text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
+					<div className="bg-gray-50 px-2 sm:px-4 py-3 sm:py-4">
+						<h3 className="text-lg sm:text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
 							Pantry
 						</h3>
 					</div>

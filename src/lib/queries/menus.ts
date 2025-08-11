@@ -167,6 +167,8 @@ interface RecipeDetailRow {
 	prepTime?: number;
 	cookTime?: number;
 	seasonName?: string;
+	primaryTypeName?: string;
+	secondaryTypeName?: string;
 	ingredient_id?: number;
 	quantity?: string;
 	quantity4?: string;
@@ -476,6 +478,8 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 			r.prepTime,
 			r.cookTime,
 			s.name as seasonName,
+			pt.name as primaryTypeName,
+			st.name as secondaryTypeName,
 			ri.id as ingredient_id,
 			ri.quantity,
 			ri.quantity4,
@@ -487,6 +491,8 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 			m.name as measure_name
 		FROM menus_recipe r
 		LEFT JOIN menus_season s ON r.season_id = s.id
+		LEFT JOIN menus_primarytype pt ON r.primaryType_id = pt.id
+		LEFT JOIN menus_secondarytype st ON r.secondaryType_id = st.id
 		LEFT JOIN menus_recipeingredient ri ON r.id = ri.recipe_id
 		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
 		LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
@@ -546,6 +552,8 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		prepTime: recipe.prepTime,
 		cookTime: recipe.cookTime,
 		seasonName: recipe.seasonName,
+		primaryTypeName: recipe.primaryTypeName,
+		secondaryTypeName: recipe.secondaryTypeName,
 		ingredients,
 	};
 }
