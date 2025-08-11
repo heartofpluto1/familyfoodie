@@ -99,7 +99,7 @@ export function ShoppingListRow({
 				</td>
 				<td className="text-center">
 					{(item.quantity === null || typeof item.quantity === 'undefined') && (
-						<button title="Remove item" onClick={() => onRemoveItem(item.id, item.name)} className="text-red-500 hover:text-red-700 focus:outline-none">
+						<button title="Remove item" onClick={() => onRemoveItem(item.id, item.name)} className="focus:outline-none">
 							<DeleteIcon className="w-5 h-5 mt-2" />
 						</button>
 					)}
