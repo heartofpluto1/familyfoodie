@@ -87,7 +87,7 @@ export function ShoppingListRowDnd({ item, onTogglePurchase, onRemoveItem, isDra
 						}}
 						{...listeners}
 					>
-						<DragHandleIcon className="w-4 h-4 text-white" />
+						<DragHandleIcon className="w-4 h-4" />
 					</button>
 				</div>
 			</td>

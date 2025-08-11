@@ -56,7 +56,7 @@ export function PantryRowDnd({ item, isDragOverlay = false }: PantryRowDndProps)
 					}}
 					{...listeners}
 				>
-					<DragHandleIcon className="w-4 h-4 text-white" />
+					<DragHandleIcon className="w-4 h-4" />
 				</button>
 			</td>
 		</tr>
