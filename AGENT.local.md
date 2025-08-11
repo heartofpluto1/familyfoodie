@@ -124,3 +124,64 @@ This file contains specific learnings and preferences for this Family Foodie cod
 
 ## Development Notes
 - **ToastServer.tsx**: Keep for debugging purposes - bridges server-side toast queue to client display
+
+## Code Formatting - Prettier Configuration
+
+**IMPORTANT**: This project uses a specific Prettier configuration that MUST be followed:
+
+### Prettier Settings (.prettierrc)
+```json
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "tabWidth": 3,
+  "useTabs": true,
+  "printWidth": 160,
+  "bracketSpacing": true,
+  "arrowParens": "avoid"
+}
+```
+
+### Key Formatting Rules
+- **INDENTATION**: Use TABS, not spaces (3-character tab width)
+- **QUOTES**: Use SINGLE quotes for strings (not double quotes)
+- **LINE LENGTH**: Maximum 160 characters per line
+- **SEMICOLONS**: Always include semicolons at end of statements
+- **TRAILING COMMAS**: Use ES5 style (commas in arrays/objects, not in function parameters)
+- **ARROW FUNCTIONS**: Avoid parentheses for single parameters
+- **BRACKET SPACING**: Include spaces inside object brackets `{ foo: 'bar' }`
+
+### Common Mistakes to Avoid
+- Using spaces instead of tabs for indentation
+- Using double quotes instead of single quotes
+- Breaking lines unnecessarily when under 160 characters
+- Forgetting semicolons at statement ends
+- Adding parentheses to single-parameter arrow functions
+
+## Mobile-First Development Priority
+
+**IMPORTANT**: This site is heavily used on mobile devices. Always prioritize mobile experience:
+- Test and optimize all UI components for small screens (320px+)
+- Use responsive typography (text-sm on mobile, larger on desktop)
+- Implement touch-friendly navigation (larger touch targets, mobile menus)
+- Hide non-essential elements on mobile to reduce clutter
+- Consider mobile-first breakpoints: xs (475px), sm (640px), md (768px), lg (1024px)
+- Navigation should collapse to a dropdown/select menu on small screens
+- Always test layouts at mobile viewport sizes
+
+## Database Schema Reference
+
+**IMPORTANT**: Always refer to `docs/schema.sql` for the complete database schema when working with:
+- Database queries and SQL statements
+- Understanding table relationships and foreign keys
+- Adding new database-related functionality
+- Troubleshooting data structure issues
+
+The schema file contains the complete MySQL table structures, indexes, and constraints for all tables including:
+- `auth_user` - Django user authentication
+- `menus_recipe` - Recipe data with primaryType_id/secondaryType_id
+- `menus_recipeingredient` - Recipe ingredients with quantities
+- `menus_shoppinglist` - Shopping list items
+- `menus_primarytype`/`menus_secondarytype` - Ingredient type categories
+- And all other supporting tables

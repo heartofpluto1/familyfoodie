@@ -7,7 +7,7 @@
 
 # my random stuff
 /no-commit
-*.sql
+init.sql
 cloud-sql-proxy
 
 # testing

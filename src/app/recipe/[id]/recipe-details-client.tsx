@@ -32,17 +32,50 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 		<>
 			<main className="container mx-auto px-4 py-8">
 				<div className="mb-8">
-					<HeaderPage title={recipe.name} subtitle={recipe.seasonName ? `${recipe.seasonName} Recipe` : 'Recipe Details'} />
+					<HeaderPage title={recipe.name} subtitle={recipe.seasonName ? `${recipe.seasonName} Recipe` : ''} />
 				</div>
 
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-					{/* Recipe Image */}
-					<div className="space-y-4">
-						<img src={`/static/${recipe.filename}.jpg`} alt={recipe.name} className="w-full rounded-sm shadow-md" />
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+					<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden">
+						{/* Recipe Image */}
+						<img src={`/static/${recipe.filename}.jpg`} alt={recipe.name} className="w-full" />
 
-						{/* Timing */}
-						{totalTime > 0 && (
-							<div>
+						<div className="p-6 space-y-4">
+							{/* Tags and PDF Link */}
+							<div className="flex items-center justify-between flex-wrap gap-2">
+								{/* Season and Ingredients Tags */}
+								<div className="flex flex-wrap gap-2">
+									{recipe.seasonName && (
+										<span className="inline-flex items-center px-2 py-1 bg-accent/50 text-foreground rounded-sm text-xs font-medium">
+											{recipe.seasonName}
+										</span>
+									)}
+									{recipe.primaryTypeName && (
+										<span className="inline-flex items-center px-2 py-1 bg-accent/50 text-foreground rounded-sm text-xs font-medium">
+											Protein: {recipe.primaryTypeName}
+										</span>
+									)}
+									{recipe.secondaryTypeName && (
+										<span className="inline-flex items-center px-2 py-1 bg-accent/50 text-foreground rounded-sm text-xs font-medium">
+											Carb: {recipe.secondaryTypeName}
+										</span>
+									)}
+								</div>
+
+								{/* PDF Link */}
+								<a
+									href={`/static/${recipe.filename}.pdf`}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="inline-flex items-center px-2 py-1 bg-accent text-background rounded-sm hover:bg-accent/90 transition-colors text-xs"
+								>
+									<DownloadIcon className="w-4 h-4 mr-1" />
+									PDF Recipe
+								</a>
+							</div>
+
+							{/* Timing */}
+							{totalTime > 0 && (
 								<div className="flex items-center text-muted text-sm">
 									<TimeIcon className="w-5 h-5 mr-2" />
 									{recipe.prepTime && recipe.cookTime ? (
@@ -53,25 +86,14 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 										<span>Total Time: {formatTime(totalTime)}</span>
 									)}
 								</div>
-							</div>
-						)}
+							)}
 
-						{/* Description */}
-						<div>
-							<p className="text-foreground whitespace-pre-wrap">{recipe.description}</p>
-						</div>
-
-						{/* PDF Link */}
-						<div className="flex justify-center">
-							<a
-								href={`/static/${recipe.filename}.pdf`}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex items-center px-4 py-2 bg-accent text-background rounded-md hover:bg-accent/90 transition-colors"
-							>
-								<DownloadIcon />
-								View PDF Recipe
-							</a>
+							{/* Description */}
+							{recipe.description && (
+								<div>
+									<p className="text-foreground whitespace-pre-wrap">{recipe.description}</p>
+								</div>
+							)}
 						</div>
 					</div>
 
