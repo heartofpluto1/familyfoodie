@@ -1,11 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Crimson_Text } from 'next/font/google';
+import { Source_Serif_4 } from 'next/font/google';
 import { getSession } from '@/lib/session';
 import HeaderLogo from './components/HeaderLogo';
 import { ToastProvider } from './components/ToastProvider';
 
-const crimsonText = Crimson_Text({
+const sourceSerif4 = Source_Serif_4({
 	subsets: ['latin'],
 	weight: ['400', '600', '700'],
 	variable: '--font-heading',
@@ -27,7 +27,7 @@ export default async function RootLayout({
 
 	return (
 		<html lang="en">
-			<body className={`${crimsonText.variable} antialiased`}>
+			<body className={`${sourceSerif4.variable} antialiased`}>
 				<ToastProvider>
 					<HeaderLogo session={session} />
 					{children}
