@@ -1,10 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { ShoppingListData, ShoppingListItem, PantryItem, Ingredient, DateStamp } from '@/types/shop';
+import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import { useShoppingList } from '@/app/shop/hooks/useShoppingList';
-import { useDragAndDrop } from '@/app/shop/hooks/useDragAndDrop';
+import { useDndKit } from '@/app/shop/hooks/useDndKit';
 import { useAddItem } from '@/app/shop/hooks/useAddItem';
+import { UniqueIdentifier, DragStartEvent, DragOverEvent, DragEndEvent } from '@dnd-kit/core';
+import { SensorDescriptor, SensorOptions } from '@dnd-kit/core';
 
 interface ShoppingListContextType {
 	// Shopping list state
@@ -20,18 +22,15 @@ interface ShoppingListContextType {
 	togglePurchase: (itemId: number, currentPurchased: boolean) => Promise<void>;
 	resetList: () => Promise<void>;
 
-	// Drag and drop state
-	isDragging: boolean;
-	dragOverIndex: { list: 'fresh' | 'pantry'; index: number } | null;
-
-	// Drag and drop actions
-	handleDragStart: (e: React.DragEvent, item: ShoppingListItem | PantryItem, listType: 'fresh' | 'pantry') => void;
-	handleDragOver: (e: React.DragEvent, targetList?: 'fresh' | 'pantry', targetIndex?: number) => void;
-	handleDragLeave: (e: React.DragEvent) => void;
-	handleDrop: (e: React.DragEvent, targetList: 'fresh' | 'pantry', targetIndex?: number) => void;
-	handleTouchStart: (e: React.TouchEvent, item: ShoppingListItem | PantryItem, listType: 'fresh' | 'pantry') => void;
-	handleTouchMove: (e: React.TouchEvent) => void;
-	handleTouchEnd: (e: React.TouchEvent) => void;
+	// Drag and drop state and actions (dnd-kit)
+	dndKitHandlers: {
+		sensors: SensorDescriptor<SensorOptions>[];
+		activeId: UniqueIdentifier | null;
+		overId: UniqueIdentifier | null;
+		handleDragStart: (event: DragStartEvent) => void;
+		handleDragOver: (event: DragOverEvent) => void;
+		handleDragEnd: (event: DragEndEvent) => void;
+	};
 
 	// Add item state
 	addItemValue: string;
@@ -53,7 +52,7 @@ interface ShoppingListProviderProps {
 
 export function ShoppingListProvider({ children, initialData, datestamp, allIngredients }: ShoppingListProviderProps) {
 	const shoppingList = useShoppingList(initialData, datestamp);
-	const dragAndDrop = useDragAndDrop(shoppingList.ingredients, shoppingList.setIngredients, datestamp);
+	const dndKit = useDndKit(shoppingList.ingredients, shoppingList.setIngredients, datestamp);
 	const addItemHook = useAddItem(allIngredients);
 
 	const handleAddItem = async () => {
@@ -76,16 +75,15 @@ export function ShoppingListProvider({ children, initialData, datestamp, allIngr
 		togglePurchase: shoppingList.togglePurchase,
 		resetList: shoppingList.resetList,
 
-		// Drag and drop
-		isDragging: dragAndDrop.isDragging,
-		dragOverIndex: dragAndDrop.dragOverIndex,
-		handleDragStart: dragAndDrop.handleDragStart,
-		handleDragOver: dragAndDrop.handleDragOver,
-		handleDragLeave: dragAndDrop.handleDragLeave,
-		handleDrop: dragAndDrop.handleDrop,
-		handleTouchStart: dragAndDrop.handleTouchStart,
-		handleTouchMove: dragAndDrop.handleTouchMove,
-		handleTouchEnd: dragAndDrop.handleTouchEnd,
+		// Drag and drop (dnd-kit)
+		dndKitHandlers: {
+			sensors: dndKit.sensors,
+			activeId: dndKit.activeId,
+			overId: dndKit.overId,
+			handleDragStart: dndKit.handleDragStart,
+			handleDragOver: dndKit.handleDragOver,
+			handleDragEnd: dndKit.handleDragEnd,
+		},
 
 		// Add item
 		addItemValue: addItemHook.addItemValue,
