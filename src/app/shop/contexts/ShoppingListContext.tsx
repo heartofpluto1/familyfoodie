@@ -29,6 +29,9 @@ interface ShoppingListContextType {
 	handleDragOver: (e: React.DragEvent, targetList?: 'fresh' | 'pantry', targetIndex?: number) => void;
 	handleDragLeave: (e: React.DragEvent) => void;
 	handleDrop: (e: React.DragEvent, targetList: 'fresh' | 'pantry', targetIndex?: number) => void;
+	handleTouchStart: (e: React.TouchEvent, item: ShoppingListItem | PantryItem, listType: 'fresh' | 'pantry') => void;
+	handleTouchMove: (e: React.TouchEvent) => void;
+	handleTouchEnd: (e: React.TouchEvent) => void;
 
 	// Add item state
 	addItemValue: string;
@@ -80,6 +83,9 @@ export function ShoppingListProvider({ children, initialData, datestamp, allIngr
 		handleDragOver: dragAndDrop.handleDragOver,
 		handleDragLeave: dragAndDrop.handleDragLeave,
 		handleDrop: dragAndDrop.handleDrop,
+		handleTouchStart: dragAndDrop.handleTouchStart,
+		handleTouchMove: dragAndDrop.handleTouchMove,
+		handleTouchEnd: dragAndDrop.handleTouchEnd,
 
 		// Add item
 		addItemValue: addItemHook.addItemValue,

@@ -10,11 +10,25 @@ interface PantryTableProps {
 	onDragOver: (e: React.DragEvent, targetList?: 'fresh' | 'pantry', targetIndex?: number) => void;
 	onDragLeave: (e: React.DragEvent) => void;
 	onDrop: (e: React.DragEvent, targetList: 'fresh' | 'pantry', targetIndex?: number) => void;
+	onTouchStart?: (e: React.TouchEvent, item: PantryItem, listType: 'fresh' | 'pantry') => void;
+	onTouchMove?: (e: React.TouchEvent) => void;
+	onTouchEnd?: (e: React.TouchEvent) => void;
 }
 
-export function PantryTable({ items, dragOverIndex, isDragging, onDragStart, onDragOver, onDragLeave, onDrop }: PantryTableProps) {
+export function PantryTable({
+	items,
+	dragOverIndex,
+	isDragging,
+	onDragStart,
+	onDragOver,
+	onDragLeave,
+	onDrop,
+	onTouchStart,
+	onTouchMove,
+	onTouchEnd,
+}: PantryTableProps) {
 	return (
-		<div className="overflow-visible">
+		<div className="overflow-visible" data-list-type="pantry">
 			<table className="w-full">
 				<thead>
 					<tr className="border-b border-light">
@@ -22,7 +36,7 @@ export function PantryTable({ items, dragOverIndex, isDragging, onDragStart, onD
 						<th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-24 sm:w-30">2p</th>
 					</tr>
 				</thead>
-				<tbody onDragLeave={onDragLeave}>
+				<tbody onDragLeave={onDragLeave} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
 					{items.map((item, index) => (
 						<PantryRow
 							key={`pantry-${item.name}-${item.id}`}
@@ -33,6 +47,7 @@ export function PantryTable({ items, dragOverIndex, isDragging, onDragStart, onD
 							onDragStart={onDragStart}
 							onDragOver={onDragOver}
 							onDrop={onDrop}
+							onTouchStart={onTouchStart}
 						/>
 					))}
 					{/* Drop zone at the end of the list */}

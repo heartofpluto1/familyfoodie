@@ -32,6 +32,9 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 		handleDragOver,
 		handleDragLeave,
 		handleDrop,
+		handleTouchStart,
+		handleTouchMove,
+		handleTouchEnd,
 		addItemValue,
 		handleInputChange,
 		addItem,
@@ -72,6 +75,9 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
+						onTouchStart={handleTouchStart}
+						onTouchMove={handleTouchMove}
+						onTouchEnd={handleTouchEnd}
 					/>
 
 					<AddItemInput value={addItemValue} onChange={handleInputChange} onAddItem={addItem} allIngredients={allIngredients} />
@@ -91,6 +97,9 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
+						onTouchStart={handleTouchStart}
+						onTouchMove={handleTouchMove}
+						onTouchEnd={handleTouchEnd}
 					/>
 				</div>
 			</div>
