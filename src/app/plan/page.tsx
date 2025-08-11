@@ -1,8 +1,9 @@
 import { Metadata } from 'next';
-import { getNextWeekRecipes, getNextWeek, getAllRecipesWithDetails } from '@/lib/queries/menus';
+import { getCurrentAndPlannedWeeks, getAllRecipesWithDetails } from '@/lib/queries/menus';
 import withAuth from '@/app/components/withAuth';
-import PlanClient from './plan-client';
+import MultiWeekPlanClient from './plan-client-multiweek';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
+import { WeekPlan } from '@/types/plan';
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -12,13 +13,19 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 async function PlanPage() {
-	const nextWeek = getNextWeek();
-	const nextWeekRecipes = await getNextWeekRecipes();
+	const plannedWeeks = await getCurrentAndPlannedWeeks();
 	const allRecipes = await getAllRecipesWithDetails();
 
-	const weekDateRange = formatWeekDateRange(nextWeek.week, nextWeek.year);
+	// Convert database results to WeekPlan format
+	const weekPlans: WeekPlan[] = plannedWeeks.map(({ week, year, recipes }) => ({
+		week,
+		year,
+		weekDates: formatWeekDateRange(week, year),
+		recipes: recipes || [],
+		initialRecipes: recipes || [],
+	}));
 
-	return <PlanClient week={nextWeek.week} year={nextWeek.year} weekDates={weekDateRange} initialRecipes={nextWeekRecipes} allRecipes={allRecipes} />;
+	return <MultiWeekPlanClient initialWeeks={weekPlans} allRecipes={allRecipes} />;
 }
 
 // Force dynamic rendering for authenticated pages

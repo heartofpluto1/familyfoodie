@@ -8,8 +8,8 @@ interface EditControlsProps {
 	isEditMode: boolean;
 	isLoading: boolean;
 	planActions: PlanActions;
-	week: number;
-	year: number;
+	week?: number;
+	year?: number;
 }
 
 export function EditControls({ isEditMode, isLoading, planActions, week, year }: EditControlsProps) {
@@ -26,7 +26,7 @@ export function EditControls({ isEditMode, isLoading, planActions, week, year }:
 
 	if (!isEditMode) {
 		return (
-			<div className="mb-6 flex gap-2 items-center">
+			<div className="mb-6 flex justify-between items-center">
 				<button
 					onClick={planActions.handleEdit}
 					disabled={isLoading}
@@ -34,13 +34,16 @@ export function EditControls({ isEditMode, isLoading, planActions, week, year }:
 				>
 					{isLoading ? 'Loading recipes...' : 'Edit Week'}
 				</button>
-				<Link
-					href={`/shop/${year}/${week}`}
-					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2"
-				>
-					<IntroShoppingCartIcon className="w-4 h-4" />
-					Shopping List
-				</Link>
+
+				{week && year && (
+					<Link
+						href={`/shop/${year}/${week}`}
+						className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2"
+					>
+						<IntroShoppingCartIcon className="w-4 h-4" />
+						Shopping List
+					</Link>
+				)}
 			</div>
 		);
 	}

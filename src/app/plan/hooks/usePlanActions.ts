@@ -13,9 +13,10 @@ interface UsePlanActionsProps {
 	year: number;
 	setAnimatingAutomate?: (animating: boolean) => void;
 	setPendingRecipes?: (recipes: Recipe[] | null) => void;
+	onWeekDelete?: () => void;
 }
 
-export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, resetToInitial, week, year, setAnimatingAutomate, setPendingRecipes }: UsePlanActionsProps): PlanActions {
+export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, resetToInitial, week, year, setAnimatingAutomate, setPendingRecipes, onWeekDelete }: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
 
 	const handleEdit = async (): Promise<void> => {
@@ -95,6 +96,11 @@ export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, r
 				setRecipes([]);
 				setEditMode(false);
 				await resetShoppingList(week, year);
+
+				// Remove the week from multi-week state if callback provided
+				if (onWeekDelete) {
+					onWeekDelete();
+				}
 			}
 		} finally {
 			setLoading(false);
