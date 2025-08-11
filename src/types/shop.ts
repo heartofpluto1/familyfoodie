@@ -10,13 +10,13 @@ export interface Ingredient {
 	pantryCategory?: string;
 }
 
-export interface ShoppingListItem {
+export interface ListItem {
 	id: number;
 	ingredient: string;
 	name: string;
 	cost?: number;
 	stockcode?: number;
-	purchased: boolean;
+	purchased?: boolean;
 	sort: number;
 	quantity?: string;
 	quantityMeasure?: string;
@@ -28,22 +28,13 @@ export interface ShoppingListItem {
 	dragover?: boolean;
 }
 
-export interface PantryItem {
-	id: number;
-	ingredient: string;
-	name: string;
-	sort: number;
-	quantity?: string;
-	quantityMeasure?: string;
-	supermarketCategory?: string;
-	pantryCategory?: string;
-	fresh: boolean;
-	dragover?: boolean;
-}
+// Type aliases for backward compatibility
+export type ShoppingListItem = ListItem;
+export type PantryItem = ListItem;
 
 export interface ShoppingListData {
-	fresh: ShoppingListItem[];
-	pantry: PantryItem[];
+	fresh: ListItem[];
+	pantry: ListItem[];
 }
 
 export interface DateStamp {
