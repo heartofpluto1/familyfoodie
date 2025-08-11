@@ -84,7 +84,7 @@ function MenuCard({ year, week, meals }: Menu) {
 						<p className="text-xs text-muted mt-0.5">{weekDateRange}</p>
 					</div>
 					<a
-						href={`/shop?week=${week}&year=${year}`}
+						href={`/shop/${year}/${week}`}
 						className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
 						title="Shopping list"
 					>
