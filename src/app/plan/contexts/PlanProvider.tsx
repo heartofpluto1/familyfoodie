@@ -14,14 +14,35 @@ interface PlanProviderProps {
 	week: number;
 	year: number;
 	weekDates: string;
+	onRecipesChange?: (recipes: Recipe[]) => void;
+	initialEditMode?: boolean;
+	onWeekDelete?: () => void;
 }
 
 const PlanContext = createContext<PlanContextType | null>(null);
 
-export function PlanProvider({ children, initialRecipes, allRecipes, week, year, weekDates }: PlanProviderProps) {
-	const { state, setRecipes, setEditMode, setLoading, resetToInitial } = usePlanState({ initialRecipes, week, year });
+export function PlanProvider({
+	children,
+	initialRecipes,
+	allRecipes,
+	week,
+	year,
+	weekDates,
+	onRecipesChange,
+	initialEditMode,
+	onWeekDelete,
+}: PlanProviderProps) {
+	const { state, setRecipes: originalSetRecipes, setEditMode, setLoading, resetToInitial } = usePlanState({ initialRecipes, week, year, initialEditMode });
 	const [animatingAutomate, setAnimatingAutomate] = React.useState(false);
 	const [pendingRecipes, setPendingRecipes] = React.useState<Recipe[] | null>(null);
+
+	// Wrapped setRecipes that calls the callback
+	const setRecipes = (recipes: Recipe[]) => {
+		originalSetRecipes(recipes);
+		if (onRecipesChange) {
+			onRecipesChange(recipes);
+		}
+	};
 
 	const planActions = usePlanActions({
 		recipes: state.recipes,
@@ -33,6 +54,7 @@ export function PlanProvider({ children, initialRecipes, allRecipes, week, year,
 		year,
 		setAnimatingAutomate,
 		setPendingRecipes,
+		onWeekDelete,
 	});
 
 	const recipeActions = useRecipeManagement({

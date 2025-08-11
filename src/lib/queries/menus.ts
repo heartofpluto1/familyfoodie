@@ -2,13 +2,14 @@ import pool from '@/lib/db.js';
 import { QueryResult, Menu, PlannedMeal, Recipe, RecipeDetail } from '@/types/menus.js';
 
 /**
- * Calculate week number from date
+ * Calculate ISO week number from date
  */
 function getWeekNumber(date: Date): number {
-	const start = new Date(date.getFullYear(), 0, 1);
-	const diff = date.getTime() - start.getTime();
-	const oneWeek = 1000 * 60 * 60 * 24 * 7;
-	return Math.floor(diff / oneWeek) + 1;
+	const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+	const dayNum = d.getUTCDay() || 7;
+	d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+	const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+	return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 /**
@@ -556,4 +557,75 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		secondaryTypeName: recipe.secondaryTypeName,
 		ingredients,
 	};
+}
+
+/**
+ * Get all planned weeks from current week forward
+ */
+export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: number; recipes: Recipe[] }>> {
+	const { week: currentWeek, year: currentYear } = getCurrentWeek();
+
+	// Get all planned weeks from current week forward (including next year)
+	const query = `
+		SELECT DISTINCT rw.week, rw.year
+		FROM menus_recipeweek rw
+		WHERE rw.account_id = 1
+		AND (
+			(rw.year = ? AND rw.week >= ?) OR
+			(rw.year > ?)
+		)
+		ORDER BY rw.year ASC, rw.week ASC
+	`;
+
+	const [weekRows] = await pool.execute(query, [currentYear, currentWeek, currentYear]);
+	const plannedWeeks = weekRows as Array<{ week: number; year: number }>;
+
+	// Fetch recipes for each planned week
+	const weeksWithRecipes = await Promise.all(
+		plannedWeeks.map(async ({ week, year }) => {
+			const recipesQuery = `
+				SELECT 
+					r.id,
+					r.name,
+					r.filename,
+					r.prepTime,
+					r.cookTime,
+					r.description
+				FROM menus_recipeweek rw
+				JOIN menus_recipe r ON rw.recipe_id = r.id
+				WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1
+				ORDER BY rw.id ASC
+			`;
+
+			const [recipeRows] = await pool.execute(recipesQuery, [week, year]);
+			const recipes = recipeRows as Recipe[];
+
+			return { week, year, recipes };
+		})
+	);
+
+	return weeksWithRecipes;
+}
+
+/**
+ * Get current week recipes and all planned future weeks
+ */
+export async function getCurrentAndPlannedWeeks(): Promise<Array<{ week: number; year: number; recipes: Recipe[] }>> {
+	const { week: currentWeek, year: currentYear } = getCurrentWeek();
+
+	// First get current week recipes
+	const currentWeekRecipes = await getCurrentWeekRecipes();
+
+	// Then get all planned weeks
+	const plannedWeeks = await getAllPlannedWeeks();
+
+	// Check if current week is already in planned weeks
+	const currentWeekExists = plannedWeeks.some(w => w.week === currentWeek && w.year === currentYear);
+
+	if (currentWeekExists) {
+		return plannedWeeks;
+	} else {
+		// Add current week at the beginning if it's not already planned
+		return [{ week: currentWeek, year: currentYear, recipes: currentWeekRecipes }, ...plannedWeeks];
+	}
 }

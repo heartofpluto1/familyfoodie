@@ -6,12 +6,13 @@ interface UsePlanStateProps {
 	initialRecipes: Recipe[];
 	week: number;
 	year: number;
+	initialEditMode?: boolean;
 }
 
-export function usePlanState({ initialRecipes, week, year }: UsePlanStateProps) {
+export function usePlanState({ initialRecipes, week, year, initialEditMode = false }: UsePlanStateProps) {
 	const [state, setState] = useState<PlanState>({
 		recipes: initialRecipes,
-		isEditMode: false,
+		isEditMode: initialEditMode,
 		isLoading: false,
 		week,
 		year,
