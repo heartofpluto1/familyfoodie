@@ -35,7 +35,7 @@ const RecipeCard = ({ recipe, showControls = false, onSwapRecipe, onRemoveRecipe
 
 			<div className="p-4 flex flex-col flex-grow">
 				<Link href={`/recipe/${id}`}>
-					<h3 className="text-lg font-semibold text-foreground mb-2">{name}</h3>
+					<h3 className="text-lg text-foreground mb-2">{name}</h3>
 				</Link>
 
 				{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}

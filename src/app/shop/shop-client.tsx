@@ -57,12 +57,8 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 				<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
 					<div className="bg-gray-50 px-2 sm:px-4 py-3 sm:py-4">
 						<div className="flex justify-between items-center">
-							<h3 className="text-lg sm:text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
-								Shopping List
-							</h3>
-							<h3 className="text-lg sm:text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
-								{formatPrice(cost)}
-							</h3>
+							<h3 className="text-lg sm:text-xl">Shopping List</h3>
+							<h3 className="text-lg sm:text-xl">{formatPrice(cost)}</h3>
 						</div>
 					</div>
 
@@ -84,9 +80,7 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 				{/* Pantry */}
 				<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
 					<div className="bg-gray-50 px-2 sm:px-4 py-3 sm:py-4">
-						<h3 className="text-lg sm:text-xl font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
-							Pantry
-						</h3>
+						<h3 className="text-lg sm:text-xl">Pantry</h3>
 					</div>
 
 					<PantryTable

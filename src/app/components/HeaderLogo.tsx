@@ -42,10 +42,8 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 				<div className="flex items-center justify-between">
 					{/* Title Section */}
 					<div className="min-w-0 flex-shrink">
-						<h1 className="text-xl sm:text-2xl md:text-3xl text-foreground tracking-wide" style={{ fontFamily: 'var(--font-heading)' }}>
-							Family Foodie
-						</h1>
-						<p className="text-xs sm:text-sm text-muted font-light italic xs:block">What the fork is for dinner?</p>
+						<h1 className="text-xl sm:text-2xl md:text-3xl text-foreground tracking-wide">Family Foodie</h1>
+						<p className="text-sm text-muted font-light italic">What the fork is for dinner?</p>
 					</div>
 
 					{/* Navigation and Auth */}

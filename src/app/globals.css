@@ -68,6 +68,10 @@ body {
 		color 0.2s ease;
 }
 
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font-heading);
+}
+
 article h3 {
 	height: 60px;
 	line-height: 1.1;
