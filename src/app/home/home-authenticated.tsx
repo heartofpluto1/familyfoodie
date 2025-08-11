@@ -77,12 +77,10 @@ function MenuCard({ year, week, meals }: Menu) {
 
 	return (
 		<div className="bg-surface border border-custom rounded-sm overflow-hidden hover:shadow-md transition-shadow">
-			<div className="bg-accent text-background px-4 py-3">
+			<div className="bg-accent text-background px-3 py-3">
 				<div className="flex items-center justify-between">
 					<div>
-						<h2 className="text-base font-medium">
-							Week {week}, {year}
-						</h2>
+						<h3 className="text-lg">Week {week}</h3>
 						<p className="text-xs text-muted mt-0.5">{weekDateRange}</p>
 					</div>
 					<a

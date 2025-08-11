@@ -372,7 +372,7 @@ const PlanClient = ({ week, year, weekDates, initialRecipes, allRecipes }: PlanC
 						<div className="add-recipe-card">
 							<div className="add-recipe-content">
 								<div className="flex flex-col items-center mb-4">
-									<h3 className="text-lg font-semibold mb-3">Add Recipe</h3>
+									<h3 className="text-lg mb-3">Add Recipe</h3>
 									<button
 										onClick={handleAddRandomRecipe}
 										disabled={isLoading}
