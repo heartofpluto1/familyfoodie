@@ -13,9 +13,10 @@ interface PantryRowProps {
 	onDragStart: (e: React.DragEvent, item: PantryItem, listType: 'fresh' | 'pantry') => void;
 	onDragOver: (e: React.DragEvent, targetList?: 'fresh' | 'pantry', targetIndex?: number) => void;
 	onDrop: (e: React.DragEvent, targetList: 'fresh' | 'pantry', targetIndex?: number) => void;
+	onTouchStart?: (e: React.TouchEvent, item: PantryItem, listType: 'fresh' | 'pantry') => void;
 }
 
-export function PantryRow({ item, index, dragOverIndex, isDragging, onDragStart, onDragOver, onDrop }: PantryRowProps) {
+export function PantryRow({ item, index, dragOverIndex, isDragging, onDragStart, onDragOver, onDrop, onTouchStart }: PantryRowProps) {
 	return (
 		<React.Fragment key={`fragment-pantry-${item.name}-${item.id}`}>
 			{/* Drop indicator above the row */}
@@ -49,6 +50,7 @@ export function PantryRow({ item, index, dragOverIndex, isDragging, onDragStart,
 								const tr = e.currentTarget.closest('tr');
 								if (tr) tr.draggable = true;
 							}}
+							onTouchStart={onTouchStart ? e => onTouchStart(e, item, 'pantry') : undefined}
 						>
 							<DragHandleIcon className="w-3 h-6 text-white opacity-70" />
 							<Tooltip
