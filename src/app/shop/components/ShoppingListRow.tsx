@@ -40,20 +40,52 @@ export function ShoppingListRow({
 					</td>
 				</tr>
 			)}
-			<tr
-				draggable
-				onDragStart={e => onDragStart(e, item, 'fresh')}
-				onDragOver={e => onDragOver(e, 'fresh', index)}
-				onDrop={e => onDrop(e, 'fresh', index)}
-				className="hover:bg-gray-50"
-			>
+			<tr draggable onDragStart={e => onDragStart(e, item, 'fresh')} onDragOver={e => onDragOver(e, 'fresh', index)} onDrop={e => onDrop(e, 'fresh', index)}>
 				<td className="p-0">
 					<div className="flex items-stretch h-full">
+						<div className="flex items-center px-2 py-1 flex-1">
+							<input
+								type="checkbox"
+								checked={item.purchased}
+								onChange={() => onTogglePurchase(item.id, item.purchased)}
+								className="ml-1 mr-2 sm:ml-1 sm:mr-3 h-4 w-4 text-blue-600 rounded cursor-pointer"
+							/>
+							<span className={`text-xs sm:text-sm ${item.purchased ? 'opacity-50 line-through' : ''}`}>{item.name}</span>
+						</div>
+					</div>
+				</td>
+				<td className="text-center text-xs sm:text-sm px-1 py-1">
+					{roundToTwo(parseFloat(item.quantity || '0'))} {item.quantityMeasure}
+					{parseFloat(item.quantity || '0') > 1 ? 's' : ''}
+				</td>
+				<td className="text-right text-xs sm:text-sm">{item.cost ? formatPrice(item.cost) : ''}</td>
+				<td className="text-right p-0">
+					<div className="flex items-stretch h-full justify-end">
+						<div className="flex items-center gap-2 pr-2">
+							{item.stockcode && (
+								<a
+									href={`https://www.woolworths.com.au/shop/productdetails/${item.stockcode}/`}
+									target="_blank"
+									rel="noopener noreferrer"
+									title="Woolworths details"
+									className="flex items-center"
+								>
+									<LinkIcon className="w-4 h-4" />
+								</a>
+							)}
+							<div className="flex items-center w-4 h-4">
+								{(item.quantity === null || typeof item.quantity === 'undefined') && (
+									<button title="Remove item" onClick={() => onRemoveItem(item.id, item.name)} className="focus:outline-none">
+										<DeleteIcon className="w-4 h-4" />
+									</button>
+								)}
+							</div>
+						</div>
 						<button
 							className="relative group h-full flex items-center justify-center"
 							style={{
 								backgroundColor: getSupermarketCategoryColor(item.supermarketCategory || '', true),
-								width: '8px',
+								width: '10px',
 								paddingTop: '12px',
 								paddingBottom: '12px',
 								cursor: 'grab',
@@ -72,40 +104,7 @@ export function ShoppingListRow({
 								forceHide={isDragging}
 							/>
 						</button>
-						<div className="flex items-center px-1 py-1 flex-1">
-							<input
-								type="checkbox"
-								checked={item.purchased}
-								onChange={() => onTogglePurchase(item.id, item.purchased)}
-								className="ml-2 mr-2 sm:ml-2 sm:mr-3 h-4 w-4 text-blue-600 rounded cursor-pointer"
-							/>
-							<span className={`text-xs sm:text-sm ${item.purchased ? 'opacity-50 line-through' : ''}`}>{item.name}</span>
-						</div>
 					</div>
-				</td>
-				<td className="text-center text-xs sm:text-sm px-1 py-1">
-					{roundToTwo(parseFloat(item.quantity || '0'))} {item.quantityMeasure}
-					{parseFloat(item.quantity || '0') > 1 ? 's' : ''}
-				</td>
-				<td className="px-1 py-1 text-right text-xs sm:text-sm">{item.cost ? formatPrice(item.cost) : ''}</td>
-				<td className="text-center">
-					{item.stockcode && (
-						<a
-							href={`https://www.woolworths.com.au/shop/productdetails/${item.stockcode}/`}
-							target="_blank"
-							rel="noopener noreferrer"
-							title="Woolworths details"
-						>
-							<LinkIcon className="w-4 h-4" />
-						</a>
-					)}
-				</td>
-				<td className="text-center">
-					{(item.quantity === null || typeof item.quantity === 'undefined') && (
-						<button title="Remove item" onClick={() => onRemoveItem(item.id, item.name)} className="focus:outline-none">
-							<DeleteIcon className="w-5 h-5 mt-2" />
-						</button>
-					)}
 				</td>
 			</tr>
 		</React.Fragment>

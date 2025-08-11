@@ -32,8 +32,8 @@ export function PantryTable({
 			<table className="w-full">
 				<thead>
 					<tr className="border-b border-light">
-						<th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">Ingredients</th>
-						<th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-24 sm:w-30">2p</th>
+						<th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">Ingredients</th>
+						<th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-16 sm:w-24">2p</th>
 					</tr>
 				</thead>
 				<tbody onDragLeave={onDragLeave} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
