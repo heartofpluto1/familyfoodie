@@ -36,12 +36,10 @@ export function ShoppingListTable({
 			<table className="w-full">
 				<thead>
 					<tr className="border-b border-light">
-						<th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">Ingredients</th>
-						<th className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-20 sm:w-20">2p</th>
-						<th className="px-1 sm:px-2 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium w-8 sm:w-24">Price</th>
-						<th className="px-1 sm:px-2 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium w-8" colSpan={2}>
-							Edit
-						</th>
+						<th className="px-1 sm:px-3 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">Ingredients</th>
+						<th className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-12 sm:w-20">2p</th>
+						<th className="px-1 sm:px-2 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium w-16 sm:w-24">Price</th>
+						<th className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-16">Edit</th>
 					</tr>
 				</thead>
 				<tbody onDragLeave={onDragLeave} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>

@@ -49,8 +49,8 @@ export function useDragAndDrop(ingredients: ShoppingListData, setIngredients: (v
 
 		document.body.appendChild(tempTable);
 
-		// Set the custom drag image
-		e.dataTransfer.setDragImage(tempTable, 0, 0);
+		// Set the custom drag image - offset by table width so it appears to the left of cursor
+		e.dataTransfer.setDragImage(tempTable, dragRow.offsetWidth, 0);
 
 		// Clean up the temporary element after drag starts
 		setTimeout(() => {
@@ -159,7 +159,7 @@ export function useDragAndDrop(ingredients: ShoppingListData, setIngredients: (v
 		tempTable.style.border = '1px solid rgba(0, 0, 0, 0.1)';
 		tempTable.style.borderRadius = '4px';
 		tempTable.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-		tempTable.style.left = touch.clientX + 'px';
+		tempTable.style.left = touch.clientX - dragRow.offsetWidth + 'px';
 		tempTable.style.top = touch.clientY - 20 + 'px';
 		tempTable.appendChild(dragImage);
 
@@ -192,7 +192,8 @@ export function useDragAndDrop(ingredients: ShoppingListData, setIngredients: (v
 
 		// Update drag element position
 		if (touchDragData.current.dragElement) {
-			touchDragData.current.dragElement.style.left = touch.clientX + 'px';
+			const dragRowWidth = touchDragData.current.dragElement.offsetWidth;
+			touchDragData.current.dragElement.style.left = touch.clientX - dragRowWidth + 'px';
 			touchDragData.current.dragElement.style.top = touch.clientY - 20 + 'px';
 		}
 
