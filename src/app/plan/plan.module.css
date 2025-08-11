@@ -1,0 +1,100 @@
+.editMode {
+	border: 5px dashed rgba(100, 100, 100, 0.3);
+	padding: 1.5rem;
+	border-radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	.editMode {
+		border: 5px dashed rgba(200, 200, 200, 0.2);
+	}
+}
+
+.addRecipeCard {
+	border: 5px dashed rgba(100, 100, 100, 0.3);
+	border-radius: 0.5rem;
+	padding: 1.5rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 380px;
+	background: rgb(249, 250, 251); /* gray-50 */
+	max-width: 310px;
+	width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+	.addRecipeCard {
+		border: 5px dashed rgba(200, 200, 200, 0.2);
+		background: rgba(55, 55, 55, 0.2); /* gray-700 */
+	}
+}
+
+.addRecipeContent {
+	width: 100%;
+}
+
+.recipeSearch {
+	position: relative;
+}
+
+.searchResults {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: hsl(var(--popover, 0 0% 100%));
+	border: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
+	border-top: none;
+	border-radius: 0 0 0.375rem 0.375rem;
+	max-height: 300px;
+	overflow-y: auto;
+	z-index: 50;
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+	.searchResults {
+		background: hsl(var(--popover, 222.2 84% 4.9%));
+		border-color: hsl(var(--border, 217.2 32.6% 17.5%));
+	}
+}
+
+.searchResultItem {
+	padding: 0.75rem;
+	border-bottom: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
+	cursor: pointer;
+	transition: background-color 0.2s;
+	color: hsl(var(--foreground, 222.2 84% 4.9%));
+}
+
+.searchResultItem:hover,
+.searchResultItem:focus {
+	background: hsl(var(--accent, 210 40% 95%));
+	outline: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	.searchResultItem {
+		border-bottom-color: hsl(var(--border, 217.2 32.6% 17.5%));
+		color: hsl(var(--foreground, 210 40% 98%));
+	}
+
+	.searchResultItem:hover,
+	.searchResultItem:focus {
+		background: hsl(var(--accent, 217.2 32.6% 17.5%));
+	}
+}
+
+.searchResultItem:last-child {
+	border-bottom: none;
+}
+
+.searchOverlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 40;
+}
