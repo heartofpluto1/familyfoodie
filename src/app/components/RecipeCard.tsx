@@ -1,17 +1,91 @@
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import { SwapIcon, RemoveIcon, TimeIcon } from './Icons';
+import React, { useState } from 'react';
 
 interface RecipeCardProps {
 	recipe: Recipe;
 	showControls?: boolean;
-	onSwapRecipe?: (recipe: Recipe) => void;
+	onSwapRecipe?: (recipe: Recipe) => Promise<Recipe | null>;
+	onCommitSwap?: (recipeToReplace: Recipe, newRecipe: Recipe) => void;
 	onRemoveRecipe?: (recipe: Recipe) => void;
+	triggerAnimation?: boolean;
+	newRecipe?: Recipe | null;
+	onAnimationComplete?: () => void;
 }
 
-const RecipeCard = ({ recipe, showControls = false, onSwapRecipe, onRemoveRecipe }: RecipeCardProps) => {
-	const { id, name, filename, prepTime, cookTime, cost } = recipe;
+const RecipeCard = ({
+	recipe,
+	showControls = false,
+	onSwapRecipe,
+	onCommitSwap,
+	onRemoveRecipe,
+	triggerAnimation,
+	newRecipe,
+	onAnimationComplete,
+}: RecipeCardProps) => {
+	const [displayRecipe, setDisplayRecipe] = useState(recipe);
+	const [isFlipping, setIsFlipping] = useState(false);
+	const [showNewContent, setShowNewContent] = useState(false);
+
+	// Update displayRecipe when recipe prop changes (from parent state)
+	React.useEffect(() => {
+		if (!isFlipping) {
+			setDisplayRecipe(recipe);
+		}
+	}, [recipe, isFlipping]);
+
+	// Handle external animation trigger (for Automate button)
+	React.useEffect(() => {
+		if (triggerAnimation && newRecipe && newRecipe.id !== displayRecipe.id) {
+			setIsFlipping(true);
+
+			// After half rotation, swap content and counter the mirror
+			setTimeout(() => {
+				setDisplayRecipe(newRecipe);
+				setShowNewContent(true);
+			}, 200);
+
+			// After full animation, notify completion
+			setTimeout(() => {
+				setIsFlipping(false);
+				setShowNewContent(false);
+				if (onAnimationComplete) {
+					onAnimationComplete();
+				}
+			}, 400);
+		}
+	}, [triggerAnimation, newRecipe]);
+
+	const { id, name, filename, prepTime, cookTime, cost } = displayRecipe;
 	const totalTime = (prepTime || 0) + (cookTime || 0);
+
+	const handleSwapRecipe = async () => {
+		if (!onSwapRecipe || isFlipping) return;
+
+		// Call onSwapRecipe immediately to fetch new recipe (updates loading state)
+		const newRecipe = await onSwapRecipe(recipe);
+
+		// Only start animation if we got a new recipe
+		if (newRecipe) {
+			setIsFlipping(true);
+
+			// After half rotation, swap content and counter the mirror
+			setTimeout(() => {
+				setDisplayRecipe(newRecipe);
+				setShowNewContent(true);
+			}, 200);
+
+			// After full animation, update parent state and reset
+			setTimeout(() => {
+				if (onCommitSwap) {
+					onCommitSwap(recipe, newRecipe);
+				}
+				setIsFlipping(false);
+				setShowNewContent(false);
+			}, 400);
+		}
+	};
 
 	const formatTime = (minutes: number): string => {
 		if (minutes >= 60) {
@@ -26,53 +100,69 @@ const RecipeCard = ({ recipe, showControls = false, onSwapRecipe, onRemoveRecipe
 	};
 
 	return (
-		<article
-			className={`relative bg-surface border border-custom rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow max-w-[310px] w-full flex flex-col`}
-		>
-			<Link href={`/recipe/${id}`} className="block">
-				<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`/static/${filename}.jpg`} />
-			</Link>
+		<div className="recipe-card-container" style={{ perspective: '1000px' }}>
+			<article
+				className={`relative bg-surface border border-custom rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 max-w-[310px] w-full flex flex-col`}
+				style={{
+					transformStyle: 'preserve-3d',
+					transition: 'transform 0.4s ease-in-out',
+					transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
+				}}
+			>
+				<div
+					className="w-full h-full flex flex-col"
+					style={{
+						transform: showNewContent ? 'scaleX(-1)' : 'none',
+						transition: 'none',
+					}}
+				>
+					<Link href={`/recipe/${id}`} className="block">
+						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`/static/${filename}.jpg`} />
+					</Link>
 
-			<div className="p-4 flex flex-col flex-grow">
-				<Link href={`/recipe/${id}`}>
-					<h3 className="text-lg text-foreground mb-2">{name}</h3>
-				</Link>
+					<div className="p-4 flex flex-col flex-grow">
+						<Link href={`/recipe/${id}`}>
+							<h3 className="text-lg text-foreground mb-2">{name}</h3>
+						</Link>
 
-				{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
+						{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
 
-				<div className="mt-auto">
-					{totalTime > 0 && (
-						<p className="text-sm text-muted flex items-center">
-							<TimeIcon />
-							{formatTime(totalTime)}
-						</p>
-					)}
+						<div className="mt-auto">
+							{totalTime > 0 && (
+								<p className="text-sm text-muted flex items-center">
+									<TimeIcon />
+									{formatTime(totalTime)}
+								</p>
+							)}
+						</div>
+					</div>
 				</div>
-			</div>
 
-			{showControls && (
-				<>
-					{onSwapRecipe && (
-						<button
-							onClick={() => onSwapRecipe(recipe)}
-							className="absolute top-2 left-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
-							title="Swap recipe"
-						>
-							<SwapIcon />
-						</button>
-					)}
-					{onRemoveRecipe && (
-						<button
-							onClick={() => onRemoveRecipe(recipe)}
-							className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
-							title="Remove recipe"
-						>
-							<RemoveIcon />
-						</button>
-					)}
-				</>
-			)}
-		</article>
+				{showControls && (
+					<>
+						{onSwapRecipe && (
+							<button
+								onClick={handleSwapRecipe}
+								className="absolute top-2 left-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
+								title="Swap recipe"
+								disabled={isFlipping}
+							>
+								<SwapIcon />
+							</button>
+						)}
+						{onRemoveRecipe && (
+							<button
+								onClick={() => onRemoveRecipe(recipe)}
+								className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
+								title="Remove recipe"
+							>
+								<RemoveIcon />
+							</button>
+						)}
+					</>
+				)}
+			</article>
+		</div>
 	);
 };
 

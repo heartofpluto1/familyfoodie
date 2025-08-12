@@ -20,6 +20,8 @@ const PlanContext = createContext<PlanContextType | null>(null);
 
 export function PlanProvider({ children, initialRecipes, allRecipes, week, year, weekDates }: PlanProviderProps) {
 	const { state, setRecipes, setEditMode, setLoading, resetToInitial } = usePlanState({ initialRecipes, week, year });
+	const [animatingAutomate, setAnimatingAutomate] = React.useState(false);
+	const [pendingRecipes, setPendingRecipes] = React.useState<Recipe[] | null>(null);
 
 	const planActions = usePlanActions({
 		recipes: state.recipes,
@@ -29,6 +31,8 @@ export function PlanProvider({ children, initialRecipes, allRecipes, week, year,
 		resetToInitial,
 		week,
 		year,
+		setAnimatingAutomate,
+		setPendingRecipes,
 	});
 
 	const recipeActions = useRecipeManagement({
@@ -44,6 +48,8 @@ export function PlanProvider({ children, initialRecipes, allRecipes, week, year,
 		allRecipes,
 		weekDates,
 		initialRecipes,
+		animatingAutomate,
+		pendingRecipes,
 	};
 
 	return <PlanContext.Provider value={contextValue}>{children}</PlanContext.Provider>;

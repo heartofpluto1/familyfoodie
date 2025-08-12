@@ -17,7 +17,8 @@ export interface PlanActions {
 }
 
 export interface RecipeManagementActions {
-	handleSwapRecipe: (recipeToReplace: Recipe) => Promise<void>;
+	handleSwapRecipe: (recipeToReplace: Recipe) => Promise<Recipe | null>;
+	commitSwapRecipe: (recipeToReplace: Recipe, newRecipe: Recipe) => void;
 	handleRemoveRecipe: (recipeToRemove: Recipe) => void;
 	handleAddRecipe: (recipe: Recipe) => void;
 	handleAddRandomRecipe: () => Promise<void>;
@@ -42,6 +43,10 @@ export interface PlanContextType {
 	allRecipes: Recipe[];
 	weekDates: string;
 	initialRecipes: Recipe[];
+	
+	// Animation state for automate
+	animatingAutomate?: boolean;
+	pendingRecipes?: Recipe[] | null;
 }
 
 export interface SearchState {

@@ -4,7 +4,7 @@ import { Recipe } from '@/types/menus';
 import { withAuth } from '@/lib/auth-middleware';
 
 // Randomization logic with ingredient constraints
-function selectRandomRecipes(availableRecipes: Recipe[], count: number = 4): Recipe[] {
+function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Recipe[] {
 	const selected: Recipe[] = [];
 	const usedPrimaryIngredients = new Set<string>();
 	const usedSecondaryIngredients = new Set<string>();
@@ -41,10 +41,15 @@ function selectRandomRecipes(availableRecipes: Recipe[], count: number = 4): Rec
 	return selected;
 }
 
-async function handler() {
+async function handler(request: Request) {
 	try {
+		// Get the count from query params
+		const url = new URL(request.url);
+		const countParam = url.searchParams.get('count');
+		const count = countParam ? parseInt(countParam) : 3; // Default to 3 if not specified
+		
 		const availableRecipes = await getRecipesForRandomization();
-		const randomizedRecipes = selectRandomRecipes(availableRecipes);
+		const randomizedRecipes = selectRandomRecipes(availableRecipes, count);
 
 		return NextResponse.json({
 			recipes: randomizedRecipes,
