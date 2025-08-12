@@ -42,13 +42,16 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseReci
 				return replacement;
 			}
 			return null;
-		} finally {
-			setLoading(false);
+		} catch (error) {
+			console.error('Error swapping recipe:', error);
+			return null;
 		}
+		// Note: Don't call setLoading(false) here to avoid interfering with automate animation
 	};
 
 	const commitSwapRecipe = (recipeToReplace: Recipe, newRecipe: Recipe): void => {
 		setRecipes(recipes.map(r => (r.id === recipeToReplace.id ? newRecipe : r)));
+		setLoading(false);
 	};
 
 	const handleRemoveRecipe = (recipeToRemove: Recipe): void => {

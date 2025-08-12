@@ -53,19 +53,24 @@ export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, r
 					setPendingRecipes(result.recipes);
 					setAnimatingAutomate(true);
 					
-					// After animations complete, update the actual state
+					// After animations complete, update the actual state and clear loading
 					setTimeout(() => {
-						setRecipes(result.recipes);
 						setPendingRecipes(null);
 						setAnimatingAutomate(false);
+						setLoading(false);
+						setRecipes(result.recipes);
 					}, 400);
 				} else {
 					// Fallback to immediate update if animation props not provided
 					setRecipes(result.recipes);
+					setLoading(false);
 				}
+			} else {
+				setLoading(false);
 			}
-		} finally {
+		} catch (error) {
 			setLoading(false);
+			throw error;
 		}
 	};
 

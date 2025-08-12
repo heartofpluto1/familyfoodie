@@ -116,12 +116,12 @@ const RecipeCard = ({
 						transition: 'none',
 					}}
 				>
-					<Link href={`/recipe/${id}`} className="block">
+					<Link href={`/recipe/${id}`} className="block" target="_blank" rel="noopener noreferrer">
 						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`/static/${filename}.jpg`} />
 					</Link>
 
 					<div className="p-4 flex flex-col flex-grow">
-						<Link href={`/recipe/${id}`}>
+						<Link href={`/recipe/${id}`} target="_blank" rel="noopener noreferrer">
 							<h3 className="text-lg text-foreground mb-2">{name}</h3>
 						</Link>
 
@@ -143,9 +143,13 @@ const RecipeCard = ({
 						{onSwapRecipe && (
 							<button
 								onClick={handleSwapRecipe}
-								className="absolute top-2 left-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
+								className={`absolute top-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all ${showNewContent ? 'right-2' : 'left-2'}`}
 								title="Swap recipe"
 								disabled={isFlipping}
+								style={{
+									transform: showNewContent ? 'scaleX(-1)' : 'none',
+									transition: 'none',
+								}}
 							>
 								<SwapIcon />
 							</button>
@@ -153,8 +157,12 @@ const RecipeCard = ({
 						{onRemoveRecipe && (
 							<button
 								onClick={() => onRemoveRecipe(recipe)}
-								className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all"
+								className={`absolute top-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all ${showNewContent ? 'left-2' : 'right-2'}`}
 								title="Remove recipe"
+								style={{
+									transform: showNewContent ? 'scaleX(-1)' : 'none',
+									transition: 'none',
+								}}
 							>
 								<RemoveIcon />
 							</button>
