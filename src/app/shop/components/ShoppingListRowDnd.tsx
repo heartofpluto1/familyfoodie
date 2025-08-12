@@ -3,7 +3,7 @@ import { ListItem } from '@/types/shop';
 import { DragHandleIcon, LinkIcon, DeleteIcon } from '@/app/components/Icons';
 import Tooltip from '@/app/components/Tooltip';
 import { roundToTwo, formatPrice } from '@/app/shop/utils/shoppingListUtils';
-import { getSupermarketCategoryColor } from '@/app/utils/categoryColors';
+import { getSupermarketCategoryColor } from '@/lib/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
 
 interface ShoppingListRowDndProps {
