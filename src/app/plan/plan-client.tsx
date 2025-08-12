@@ -17,13 +17,13 @@ interface PlanClientProps {
 }
 
 function PlanContent() {
-	const { state, planActions, recipeActions, allRecipes, weekDates } = usePlanContext();
+	const { state, planActions, recipeActions, allRecipes, weekDates, animatingAutomate, pendingRecipes } = usePlanContext();
 
 	return (
 		<main className="container mx-auto px-4 py-8">
 			<PlanHeader week={state.week} weekDates={weekDates} />
 
-			<EditControls isEditMode={state.isEditMode} isLoading={state.isLoading} planActions={planActions} />
+			<EditControls isEditMode={state.isEditMode} isLoading={state.isLoading} planActions={planActions} week={state.week} year={state.year} />
 
 			<div className={state.isEditMode ? styles.editMode : ''}>
 				<RecipeGrid
@@ -32,6 +32,8 @@ function PlanContent() {
 					isEditMode={state.isEditMode}
 					isLoading={state.isLoading}
 					recipeActions={recipeActions}
+					animatingAutomate={animatingAutomate}
+					pendingRecipes={pendingRecipes}
 				/>
 			</div>
 		</main>

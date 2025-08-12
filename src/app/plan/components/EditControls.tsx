@@ -1,14 +1,18 @@
 import React from 'react';
+import Link from 'next/link';
 import { PlanActions } from '@/types/plan';
 import { ConfirmDialog } from './ConfirmDialog';
+import { IntroShoppingCartIcon } from '@/app/components/Icons';
 
 interface EditControlsProps {
 	isEditMode: boolean;
 	isLoading: boolean;
 	planActions: PlanActions;
+	week: number;
+	year: number;
 }
 
-export function EditControls({ isEditMode, isLoading, planActions }: EditControlsProps) {
+export function EditControls({ isEditMode, isLoading, planActions, week, year }: EditControlsProps) {
 	const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
 	const handleDeleteClick = () => {
@@ -22,7 +26,7 @@ export function EditControls({ isEditMode, isLoading, planActions }: EditControl
 
 	if (!isEditMode) {
 		return (
-			<div className="mb-6">
+			<div className="mb-6 flex gap-2 items-center">
 				<button
 					onClick={planActions.handleEdit}
 					disabled={isLoading}
@@ -30,6 +34,13 @@ export function EditControls({ isEditMode, isLoading, planActions }: EditControl
 				>
 					{isLoading ? 'Loading recipes...' : 'Edit Week'}
 				</button>
+				<Link
+					href={`/shop/${year}/${week}`}
+					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2"
+				>
+					<IntroShoppingCartIcon className="w-4 h-4" />
+					Shopping List
+				</Link>
 			</div>
 		);
 	}
@@ -42,14 +53,14 @@ export function EditControls({ isEditMode, isLoading, planActions }: EditControl
 					disabled={isLoading}
 					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
 				>
-					{isLoading ? 'Automating...' : 'Automate'}
+					Automate
 				</button>
 				<button
 					onClick={planActions.handleSave}
 					disabled={isLoading}
 					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
 				>
-					{isLoading ? 'Saving...' : 'Save'}
+					Save
 				</button>
 				<button
 					onClick={handleDeleteClick}

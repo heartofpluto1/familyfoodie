@@ -11,9 +11,11 @@ interface UsePlanActionsProps {
 	resetToInitial: () => void;
 	week: number;
 	year: number;
+	setAnimatingAutomate?: (animating: boolean) => void;
+	setPendingRecipes?: (recipes: Recipe[] | null) => void;
 }
 
-export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, resetToInitial, week, year }: UsePlanActionsProps): PlanActions {
+export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, resetToInitial, week, year, setAnimatingAutomate, setPendingRecipes }: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
 
 	const handleEdit = async (): Promise<void> => {
@@ -23,7 +25,7 @@ export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, r
 		if (recipes.length === 0) {
 			setLoading(true);
 			try {
-				const result = await planService.randomizeRecipes();
+				const result = await planService.randomizeRecipes(3);
 				if (result.success && result.recipes) {
 					setRecipes(result.recipes);
 				}
@@ -41,9 +43,25 @@ export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, r
 	const handleAutomate = async (): Promise<void> => {
 		setLoading(true);
 		try {
-			const result = await planService.randomizeRecipes();
+			// Use current recipe count if recipes exist, otherwise default to 3
+			const count = recipes.length > 0 ? recipes.length : 3;
+			const result = await planService.randomizeRecipes(count);
 			if (result.success && result.recipes) {
-				setRecipes(result.recipes);
+				if (setAnimatingAutomate && setPendingRecipes) {
+					// Store the new recipes and trigger animations
+					setPendingRecipes(result.recipes);
+					setAnimatingAutomate(true);
+					
+					// After animations complete, update the actual state
+					setTimeout(() => {
+						setRecipes(result.recipes);
+						setPendingRecipes(null);
+						setAnimatingAutomate(false);
+					}, 400);
+				} else {
+					// Fallback to immediate update if animation props not provided
+					setRecipes(result.recipes);
+				}
 			}
 		} finally {
 			setLoading(false);

@@ -30,23 +30,25 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseReci
 		);
 	};
 
-	const handleSwapRecipe = async (recipeToReplace: Recipe): Promise<void> => {
+	const handleSwapRecipe = async (recipeToReplace: Recipe): Promise<Recipe | null> => {
 		setLoading(true);
 		try {
-			const result = await planService.randomizeRecipes();
+			// Request just 1 recipe for swapping
+			const result = await planService.randomizeRecipes(1);
 
 			if (result.success && result.recipes && result.recipes.length > 0) {
-				const currentIds = recipes.map(r => r.id);
-				const availableReplacements = result.recipes.filter((r: Recipe) => !currentIds.includes(r.id));
-
-				if (availableReplacements.length > 0) {
-					const replacement = availableReplacements[0];
-					setRecipes(recipes.map(r => (r.id === recipeToReplace.id ? replacement : r)));
-				}
+				const replacement = result.recipes[0];
+				// Don't update state here - just return the new recipe
+				return replacement;
 			}
+			return null;
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const commitSwapRecipe = (recipeToReplace: Recipe, newRecipe: Recipe): void => {
+		setRecipes(recipes.map(r => (r.id === recipeToReplace.id ? newRecipe : r)));
 	};
 
 	const handleRemoveRecipe = (recipeToRemove: Recipe): void => {
@@ -60,21 +62,12 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseReci
 	const handleAddRandomRecipe = async (): Promise<void> => {
 		setLoading(true);
 		try {
-			const result = await planService.randomizeRecipes();
+			// Request just 1 recipe to add
+			const result = await planService.randomizeRecipes(1);
 
 			if (result.success && result.recipes && result.recipes.length > 0) {
-				const currentIds = recipes.map(r => r.id);
-				const availableRecipes = result.recipes.filter((r: Recipe) => !currentIds.includes(r.id));
-
-				if (availableRecipes.length > 0) {
-					const compatibleRecipe = findCompatibleRecipe(availableRecipes, recipes);
-
-					if (compatibleRecipe) {
-						setRecipes([...recipes, compatibleRecipe]);
-					} else if (availableRecipes.length > 0) {
-						setRecipes([...recipes, availableRecipes[0]]);
-					}
-				}
+				const newRecipe = result.recipes[0];
+				setRecipes([...recipes, newRecipe]);
 			}
 		} finally {
 			setLoading(false);
@@ -83,6 +76,7 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseReci
 
 	return {
 		handleSwapRecipe,
+		commitSwapRecipe,
 		handleRemoveRecipe,
 		handleAddRecipe,
 		handleAddRandomRecipe,
