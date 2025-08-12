@@ -1,6 +1,7 @@
 import React from 'react';
 import { ListItem } from '@/types/shop';
 import { DragHandleIcon } from '@/app/components/Icons';
+import Tooltip from '@/app/components/Tooltip';
 import { roundToTwo } from '@/app/shop/utils/shoppingListUtils';
 import { getPantryCategoryColor } from '@/app/shop/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
@@ -24,22 +25,28 @@ export function PantryRowDnd({ item, isDragOverlay = false }: PantryRowDndProps)
 		opacity: isDragging ? 0.5 : 1,
 	};
 
-	const borderColor = getPantryCategoryColor(item.pantryCategory || '', true);
-
 	return (
 		<tr
 			ref={setNodeRef}
 			style={{
 				...style,
-				borderLeftColor: borderColor,
 			}}
-			className={`${isDragging ? 'opacity-50' : ''} border-b border-light border-l-4`}
+			className={`${isDragging ? 'opacity-50' : ''} border-b border-light`}
 			{...attributes}
 		>
-			<td className="px-1">
+			<td className="p-0">
 				<div className="flex items-stretch h-full">
-					<div className="flex items-center px-1 sm:px-2 py-1.5 sm:py-2 flex-1">
-						<span className="text-xs sm:text-sm">{item.name}</span>
+					{item.pantryCategory && (
+						<div className="flex items-center relative group">
+							<div className="block w-1 h-full min-h-10" style={{ backgroundColor: getPantryCategoryColor(item.pantryCategory, true) }}></div>
+							<Tooltip text={item.pantryCategory} backgroundColor={getPantryCategoryColor(item.pantryCategory, false)} />
+						</div>
+					)}
+
+					<div className="flex items-stretch h-full">
+						<div className="flex items-center px-1 sm:px-2 py-1.5 sm:py-2 flex-1 relative group">
+							<span className="text-xs sm:text-sm">{item.name}</span>
+						</div>
 					</div>
 				</div>
 			</td>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ListItem } from '@/types/shop';
 import { DragHandleIcon, LinkIcon, DeleteIcon } from '@/app/components/Icons';
+import Tooltip from '@/app/components/Tooltip';
 import { roundToTwo, formatPrice } from '@/app/shop/utils/shoppingListUtils';
 import { getSupermarketCategoryColor } from '@/app/shop/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
@@ -26,20 +27,23 @@ export function ShoppingListRowDnd({ item, onTogglePurchase, onRemoveItem, isDra
 		opacity: isDragging ? 0.5 : 1,
 	};
 
-	const borderColor = getSupermarketCategoryColor(item.supermarketCategory || '', true);
-
 	return (
 		<tr
 			ref={setNodeRef}
 			style={{
 				...style,
-				borderLeftColor: borderColor,
 			}}
-			className={`${isDragging ? 'opacity-50' : ''} border-b border-light border-l-4`}
+			className={`${isDragging ? 'opacity-50' : ''} border-b border-light`}
 			{...attributes}
 		>
 			<td className="p-0">
 				<div className="flex items-stretch h-full">
+					{item.supermarketCategory && (
+						<div className="flex items-center relative group">
+							<div className="block w-1 h-full min-h-10" style={{ backgroundColor: getSupermarketCategoryColor(item.supermarketCategory, true) }}></div>
+							<Tooltip text={item.supermarketCategory} backgroundColor={getSupermarketCategoryColor(item.supermarketCategory, false)} />
+						</div>
+					)}
 					<div className="flex items-center px-2 py-1 flex-1">
 						<input
 							type="checkbox"

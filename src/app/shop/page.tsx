@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/session';
 
 function getWeekNumber(date: Date): number {
 	const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -8,7 +9,13 @@ function getWeekNumber(date: Date): number {
 	return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
-export default function ShopPage() {
+export default async function ShopPage() {
+	// Check authentication
+	const session = await getSession();
+	if (!session) {
+		redirect('/login');
+	}
+
 	// Redirect to current week
 	const currentDate = new Date();
 	const currentWeek = getWeekNumber(currentDate);
