@@ -9,28 +9,7 @@ interface UseRecipeManagementProps {
 }
 
 export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseRecipeManagementProps): RecipeManagementActions {
-	const findCompatibleRecipe = (availableRecipes: Recipe[], currentRecipes: Recipe[]): Recipe | null => {
-		const usedPrimaryIngredients = new Set(currentRecipes.filter(r => r.ingredients && r.ingredients.length > 0).map(r => r.ingredients![0]));
-
-		const usedSecondaryIngredients = new Set(currentRecipes.filter(r => r.ingredients && r.ingredients.length > 1).map(r => r.ingredients![1]));
-
-		return (
-			availableRecipes.find((recipe: Recipe) => {
-				const ingredients = recipe.ingredients || [];
-				if (ingredients.length === 0) return true;
-
-				const primaryIngredient = ingredients[0];
-				const secondaryIngredient = ingredients.length > 1 ? ingredients[1] : null;
-
-				const primaryConflict = usedPrimaryIngredients.has(primaryIngredient);
-				const secondaryConflict = secondaryIngredient && usedSecondaryIngredients.has(secondaryIngredient);
-
-				return !primaryConflict && !secondaryConflict;
-			}) || null
-		);
-	};
-
-	const handleSwapRecipe = async (recipeToReplace: Recipe): Promise<Recipe | null> => {
+	const handleSwapRecipe = async (): Promise<Recipe | null> => {
 		setLoading(true);
 		try {
 			// Request just 1 recipe for swapping
@@ -42,13 +21,16 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseReci
 				return replacement;
 			}
 			return null;
-		} finally {
-			setLoading(false);
+		} catch (error) {
+			console.error('Error swapping recipe:', error);
+			return null;
 		}
+		// Note: Don't call setLoading(false) here to avoid interfering with automate animation
 	};
 
 	const commitSwapRecipe = (recipeToReplace: Recipe, newRecipe: Recipe): void => {
 		setRecipes(recipes.map(r => (r.id === recipeToReplace.id ? newRecipe : r)));
+		setLoading(false);
 	};
 
 	const handleRemoveRecipe = (recipeToRemove: Recipe): void => {

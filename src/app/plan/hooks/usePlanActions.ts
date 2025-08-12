@@ -16,7 +16,18 @@ interface UsePlanActionsProps {
 	onWeekDelete?: () => void;
 }
 
-export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, resetToInitial, week, year, setAnimatingAutomate, setPendingRecipes, onWeekDelete }: UsePlanActionsProps): PlanActions {
+export function usePlanActions({
+	recipes,
+	setRecipes,
+	setEditMode,
+	setLoading,
+	resetToInitial,
+	week,
+	year,
+	setAnimatingAutomate,
+	setPendingRecipes,
+	onWeekDelete,
+}: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
 
 	const handleEdit = async (): Promise<void> => {
@@ -27,7 +38,7 @@ export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, r
 			setLoading(true);
 			try {
 				const result = await planService.randomizeRecipes(3);
-				if (result.success && result.recipes) {
+				if (result.success && result.recipes && Array.isArray(result.recipes)) {
 					setRecipes(result.recipes);
 				}
 			} finally {
@@ -47,25 +58,30 @@ export function usePlanActions({ recipes, setRecipes, setEditMode, setLoading, r
 			// Use current recipe count if recipes exist, otherwise default to 3
 			const count = recipes.length > 0 ? recipes.length : 3;
 			const result = await planService.randomizeRecipes(count);
-			if (result.success && result.recipes) {
+			if (result.success && result.recipes && Array.isArray(result.recipes)) {
 				if (setAnimatingAutomate && setPendingRecipes) {
 					// Store the new recipes and trigger animations
 					setPendingRecipes(result.recipes);
 					setAnimatingAutomate(true);
-					
-					// After animations complete, update the actual state
+
+					// After animations complete, update the actual state and clear loading
 					setTimeout(() => {
-						setRecipes(result.recipes);
 						setPendingRecipes(null);
 						setAnimatingAutomate(false);
+						setLoading(false);
+						setRecipes(result.recipes!);
 					}, 400);
 				} else {
 					// Fallback to immediate update if animation props not provided
 					setRecipes(result.recipes);
+					setLoading(false);
 				}
+			} else {
+				setLoading(false);
 			}
-		} finally {
+		} catch (error) {
 			setLoading(false);
+			throw error;
 		}
 	};
 

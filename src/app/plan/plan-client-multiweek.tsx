@@ -41,7 +41,7 @@ export default function MultiWeekPlanClient({ initialWeeks, allRecipes }: MultiW
 						onUpdateRecipes={updateWeekRecipes}
 						onWeekDelete={() => removeWeek(createWeekId(week.week, week.year))}
 					/>
-					{index < multiWeekState.weeks.length - 1 && <hr className="border-t border-gray-300 dark:border-gray-600 mb-12" />}
+					{index < multiWeekState.weeks.length && <hr className="border-t border-gray-300 dark:border-gray-600 mb-10" />}
 				</React.Fragment>
 			))}
 

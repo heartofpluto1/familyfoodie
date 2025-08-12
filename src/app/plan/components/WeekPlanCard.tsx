@@ -16,11 +16,11 @@ interface WeekPlanCardProps {
 }
 
 function WeekPlanContent({ weekPlan }: { weekPlan: WeekPlan }) {
-	const { state, planActions, recipeActions, allRecipes, weekDates } = usePlanContext();
+	const { state, planActions, recipeActions, allRecipes, weekDates, animatingAutomate, pendingRecipes } = usePlanContext();
 
 	return (
 		<div className="mb-12">
-			<div className="flex justify-between items-start mb-6">
+			<div className="flex justify-between items-start">
 				<PlanHeader week={state.week} weekDates={weekDates} />
 			</div>
 
@@ -33,6 +33,8 @@ function WeekPlanContent({ weekPlan }: { weekPlan: WeekPlan }) {
 					isEditMode={state.isEditMode}
 					isLoading={state.isLoading}
 					recipeActions={recipeActions}
+					animatingAutomate={animatingAutomate}
+					pendingRecipes={pendingRecipes}
 				/>
 			</div>
 		</div>

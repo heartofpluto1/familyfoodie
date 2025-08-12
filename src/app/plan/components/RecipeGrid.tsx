@@ -20,7 +20,7 @@ export function RecipeGrid({ recipes, allRecipes, isEditMode, isLoading, recipeA
 			{recipes.map((recipe, index) => {
 				// Find the corresponding new recipe for this position during automate animation
 				const newRecipe = animatingAutomate && pendingRecipes ? pendingRecipes[index] : null;
-				
+
 				return (
 					<RecipeCard
 						key={recipe.id}

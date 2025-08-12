@@ -1,5 +1,4 @@
 import React from 'react';
-import Link from 'next/link';
 import { PlanActions } from '@/types/plan';
 import { ConfirmDialog } from './ConfirmDialog';
 import { IntroShoppingCartIcon } from '@/app/components/Icons';
@@ -36,13 +35,13 @@ export function EditControls({ isEditMode, isLoading, planActions, week, year }:
 				</button>
 
 				{week && year && (
-					<Link
+					<a
 						href={`/shop/${year}/${week}`}
 						className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2"
 					>
 						<IntroShoppingCartIcon className="w-4 h-4" />
 						Shopping List
-					</Link>
+					</a>
 				)}
 			</div>
 		);

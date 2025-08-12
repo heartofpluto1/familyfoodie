@@ -4,7 +4,7 @@ import { RecipeDetail } from '@/types/menus';
 import HeaderPage from '@/app/components/HeaderPage';
 import { TimeIcon, DownloadIcon } from '@/app/components/Icons';
 import Tooltip from '@/app/components/Tooltip';
-import { getPantryCategoryColor } from '@/app/utils/categoryColors';
+import { getPantryCategoryColor } from '@/lib/utils/categoryColors';
 
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;

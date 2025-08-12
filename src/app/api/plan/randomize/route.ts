@@ -47,7 +47,7 @@ async function handler(request: Request) {
 		const url = new URL(request.url);
 		const countParam = url.searchParams.get('count');
 		const count = countParam ? parseInt(countParam) : 3; // Default to 3 if not specified
-		
+
 		const availableRecipes = await getRecipesForRandomization();
 		const randomizedRecipes = selectRandomRecipes(availableRecipes, count);
 

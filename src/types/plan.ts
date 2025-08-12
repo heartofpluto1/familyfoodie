@@ -57,7 +57,7 @@ export interface PlanContextType {
 	allRecipes: Recipe[];
 	weekDates: string;
 	initialRecipes: Recipe[];
-	
+
 	// Animation state for automate
 	animatingAutomate?: boolean;
 	pendingRecipes?: Recipe[] | null;
