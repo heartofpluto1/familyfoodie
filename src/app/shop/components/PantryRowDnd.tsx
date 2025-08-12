@@ -3,7 +3,7 @@ import { ListItem } from '@/types/shop';
 import { DragHandleIcon } from '@/app/components/Icons';
 import Tooltip from '@/app/components/Tooltip';
 import { roundToTwo } from '@/app/shop/utils/shoppingListUtils';
-import { getPantryCategoryColor } from '@/app/shop/utils/categoryColors';
+import { getPantryCategoryColor } from '@/app/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
 
 interface PantryRowDndProps {
@@ -38,7 +38,10 @@ export function PantryRowDnd({ item, isDragOverlay = false }: PantryRowDndProps)
 				<div className="flex items-stretch h-full">
 					{item.pantryCategory && (
 						<div className="flex items-center relative group">
-							<div className="block w-1 h-full min-h-10" style={{ backgroundColor: getPantryCategoryColor(item.pantryCategory, true) }}></div>
+							<div
+								className="block w-1 h-full min-h-10"
+								style={{ cursor: 'pointer', backgroundColor: getPantryCategoryColor(item.pantryCategory, true) }}
+							></div>
 							<Tooltip text={item.pantryCategory} backgroundColor={getPantryCategoryColor(item.pantryCategory, false)} />
 						</div>
 					)}

@@ -37,7 +37,7 @@ export const getPantryCategoryColor = (category: string, opacity: boolean): stri
 		pantry: '#666666',
 		'kitchen-cupboard': '#aaaaaa',
 		fridge: '#95cddb',
-		freezer: '95cddb',
+		freezer: '#95cddb',
 		'breezeway-cupboard': '#dddddd',
 		garden: '#13a40b',
 		other: '#ffffff',

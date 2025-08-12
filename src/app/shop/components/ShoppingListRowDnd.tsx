@@ -3,7 +3,7 @@ import { ListItem } from '@/types/shop';
 import { DragHandleIcon, LinkIcon, DeleteIcon } from '@/app/components/Icons';
 import Tooltip from '@/app/components/Tooltip';
 import { roundToTwo, formatPrice } from '@/app/shop/utils/shoppingListUtils';
-import { getSupermarketCategoryColor } from '@/app/shop/utils/categoryColors';
+import { getSupermarketCategoryColor } from '@/app/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
 
 interface ShoppingListRowDndProps {
@@ -40,7 +40,10 @@ export function ShoppingListRowDnd({ item, onTogglePurchase, onRemoveItem, isDra
 				<div className="flex items-stretch h-full">
 					{item.supermarketCategory && (
 						<div className="flex items-center relative group">
-							<div className="block w-1 h-full min-h-10" style={{ backgroundColor: getSupermarketCategoryColor(item.supermarketCategory, true) }}></div>
+							<div
+								className="block w-1 h-full min-h-10"
+								style={{ cursor: 'pointer', backgroundColor: getSupermarketCategoryColor(item.supermarketCategory, true) }}
+							></div>
 							<Tooltip text={item.supermarketCategory} backgroundColor={getSupermarketCategoryColor(item.supermarketCategory, false)} />
 						</div>
 					)}

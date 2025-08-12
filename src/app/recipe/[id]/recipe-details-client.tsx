@@ -3,6 +3,8 @@
 import { RecipeDetail } from '@/types/menus';
 import HeaderPage from '@/app/components/HeaderPage';
 import { TimeIcon, DownloadIcon } from '@/app/components/Icons';
+import Tooltip from '@/app/components/Tooltip';
+import { getPantryCategoryColor } from '@/app/utils/categoryColors';
 
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;
@@ -10,11 +12,6 @@ interface RecipeDetailsClientProps {
 
 const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 	const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
-
-	const getPantryCategoryClass = (category?: string): string => {
-		if (!category) return '';
-		return `pantry-category-${category.toLowerCase().replace(/ /g, '-')}`;
-	};
 
 	const formatTime = (minutes: number): string => {
 		if (minutes >= 60) {
@@ -101,8 +98,8 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 					<div className="space-y-6">
 						{/* Ingredients */}
 						<div>
-							<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden">
-								<div className="overflow-x-auto">
+							<div className="overflow-visible bg-white border border-custom rounded-sm shadow-md overflow-hidden">
+								<div className="overflow-visible">
 									<table className="w-full">
 										<thead>
 											<tr className="border-b border-light">
@@ -113,15 +110,31 @@ const RecipeDetailsClient = ({ recipe }: RecipeDetailsClientProps) => {
 										</thead>
 										<tbody>
 											{recipe.ingredients.map(ingredient => (
-												<tr
-													key={ingredient.id}
-													className={`border-b border-light transition-colors ${getPantryCategoryClass(ingredient.ingredient.pantryCategory.name)}`}
-												>
-													<td className="px-2 py-2">
-														<span className="text-sm">
-															{ingredient.ingredient.name}
-															{ingredient.preperation && <span className="text-muted ml-1">({ingredient.preperation.name})</span>}
-														</span>
+												<tr key={ingredient.id} className="border-b border-light">
+													<td className="p-0">
+														<div className="flex items-stretch h-full">
+															{ingredient.ingredient.pantryCategory?.name && (
+																<div className="flex items-center relative group">
+																	<div
+																		className="block w-1 h-full min-h-10"
+																		style={{
+																			cursor: 'pointer',
+																			backgroundColor: getPantryCategoryColor(ingredient.ingredient.pantryCategory.name, true),
+																		}}
+																	></div>
+																	<Tooltip
+																		text={ingredient.ingredient.pantryCategory.name}
+																		backgroundColor={getPantryCategoryColor(ingredient.ingredient.pantryCategory.name, false)}
+																	/>
+																</div>
+															)}
+															<div className="flex items-center px-2 py-2 flex-1">
+																<span className="text-sm">
+																	{ingredient.ingredient.name}
+																	{ingredient.preperation && <span className="text-muted ml-1">({ingredient.preperation.name})</span>}
+																</span>
+															</div>
+														</div>
 													</td>
 													<td className="px-2 py-2 text-center text-sm">
 														{ingredient.quantity}&nbsp;{ingredient.measure ? ` ${ingredient.measure.name}` : ''}
