@@ -2,7 +2,7 @@ import React from 'react';
 import { ListItem } from '@/types/shop';
 import { DragHandleIcon } from '@/app/components/Icons';
 import Tooltip from '@/app/components/Tooltip';
-import { roundToTwo } from '@/app/shop/utils/shoppingListUtils';
+import { roundToTwo } from '@/lib/utils/formatting';
 import { getPantryCategoryColor } from '@/lib/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
 
