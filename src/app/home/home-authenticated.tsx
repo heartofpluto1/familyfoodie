@@ -66,7 +66,12 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 				<span className="w-12 h-12 bg-gray-200 overflow-hidden flex-shrink-0">
 					<Image src={`/static/${meal.filename}.jpg`} alt="thumb" width="48" height="48" className="w-full h-full object-cover" unoptimized={true} />
 				</span>
-				{meal.name}
+				<Link
+					href={`/recipe/${meal.id}`}
+					className="text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors hover:underline"
+				>
+					{meal.name}
+				</Link>
 			</p>
 		</div>
 	);
