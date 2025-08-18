@@ -19,6 +19,55 @@ export async function getIngredients() {
 	return rows as Ingredient[];
 }
 
+export async function getAllIngredients() {
+	const [rows] = await pool.execute(`
+		SELECT
+			i.id,
+			i.name,
+			i.fresh,
+			i.cost as price,
+			i.stockcode,
+			sc.name as supermarketCategory,
+			pc.name as pantryCategory,
+			COUNT(DISTINCT ri.recipe_id) as recipeCount
+		FROM menus_ingredient i
+		LEFT JOIN menus_supermarketcategory sc ON i.supermarketCategory_id = sc.id
+		LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
+		LEFT JOIN menus_recipeingredient ri ON i.id = ri.ingredient_id
+		WHERE i.public = 1
+		GROUP BY i.id, i.name, i.fresh, i.cost, i.stockcode, sc.name, pc.name
+		ORDER BY sc.id, i.name;
+	`);
+	return rows as {
+		id: number;
+		name: string;
+		fresh: boolean;
+		price: number | null;
+		stockcode: number | null;
+		supermarketCategory: string | null;
+		pantryCategory: string | null;
+		recipeCount: number;
+	}[];
+}
+
+export async function getSupermarketCategories() {
+	const [rows] = await pool.execute(`
+		SELECT id, name 
+		FROM menus_supermarketcategory 
+		ORDER BY name
+	`);
+	return rows as { id: number; name: string }[];
+}
+
+export async function getPantryCategories() {
+	const [rows] = await pool.execute(`
+		SELECT id, name 
+		FROM menus_pantrycategory 
+		ORDER BY name
+	`);
+	return rows as { id: number; name: string }[];
+}
+
 export async function getShoppingList(week: string, year: string) {
 	// Get fresh ingredients from shopping list
 	const [freshRows] = await pool.execute(

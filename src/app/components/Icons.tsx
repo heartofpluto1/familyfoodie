@@ -17,6 +17,27 @@ export const DeleteIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 	</svg>
 );
 
+export const TrashIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} viewBox="0 0 24 24" fill="none">
+		<polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+		<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+		<line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+		<line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
+export const ChevronUpIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} viewBox="0 0 24 24" fill="none">
+		<polyline points="18 15 12 9 6 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
+export const ChevronDownIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} viewBox="0 0 24 24" fill="none">
+		<polyline points="6 9 12 15 18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const DragHandleIcon = ({ className = 'w-2 h-6' }: IconProps) => (
 	<svg className={className} viewBox="0 0 6 24" fill="currentColor">
 		<circle cx="3" cy="4" r="1.5" />
@@ -190,5 +211,33 @@ export const SpinnerIcon = ({ className = 'animate-spin -ml-1 mr-3 h-5 w-5 text-
 export const BurgerIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+	</svg>
+);
+
+export const CheckIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+	</svg>
+);
+
+export const EditIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth={2}
+			d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+		/>
+	</svg>
+);
+
+export const SaveIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth={2}
+			d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+		/>
 	</svg>
 );
