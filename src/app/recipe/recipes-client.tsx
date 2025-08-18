@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Recipe } from '@/types/menus';
 import HeaderPage from '@/app/components/HeaderPage';
 import RecipeList from '@/app/components/RecipeList';
@@ -15,7 +16,9 @@ const RecipesPageClient = ({ recipes }: RecipesPageClientProps) => {
 				<HeaderPage title="All Recipes" subtitle={`Discover from ${recipes.length} delicious recipes in our collection`} />
 			</div>
 
-			<RecipeList recipes={recipes} />
+			<Suspense fallback={<div>Loading recipes...</div>}>
+				<RecipeList recipes={recipes} />
+			</Suspense>
 		</>
 	);
 };

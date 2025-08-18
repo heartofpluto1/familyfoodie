@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Recipe } from '@/types/menus';
 import RecipeCard from './RecipeCard';
 import RecipeSearch from './RecipeSearch';
@@ -10,7 +11,16 @@ interface RecipeListProps {
 }
 
 const RecipeList = ({ recipes }: RecipeListProps) => {
+	const searchParams = useSearchParams();
 	const [searchTerm, setSearchTerm] = useState('');
+
+	// Initialize search term from URL parameters
+	useEffect(() => {
+		const searchParam = searchParams.get('search');
+		if (searchParam) {
+			setSearchTerm(searchParam);
+		}
+	}, [searchParams]);
 
 	const filteredRecipes = useMemo(() => {
 		if (!searchTerm.trim()) {
@@ -46,7 +56,7 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 	return (
 		<>
 			<div className="mb-6">
-				<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} />
+				<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} initialSearchTerm={searchTerm} />
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
