@@ -2,7 +2,7 @@ import React from 'react';
 import { ListItem } from '@/types/shop';
 import { DragHandleIcon, LinkIcon, DeleteIcon } from '@/app/components/Icons';
 import Tooltip from '@/app/components/Tooltip';
-import { roundToTwo, formatPrice } from '@/app/shop/utils/shoppingListUtils';
+import { roundToTwo, formatPrice } from '@/lib/utils/formatting';
 import { getSupermarketCategoryColor } from '@/lib/utils/categoryColors';
 import { useSortable } from '@dnd-kit/sortable';
 

@@ -44,8 +44,10 @@ This file contains specific learnings and preferences for this Family Foodie cod
 
 ### Type Safety
 - **PREFER**: Strict TypeScript types over `any`
+- **AVOID**: Using `any[]` type - always define proper types for arrays
 - **PATTERN**: Create interface files in `/types/` for shared data structures
 - **EXAMPLE**: `SessionData` interface for authentication state
+- **RULE**: No `any` types allowed, including `any[]` - use specific types or create interfaces
 
 ## Security Patterns
 

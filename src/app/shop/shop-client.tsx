@@ -6,7 +6,7 @@ import { ShoppingListProvider, useShoppingListContext } from './contexts/Shoppin
 import { ShoppingListTableDnd } from './components/ShoppingListTableDnd';
 import { PantryTableDnd } from './components/PantryTableDnd';
 import { AddItemInput } from './components/AddItemInput';
-import { formatPrice } from './utils/shoppingListUtils';
+import { formatPrice } from '@/lib/utils/formatting';
 import HeaderPage from '@/app/components/HeaderPage';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 
