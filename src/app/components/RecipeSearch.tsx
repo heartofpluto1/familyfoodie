@@ -7,10 +7,16 @@ interface RecipeSearchProps {
 	onSearch: (searchTerm: string) => void;
 	resultsCount: number;
 	totalCount: number;
+	initialSearchTerm?: string;
 }
 
-const RecipeSearch = ({ onSearch, resultsCount, totalCount }: RecipeSearchProps) => {
-	const [searchTerm, setSearchTerm] = useState('');
+const RecipeSearch = ({ onSearch, resultsCount, totalCount, initialSearchTerm = '' }: RecipeSearchProps) => {
+	const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+
+	// Update search term when initialSearchTerm changes
+	useEffect(() => {
+		setSearchTerm(initialSearchTerm);
+	}, [initialSearchTerm]);
 
 	// Debounced search effect
 	useEffect(() => {

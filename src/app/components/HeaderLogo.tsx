@@ -82,6 +82,12 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 									>
 										Ingredients
 									</Link>
+									<Link
+										href="/insights"
+										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
+									>
+										Insights
+									</Link>
 								</div>
 							</nav>
 						)}
@@ -114,6 +120,12 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
 										>
 											Ingredients
+										</Link>
+										<Link
+											href="/insights"
+											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
+										>
+											Insights
 										</Link>
 									</div>
 								</details>
