@@ -108,6 +108,17 @@ export const PlusIcon = ({ className = 'w-5 h-5' }: IconProps) => (
 	</svg>
 );
 
+export const UploadIcon = ({ className = 'w-5 h-5' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth={2}
+			d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+		/>
+	</svg>
+);
+
 export const SwapIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path
@@ -203,17 +214,6 @@ export const ErrorIconSmall = ({ className = 'w-5 h-5 text-red-400 mr-2' }: Icon
 	</svg>
 );
 
-export const SpinnerIcon = ({ className = 'animate-spin -ml-1 mr-3 h-5 w-5 text-background' }: IconProps) => (
-	<svg className={className} fill="none" viewBox="0 0 24 24">
-		<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-		<path
-			className="opacity-75"
-			fill="currentColor"
-			d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-		></path>
-	</svg>
-);
-
 export const BurgerIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
 		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -245,5 +245,24 @@ export const SaveIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 			strokeWidth={2}
 			d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
 		/>
+	</svg>
+);
+
+export const SparklesIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth={2}
+			d="M5 3l1.5 1.5L5 6l-1.5-1.5L5 3zm7 7l1.5 1.5L12 13l-1.5-1.5L12 10zm7-7l1.5 1.5L18 6l-1.5-1.5L18 3zM5.5 17.5L7 16l1.5 1.5L7 19l-1.5-1.5zm11 0L18 16l1.5 1.5L18 19l-1.5-1.5z"
+		/>
+		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v20M2 12h20" />
+	</svg>
+);
+
+export const RefreshIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M23 4v6h-6M1 20v-6h6" />
+		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
 	</svg>
 );

@@ -2,9 +2,11 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import RecipeCard from './RecipeCard';
 import RecipeSearch from './RecipeSearch';
+import { SparklesIcon } from './Icons';
 
 interface RecipeListProps {
 	recipes: Recipe[];
@@ -55,8 +57,19 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 
 	return (
 		<>
-			<div className="mb-6">
-				<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} initialSearchTerm={searchTerm} />
+			<div className="mb-6 flex items-start justify-between gap-4">
+				<div className="flex gap-3 flex-shrink-0">
+					<Link
+						href="/recipe/import"
+						className="inline-flex items-center bg-accent hover:bg-accent/90 gap-2 px-4 py-2 text-white rounded-sm transition-colors"
+					>
+						<SparklesIcon className="w-4 h-4" />
+						PDF Import (powered by AI)
+					</Link>
+				</div>
+				<div className="flex-1 max-w-md">
+					<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} initialSearchTerm={searchTerm} />
+				</div>
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
