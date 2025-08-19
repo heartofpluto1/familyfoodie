@@ -245,7 +245,6 @@ If the images don't contain a clear recipe, create the best recipe you can based
 		}
 
 		const recipe = JSON.parse(cleanContent) as ExtractedRecipe;
-		console.log(recipe);
 
 		// Get all existing ingredients with complete data for both AI matching and processing
 		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(`
