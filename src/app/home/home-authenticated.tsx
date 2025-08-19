@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Stats, Meal, Menu } from '@/types/menus';
 import { IntroShoppingCartIcon } from '@/app/components/Icons';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface HomeAuthenticatedProps {
 	plans: Menu[];
@@ -64,7 +65,7 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 		<div className={`${!isLast ? 'border-b border-light' : ''}`}>
 			<p className="font-sm text-foreground text-sm leading-snug flex items-center gap-3 pr-3">
 				<span className="w-12 h-12 bg-gray-200 overflow-hidden flex-shrink-0">
-					<Image src={`/static/${meal.filename}.jpg`} alt="thumb" width="48" height="48" className="w-full h-full object-cover" unoptimized={true} />
+					<Image src={getRecipeImageUrl(meal.filename)} alt="thumb" width="48" height="48" className="w-full h-full object-cover" unoptimized={true} />
 				</span>
 				<Link
 					href={`/recipe/${meal.id}`}

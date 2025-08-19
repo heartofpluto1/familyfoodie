@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import { SwapIcon, RemoveIcon, TimeIcon } from './Icons';
 import React, { useState } from 'react';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeCardProps {
 	recipe: Recipe;
@@ -70,7 +71,7 @@ const RecipeCard = ({
 		if (newRecipe) {
 			// Preload the new recipe image before starting animation
 			const img = new Image();
-			img.src = `/static/${newRecipe.filename}.jpg`;
+			img.src = getRecipeImageUrl(newRecipe.filename);
 
 			// Start animation when image is loaded (or immediately if already cached)
 			img.onload = () => {
@@ -142,7 +143,7 @@ const RecipeCard = ({
 					}}
 				>
 					<Link href={`/recipe/${id}`} className="block" target="_blank" rel="noopener noreferrer">
-						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`/static/${filename}.jpg`} />
+						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(filename)} />
 					</Link>
 
 					<div className="p-4 flex flex-col flex-grow">

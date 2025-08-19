@@ -15,6 +15,7 @@ import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
 import { useRecipeApi } from '../hooks/useRecipeApi';
 import { useIngredientApi } from '../hooks/useIngredientApi';
 import { RecipeFormData, NewIngredient } from '@/app/recipe/types';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
@@ -292,7 +293,7 @@ const RecipeEditor = ({ recipe, isEditing: externalIsEditing, onStartEdit, onSav
 					{/* Recipe Image */}
 					<ImageUploadWithCrop
 						isEditing={isEditing}
-						currentImageSrc={recipe ? `/static/${recipe.filename}.jpg` : undefined}
+						currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename) : undefined}
 						recipeId={recipe?.id}
 						onImageUploaded={handleImageUploadComplete}
 					/>

@@ -20,7 +20,7 @@ const cookingVerbs = [
 	{ verb: 'simmering', emoji: '🔥' },
 	{ verb: 'chopping', emoji: '🔪' },
 	{ verb: 'baking', emoji: '🍞' },
-	{ verb: 'cooking', emoji: '👨‍🍳' },
+	{ verb: 'stewing', emoji: '🍲' },
 	{ verb: 'seasoning', emoji: '🧂' },
 	{ verb: 'stirring', emoji: '🥄' },
 	{ verb: 'whisking', emoji: '🥢' },

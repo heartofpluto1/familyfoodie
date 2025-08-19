@@ -11,6 +11,7 @@ import HeaderPage from '@/app/components/HeaderPage';
 import { formatPrice } from '@/lib/utils/formatting';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 async function InsightsPage() {
 	const [weeklySpending, topFruitsAndVeggies, topHerbs, topRecipes, recipePairings] = await Promise.all([
@@ -281,7 +282,7 @@ async function InsightsPage() {
 												<div className="flex items-center gap-3">
 													<div className="w-12 h-12 bg-gray-200 overflow-hidden rounded flex-shrink-0">
 														<Image
-															src={`/static/${pairing.recipe1_filename}.jpg`}
+															src={getRecipeImageUrl(pairing.recipe1_filename)}
 															alt={pairing.recipe1_name}
 															width={48}
 															height={48}
@@ -305,7 +306,7 @@ async function InsightsPage() {
 												<div className="flex items-center gap-3">
 													<div className="w-12 h-12 bg-gray-200 overflow-hidden rounded flex-shrink-0">
 														<Image
-															src={`/static/${pairing.recipe2_filename}.jpg`}
+															src={getRecipeImageUrl(pairing.recipe2_filename)}
 															alt={pairing.recipe2_name}
 															width={48}
 															height={48}
