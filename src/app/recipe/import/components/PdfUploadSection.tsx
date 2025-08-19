@@ -29,6 +29,13 @@ const cookingVerbs = [
 	{ verb: 'marinating', emoji: '🥩' },
 ];
 
+// Helper function to get a random cooking verb
+const getRandomCookingVerb = (excludeVerb?: string) => {
+	const availableVerbs = excludeVerb ? cookingVerbs.filter(v => v.verb !== excludeVerb) : cookingVerbs;
+	const randomIndex = Math.floor(Math.random() * availableVerbs.length);
+	return availableVerbs[randomIndex];
+};
+
 const PdfUploadSection = ({
 	selectedFile,
 	isProcessing,
@@ -40,18 +47,14 @@ const PdfUploadSection = ({
 }: PdfUploadSectionProps) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isDragOver, setIsDragOver] = useState(false);
-	const [currentCookingVerb, setCurrentCookingVerb] = useState(cookingVerbs[0]);
+	const [currentCookingVerb, setCurrentCookingVerb] = useState(() => getRandomCookingVerb());
 
 	// Animate cooking verbs when processing
 	useEffect(() => {
 		if (!isProcessing) return;
 
 		const interval = setInterval(() => {
-			setCurrentCookingVerb(prev => {
-				const currentIndex = cookingVerbs.findIndex(v => v.verb === prev.verb);
-				const nextIndex = (currentIndex + 1) % cookingVerbs.length;
-				return cookingVerbs[nextIndex];
-			});
+			setCurrentCookingVerb(prev => getRandomCookingVerb(prev.verb));
 		}, 8000);
 
 		return () => clearInterval(interval);
