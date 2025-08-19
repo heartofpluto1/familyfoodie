@@ -16,6 +16,7 @@ import { useRecipeApi } from '../hooks/useRecipeApi';
 import { useIngredientApi } from '../hooks/useIngredientApi';
 import { RecipeFormData, NewIngredient } from '@/app/recipe/types';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { FileUploadResponse } from '@/types/fileUpload';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
@@ -199,13 +200,39 @@ const RecipeEditor = ({ recipe, isEditing: externalIsEditing, onStartEdit, onSav
 		]);
 	};
 
-	const handleImageUploadComplete = () => {
+	const handleImageUploadComplete = async (uploadResponse?: FileUploadResponse) => {
 		showToast('success', 'Success', 'Image uploaded successfully');
+
+		// Preload cache-busted image URL to warm the cache before page reload
+		if (uploadResponse?.cacheBustedUrl) {
+			const img = new Image();
+			img.onload = () => {
+				// Once cache-busted image is loaded, reload the page
+				window.location.reload();
+			};
+			img.onerror = () => {
+				// If preload fails, still reload the page
+				window.location.reload();
+			};
+			img.src = uploadResponse.cacheBustedUrl;
+		}
 		window.location.reload();
 	};
 
-	const handlePdfUploadComplete = () => {
+	const handlePdfUploadComplete = async (uploadResponse?: FileUploadResponse) => {
 		showToast('success', 'Success', 'PDF uploaded successfully');
+
+		// Preload cache-busted PDF URL to warm the cache before page reload
+		if (uploadResponse?.cacheBustedUrl) {
+			// For PDFs, we can't preload like images, so just fetch the URL to warm cache
+			try {
+				await fetch(uploadResponse.cacheBustedUrl, { method: 'HEAD' });
+			} catch (error) {
+				console.warn('Failed to preload PDF:', error);
+			}
+		}
+
+		// Reload the page after preloading
 		window.location.reload();
 	};
 

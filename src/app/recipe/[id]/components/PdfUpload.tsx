@@ -1,9 +1,10 @@
 'use client';
 
 import { useFileUpload } from '../hooks/useFileUpload';
+import { FileUploadResponse } from '@/types/fileUpload';
 
 interface PdfUploadProps {
-	onPdfUploaded?: () => void;
+	onPdfUploaded?: (uploadResponse?: FileUploadResponse) => void;
 	recipeId?: number;
 }
 
@@ -16,9 +17,9 @@ const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
 
 	const handlePdfUpload = async () => {
 		if (recipeId && pdfUpload.selectedFile) {
-			const success = await pdfUpload.uploadFile(recipeId, 'pdf');
-			if (success && onPdfUploaded) {
-				onPdfUploaded();
+			const result = await pdfUpload.uploadFile(recipeId, 'pdf');
+			if (result.success && onPdfUploaded) {
+				onPdfUploaded(result.data);
 			}
 		}
 	};
