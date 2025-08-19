@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Recipe } from '@/types/menus';
 import { RecipeFilterOptions, SearchState } from '@/types/plan';
 import styles from '../plan.module.css';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeSearchProps {
 	recipes: Recipe[];
@@ -99,7 +100,7 @@ export function RecipeSearch({ recipes, onAddRecipe, excludeIds }: RecipeSearchP
 							}}
 						>
 							<div className="flex items-center space-x-3">
-								<img src={`/static/${recipe.filename}.jpg`} alt={recipe.name} className="w-12 h-12 rounded object-cover" />
+								<img src={getRecipeImageUrl(recipe.filename)} alt={recipe.name} className="w-12 h-12 rounded object-cover" />
 								<div>
 									<div className="font-medium text-gray-900 dark:text-gray-100">{recipe.name}</div>
 									{recipe.description && <div className="text-sm text-gray-600 dark:text-gray-400">{recipe.description.substring(0, 60)}...</div>}

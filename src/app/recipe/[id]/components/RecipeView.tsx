@@ -2,6 +2,7 @@
 
 import { RecipeDetail } from '@/types/menus';
 import { TimeIcon, DownloadIcon } from '@/app/components/Icons';
+import { getRecipePdfUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeViewProps {
 	recipe: RecipeDetail;
@@ -45,7 +46,7 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 
 				{/* PDF Link */}
 				<a
-					href={`/static/${recipe.filename}.pdf`}
+					href={getRecipePdfUrl(recipe.filename)}
 					target="_blank"
 					rel="noopener noreferrer"
 					className="inline-flex items-center px-2 py-1 bg-accent text-background rounded-sm hover:bg-accent/90 transition-colors text-xs"

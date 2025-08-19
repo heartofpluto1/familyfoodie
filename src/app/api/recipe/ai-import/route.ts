@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, access } from 'fs/promises';
-import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import OpenAI from 'openai';
+import { generateSecureFilename } from '@/lib/utils/secureFilename.server';
+import { uploadFile, getStorageMode } from '@/lib/storage';
 
 interface Ingredients {
 	name: string;
@@ -171,7 +171,7 @@ async function importHandler(request: NextRequest) {
 		try {
 			await connection.beginTransaction();
 
-			// Insert the recipe
+			// Insert the recipe with temporary filename
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
 				`INSERT INTO menus_recipe (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, duplicate, filename, public) 
 				 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)`,
@@ -183,14 +183,17 @@ async function importHandler(request: NextRequest) {
 					recipe.seasonId || null,
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
-					`rid_${Date.now()}`,
+					`temp_${Date.now()}`,
 				]
 			);
 
 			const recipeId = recipeResult.insertId;
 
-			// Update filename to use the actual recipe ID
-			await connection.execute<ResultSetHeader>('UPDATE menus_recipe SET filename = ? WHERE id = ?', [`rid_${recipeId}`, recipeId]);
+			// Generate secure filename using recipe ID and name
+			const secureFilename = generateSecureFilename(recipeId, recipe.title);
+
+			// Update filename to use secure hash
+			await connection.execute<ResultSetHeader>('UPDATE menus_recipe SET filename = ? WHERE id = ?', [secureFilename, recipeId]);
 
 			// Associate recipe with account (using account_id = 1 like other routes)
 			await connection.execute(`INSERT INTO menus_accountrecipe (account_id, recipe_id, archive) VALUES (1, ?, 0)`, [recipeId]);
@@ -244,24 +247,26 @@ async function importHandler(request: NextRequest) {
 			await connection.commit();
 
 			// After successful database commit, handle file operations
-			const filename = `rid_${recipeId}`;
+			const filename = secureFilename;
 			let pdfSaved = false;
 			let heroImageSaved = false;
 			const fileErrors: string[] = [];
 
-			const staticDir = path.join(process.cwd(), 'public', 'static');
+			console.log(`Storage mode: ${getStorageMode()}`);
+			console.log(`Saving files with filename: ${filename}`);
 
 			// Save the original PDF
 			if (pdfFile && pdfFile.size > 0) {
 				try {
 					const pdfBuffer = Buffer.from(await pdfFile.arrayBuffer());
-					const pdfPath = path.join(staticDir, `${filename}.pdf`);
-					await writeFile(pdfPath, pdfBuffer);
+					const uploadResult = await uploadFile(pdfBuffer, filename, 'pdf', 'application/pdf');
 
-					// Verify the file was actually written and is accessible
-					await access(pdfPath);
-					pdfSaved = true;
-					console.log(`PDF saved and verified: ${pdfPath}`);
+					if (uploadResult.success) {
+						pdfSaved = true;
+						console.log(`PDF saved successfully: ${uploadResult.url}`);
+					} else {
+						throw new Error(uploadResult.error || 'Failed to save PDF');
+					}
 				} catch (error) {
 					const errorMessage = `Failed to save PDF: ${error instanceof Error ? error.message : 'Unknown error'}`;
 					console.error(errorMessage, error);
@@ -273,13 +278,14 @@ async function importHandler(request: NextRequest) {
 			if (heroImageFile && heroImageFile.size > 0) {
 				try {
 					const heroBuffer = Buffer.from(await heroImageFile.arrayBuffer());
-					const heroPath = path.join(staticDir, `${filename}.jpg`);
-					await writeFile(heroPath, heroBuffer);
+					const uploadResult = await uploadFile(heroBuffer, filename, 'jpg', 'image/jpeg');
 
-					// Verify the file was actually written and is accessible
-					await access(heroPath);
-					heroImageSaved = true;
-					console.log(`Hero image saved and verified: ${heroPath}`);
+					if (uploadResult.success) {
+						heroImageSaved = true;
+						console.log(`Hero image saved successfully: ${uploadResult.url}`);
+					} else {
+						throw new Error(uploadResult.error || 'Failed to save hero image');
+					}
 				} catch (error) {
 					const errorMessage = `Failed to save hero image: ${error instanceof Error ? error.message : 'Unknown error'}`;
 					console.error(errorMessage, error);
