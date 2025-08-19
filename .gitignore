@@ -10,6 +10,9 @@
 init.sql
 cloud-sql-proxy
 
+# static files
+/public/static
+
 # testing
 /coverage
 
