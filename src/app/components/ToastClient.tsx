@@ -16,7 +16,7 @@ const Toast = ({ toast, onRemove }: ToastProps) => {
 		const timer = setTimeout(() => {
 			setIsVisible(false);
 			setTimeout(() => onRemove(toast.id), 300);
-		}, 5000);
+		}, 8000); // Increased from 5000ms to 8000ms (8 seconds)
 
 		return () => clearTimeout(timer);
 	}, [toast.id, onRemove]);
