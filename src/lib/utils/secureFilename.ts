@@ -2,7 +2,8 @@
 // For server-only functions, import from './secureFilename.server'
 
 // Check if we're in production with GCS configured
-const bucketName = process.env.GCS_BUCKET_NAME;
+// Use NEXT_PUBLIC_ prefix to make bucket name available on client side
+const bucketName = process.env.NEXT_PUBLIC_GCS_BUCKET_NAME;
 const isGCSProduction = process.env.NODE_ENV === 'production' && !!bucketName;
 
 /**
