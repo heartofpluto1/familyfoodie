@@ -18,8 +18,8 @@ export function generateSecureFilename(recipeId: number, recipeName: string): st
 	// Generate HMAC-SHA256 hash
 	const hash = createHmac('sha256', SECRET_KEY).update(input).digest('hex');
 
-	// Use first 16 characters of hash for filename
-	return hash.substring(0, 16);
+	// Use first 32 characters of hash for filename
+	return hash.substring(0, 32);
 }
 
 /**

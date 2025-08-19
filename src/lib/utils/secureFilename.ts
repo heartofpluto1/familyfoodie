@@ -16,8 +16,8 @@ export function getRecipeFileUrl(filename: string | null, extension: 'jpg' | 'pd
 		return '';
 	}
 
-	// Check if the file appears to be migrated (16 char hex string)
-	const isMigrated = /^[a-f0-9]{16}$/.test(filename);
+	// Check if the file appears to be migrated (32 char hex string)
+	const isMigrated = /^[a-f0-9]{32}$/.test(filename);
 
 	if (isGCSProduction && bucketName && isMigrated) {
 		// Production with GCS and migrated file - use GCS URL

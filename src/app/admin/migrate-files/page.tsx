@@ -131,7 +131,7 @@ export default function MigrateFilesPage() {
 						<h2 className="text-lg font-semibold text-card-foreground mb-2">Migration Preview</h2>
 						<p className="text-muted-foreground mb-4">
 							Review which recipes need file migration before starting the process. Any filename that doesn&apos;t match the secure hash format
-							(16-character hex) will be migrated.
+							(32-character hex) will be migrated.
 						</p>
 					</div>
 
@@ -161,7 +161,7 @@ export default function MigrateFilesPage() {
 							</div>
 							<div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
 								<strong>Migration includes:</strong> Files with formats like rid_123, temp_456, legacy names, or any filename that isn&apos;t a
-								16-character secure hash.
+								32-character secure hash.
 							</div>
 						</div>
 					) : (
