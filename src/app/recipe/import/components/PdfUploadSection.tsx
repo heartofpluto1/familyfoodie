@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { UploadIcon } from '@/app/components/Icons';
 
 interface PdfUploadSectionProps {
@@ -13,6 +13,22 @@ interface PdfUploadSectionProps {
 	onFileValidationError: (title: string, message: string) => void;
 }
 
+// Cooking verbs for animated loading text with emojis
+const cookingVerbs = [
+	{ verb: 'brewing', emoji: '☕' },
+	{ verb: 'broiling', emoji: '🫧' },
+	{ verb: 'simmering', emoji: '🔥' },
+	{ verb: 'chopping', emoji: '🔪' },
+	{ verb: 'baking', emoji: '🍞' },
+	{ verb: 'cooking', emoji: '👨‍🍳' },
+	{ verb: 'seasoning', emoji: '🧂' },
+	{ verb: 'stirring', emoji: '🥄' },
+	{ verb: 'whisking', emoji: '🥢' },
+	{ verb: 'grilling', emoji: '🔥' },
+	{ verb: 'roasting', emoji: '🍗' },
+	{ verb: 'marinating', emoji: '🥩' },
+];
+
 const PdfUploadSection = ({
 	selectedFile,
 	isProcessing,
@@ -24,26 +40,7 @@ const PdfUploadSection = ({
 }: PdfUploadSectionProps) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isDragOver, setIsDragOver] = useState(false);
-	const [currentCookingVerb, setCurrentCookingVerb] = useState({ verb: 'thinking', emoji: '🤔' });
-
-	// Cooking verbs for animated loading text with emojis
-	const cookingVerbs = useMemo(
-		() => [
-			{ verb: 'brewing', emoji: '☕' },
-			{ verb: 'boiling', emoji: '💧' },
-			{ verb: 'simmering', emoji: '🔥' },
-			{ verb: 'chopping', emoji: '🔪' },
-			{ verb: 'baking', emoji: '🍞' },
-			{ verb: 'cooking', emoji: '👨‍🍳' },
-			{ verb: 'seasoning', emoji: '🧂' },
-			{ verb: 'stirring', emoji: '🥄' },
-			{ verb: 'whisking', emoji: '🥢' },
-			{ verb: 'grilling', emoji: '🔥' },
-			{ verb: 'roasting', emoji: '🍗' },
-			{ verb: 'marinating', emoji: '🥩' },
-		],
-		[]
-	);
+	const [currentCookingVerb, setCurrentCookingVerb] = useState(cookingVerbs[0]);
 
 	// Animate cooking verbs when processing
 	useEffect(() => {
@@ -55,10 +52,10 @@ const PdfUploadSection = ({
 				const nextIndex = (currentIndex + 1) % cookingVerbs.length;
 				return cookingVerbs[nextIndex];
 			});
-		}, 5000); // Change verb every 2 seconds
+		}, 8000);
 
 		return () => clearInterval(interval);
-	}, [isProcessing, cookingVerbs]);
+	}, [isProcessing]);
 
 	const validateAndSelectFile = (file: File) => {
 		if (file.type !== 'application/pdf') {

@@ -247,7 +247,7 @@ If the images don't contain a clear recipe, create the best recipe you can based
 		const recipe = JSON.parse(cleanContent) as ExtractedRecipe;
 		console.log(recipe);
 
-		// Check ingredients against database and get their categories
+		// Get all existing ingredients with complete data for both AI matching and processing
 		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(`
 			SELECT 
 				i.id, 
@@ -266,25 +266,91 @@ If the images don't contain a clear recipe, create the best recipe you can based
 
 		const [supermarketCategories] = await pool.execute<SupermarketCategory[]>('SELECT id, name FROM menus_supermarketcategory ORDER BY name');
 
-		// Process ingredients to check which exist and which are new
+		// Use AI to match ingredient names with existing ingredients
+		const ingredientNames = recipe.ingredients.map(ing => ing.name);
+		const existingIngredientNames = existingIngredients.map(ing => ing.name);
+
+		let aiMatchedIngredients: { original: string; matched: string | null }[] = [];
+
+		if (ingredientNames.length > 0 && existingIngredientNames.length > 0) {
+			try {
+				const matchingCompletion = await openai.chat.completions.create({
+					model: 'gpt-4o',
+					messages: [
+						{
+							role: 'system',
+							content:
+								'You are an ingredient matching expert. Match ingredient names to the closest existing ingredient from a database list, or return null if no good match exists.',
+						},
+						{
+							role: 'user',
+							content: `I have a list of ingredients extracted from a recipe and need to match them with existing ingredients in my database.
+
+For each ingredient in the recipe, find the best matching ingredient from the existing database list. If there's a close match (similar ingredient, just different wording), use it. If there's no good match, return null for that ingredient.
+
+Recipe ingredients to match:
+${ingredientNames.map((name, i) => `${i + 1}. ${name}`).join('\n')}
+
+Existing database ingredients:
+${existingIngredientNames.map((name, i) => `${i + 1}. ${name}`).join('\n')}
+
+Return a JSON array with this exact structure:
+[
+  {"original": "Chicken Breast", "matched": "Chicken Breast Fillet"},
+  {"original": "Fresh Basil", "matched": "Basil"},
+  {"original": "Exotic Spice", "matched": null}
+]
+
+Rules:
+- Only match if the ingredients are essentially the same thing (e.g., "Red Apple" matches "Apple", "Chicken Breast" matches "Chicken Breast Fillet")
+- Don't match if they're different ingredients entirely (e.g., don't match "Beef" with "Chicken")
+- Case and minor wording differences are okay to match
+- If unsure, return null - it's better to create a new ingredient than to match incorrectly
+- Return only the JSON array, no additional text`,
+						},
+					],
+					temperature: 0.1,
+					max_tokens: 1000,
+				});
+
+				const matchingContent = matchingCompletion.choices[0]?.message?.content;
+				if (matchingContent) {
+					let cleanMatchingContent = matchingContent.trim();
+					if (cleanMatchingContent.startsWith('```json')) {
+						cleanMatchingContent = cleanMatchingContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+					} else if (cleanMatchingContent.startsWith('```')) {
+						cleanMatchingContent = cleanMatchingContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+					}
+					aiMatchedIngredients = JSON.parse(cleanMatchingContent);
+				}
+			} catch (error) {
+				console.warn('AI ingredient matching failed, falling back to exact matching:', error);
+				// Fall back to empty matches - will use exact matching logic below
+			}
+		}
+
+		// Process ingredients using AI matching results
 		const processedIngredients: StructuredIngredient[] = recipe.ingredients.map(ingredient => {
-			// Try to find matching ingredient (case-insensitive, exact match only)
+			// First check if AI found a match
+			const aiMatch = aiMatchedIngredients.find(match => match.original === ingredient.name);
+			const targetName = aiMatch?.matched || ingredient.name;
+
+			// Try to find the target ingredient in the database
 			const matchingIngredient = existingIngredients.find(existing => {
 				const existingName = existing.name.toLowerCase().trim();
-				const ingredientName = ingredient.name.toLowerCase().trim();
-
-				// Only exact match
-				return existingName === ingredientName;
+				const targetIngredientName = targetName.toLowerCase().trim();
+				return existingName === targetIngredientName;
 			});
 
 			if (matchingIngredient) {
-				// Existing ingredient - include pantryCategory information
+				// Existing ingredient found - use complete data from database
 				return {
 					...ingredient,
-					name: matchingIngredient.name, // Use the existing ingredient's name for consistency
+					name: matchingIngredient.name, // Use the database ingredient's name for consistency
 					existing_ingredient_id: matchingIngredient.id,
 					pantryCategory_id: matchingIngredient.pantryCategory_id,
 					pantryCategory_name: matchingIngredient.pantryCategory_name,
+					supermarketCategory_id: matchingIngredient.supermarketCategory_id,
 					fresh: matchingIngredient.fresh === 1,
 				};
 			} else {
@@ -295,6 +361,8 @@ If the images don't contain a clear recipe, create the best recipe you can based
 
 				return {
 					...ingredient,
+					// Use original ingredient name if AI matching didn't work
+					name: ingredient.name,
 					// Set defaults - user will need to specify these in the preview
 					fresh: true, // Default to fresh
 					pantryCategory_id: matchingPantryCategory?.id || pantryCategories[0]?.id || 1, // Use AI recommendation or default
