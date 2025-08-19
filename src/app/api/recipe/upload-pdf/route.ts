@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, unlink } from 'fs/promises';
+import { writeFile, unlink, access } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import pool from '@/lib/db.js';
@@ -64,6 +64,19 @@ async function postHandler(request: NextRequest) {
 
 		// Save the new file
 		await writeFile(filePath, buffer);
+
+		// Verify the file was actually written and is accessible
+		try {
+			await access(filePath);
+		} catch (verificationError) {
+			console.error('PDF verification failed after upload:', verificationError);
+			return NextResponse.json(
+				{
+					error: 'PDF upload failed - could not verify file was saved correctly',
+				},
+				{ status: 500 }
+			);
+		}
 
 		// Update the database with the filename (without extension) - only if it changed
 		const finalFilename = currentFilename || `rid_${recipeId}`;
