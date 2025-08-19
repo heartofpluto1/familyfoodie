@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { RecipeFormData } from '@/app/recipe/types';
 import { ImportedRecipe, PreviewResponse, Category } from '../types/importTypes';
@@ -12,8 +11,6 @@ import { extractHeroImageFromPdf } from '../utils/extractHeroImage';
 type ToastType = 'error' | 'info' | 'success' | 'warning';
 
 export const useAiImport = (options: RecipeOptions | null, showToast: (type: ToastType, title: string, message: string) => void) => {
-	const router = useRouter();
-
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [processingStep, setProcessingStep] = useState<string>('');
