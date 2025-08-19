@@ -72,6 +72,7 @@ export interface RecipeIngredient {
 		name: string;
 	};
 	measure?: {
+		id: number;
 		name: string;
 	};
 }

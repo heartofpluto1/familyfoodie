@@ -132,6 +132,10 @@ export async function getTopRecipes() {
 		INNER JOIN menus_recipe r ON rw.recipe_id = r.id
 		WHERE rw.account_id = 1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
+			AND EXISTS (
+				SELECT 1 FROM menus_accountrecipe ar 
+				WHERE ar.recipe_id = r.id AND ar.archive = 0
+			)
 		GROUP BY r.id, r.name
 		ORDER BY times_planned DESC
 		LIMIT 10`,
@@ -263,6 +267,14 @@ export async function getRecipePairingSuggestions() {
 			CROSS JOIN (SELECT @row_number := 0, @prev_ingredient := '') AS vars
 			WHERE r1.duplicate = 0 
 				AND r2.duplicate = 0
+				AND EXISTS (
+					SELECT 1 FROM menus_accountrecipe ar1 
+					WHERE ar1.recipe_id = r1.id AND ar1.archive = 0
+				)
+				AND EXISTS (
+					SELECT 1 FROM menus_accountrecipe ar2 
+					WHERE ar2.recipe_id = r2.id AND ar2.archive = 0
+				)
 				AND i.fresh = 1
 				AND (sc.name IN ('fresh-fruitvege', 'fresh-herbs') 
 					OR sc.name LIKE '%fruit%' 
