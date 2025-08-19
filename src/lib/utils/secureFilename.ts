@@ -1,6 +1,5 @@
 // Client-safe utilities for recipe file URLs
 // For server-only functions, import from './secureFilename.server'
-import { addToast } from '@/lib/toast';
 
 // Check if we're in production with GCS configured
 const bucketName = process.env.GCS_BUCKET_NAME;
@@ -20,30 +19,12 @@ export function getRecipeFileUrl(filename: string | null, extension: 'jpg' | 'pd
 	// Check if the file appears to be migrated (32 char hex string)
 	const isMigrated = /^[a-f0-9]{32}$/.test(filename);
 
-	// Add debugging toast - always show this in production to diagnose
-	addToast(
-		'info',
-		'URL Debug',
-		`File: ${filename} | NODE_ENV: ${process.env.NODE_ENV} | isGCSProd: ${isGCSProduction} | bucket: ${bucketName} | isMigrated: ${isMigrated}`
-	);
-	console.error(
-		'URL Debug',
-		`File: ${filename} | NODE_ENV: ${process.env.NODE_ENV} | isGCSProd: ${isGCSProduction} | bucket: ${bucketName} | isMigrated: ${isMigrated}`
-	);
-
 	if (isGCSProduction && bucketName && isMigrated) {
 		// Production with GCS and migrated file - use GCS URL
-		const gcsUrl = `https://storage.googleapis.com/${bucketName}/${filename}.${extension}`;
-		addToast('success', 'Using GCS URL', gcsUrl);
-		console.log('Using GCS URL', gcsUrl);
-		return gcsUrl;
+		return `https://storage.googleapis.com/${bucketName}/${filename}.${extension}`;
 	} else {
 		// Development or unmigrated files - use local static path
-		const staticUrl = `/static/${filename}.${extension}`;
-		const reason = !isGCSProduction ? 'GCS not in production' : !bucketName ? 'No bucket name' : !isMigrated ? 'File not migrated' : 'Unknown reason';
-		addToast('warning', 'Using Static URL', `${staticUrl} | Reason: ${reason}`);
-		console.error('Using Static URL', `${staticUrl} | Reason: ${reason}`);
-		return staticUrl;
+		return `/static/${filename}.${extension}`;
 	}
 }
 

@@ -329,8 +329,8 @@ export const useAiImport = (options: RecipeOptions | null, showToast: (type: Toa
 				const data = await response.json();
 				showToast('success', 'Success', data.message);
 
-				// Redirect to recipe details page
-				router.push(`/recipe/${data.recipeId}`);
+				// Force server-side redirect to ensure environment variables are available
+				window.location.href = `/recipe/${data.recipeId}`;
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || 'Failed to import recipe');

@@ -2,7 +2,6 @@ import { Storage } from '@google-cloud/storage';
 import { existsSync } from 'fs';
 import { writeFile, unlink, access, readFile } from 'fs/promises';
 import path from 'path';
-import { addToast } from '@/lib/toast';
 
 // Determine if we should use GCS based on environment
 const useGCS = process.env.NODE_ENV === 'production' && !!process.env.GCS_BUCKET_NAME;
@@ -43,8 +42,6 @@ export async function uploadFile(buffer: Buffer, filename: string, extension: st
 
 	if (useGCS && bucket) {
 		// Production: Upload to Google Cloud Storage
-		console.log(`Uploading to GCS: ${fullFilename} to bucket: ${bucketName}`);
-		addToast('info', 'GCS Upload', `Attempting to upload ${fullFilename} to bucket: ${bucketName}`);
 		try {
 			const file = bucket.file(fullFilename);
 
@@ -55,31 +52,20 @@ export async function uploadFile(buffer: Buffer, filename: string, extension: st
 				},
 			});
 
-			addToast('success', 'GCS Upload Success', `Successfully uploaded ${fullFilename} to GCS`);
 			return {
 				success: true,
 				url: getFileUrl(filename, extension),
 				filename: fullFilename,
 			};
 		} catch (error) {
-			const errorMsg = error instanceof Error ? error.message : 'Unknown error uploading to GCS';
-			const debugInfo = `GCS Config - useGCS: ${useGCS}, bucketName: ${bucketName}, bucket exists: ${!!bucket}`;
-
-			// Add server-side toast for debugging
-			addToast('error', 'GCS Upload Failed', `${errorMsg} | ${debugInfo}`);
-
 			console.error('Error uploading to GCS:', error);
-			console.error('GCS Config - useGCS:', useGCS, 'bucketName:', bucketName, 'bucket exists:', !!bucket);
 			return {
 				success: false,
-				error: errorMsg,
+				error: error instanceof Error ? error.message : 'Unknown error uploading to GCS',
 			};
 		}
 	} else {
 		// Development: Save to local filesystem
-		if (process.env.NODE_ENV === 'production') {
-			addToast('warning', 'GCS Not Configured', `GCS disabled - useGCS: ${useGCS}, bucket: ${!!bucket}, bucketName: ${bucketName}`);
-		}
 		try {
 			const staticDir = path.join(process.cwd(), 'public', 'static');
 			const filePath = path.join(staticDir, fullFilename);
