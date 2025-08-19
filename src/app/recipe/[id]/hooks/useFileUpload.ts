@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '@/app/components/ToastProvider';
+import { FileUploadResponse } from '@/types/fileUpload';
 
 interface UseFileUploadOptions {
 	allowedTypes: string[];
@@ -46,8 +47,8 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 		}
 	};
 
-	const uploadFile = async (recipeId: number, fileParamName: string): Promise<boolean> => {
-		if (!selectedFile) return false;
+	const uploadFile = async (recipeId: number, fileParamName: string): Promise<{ success: boolean; data?: FileUploadResponse }> => {
+		if (!selectedFile) return { success: false };
 
 		setIsUploading(true);
 		try {
@@ -61,24 +62,25 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 			});
 
 			if (response.ok) {
+				const responseData = await response.json();
 				showToast('success', 'Success', `${fileParamName} uploaded successfully`);
 				clearFile();
-				return true;
+				return { success: true, data: responseData };
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || `Failed to upload ${fileParamName}`);
-				return false;
+				return { success: false };
 			}
 		} catch (error) {
 			console.error(`Error uploading ${fileParamName}:`, error);
 			showToast('error', 'Error', `Error uploading ${fileParamName}`);
-			return false;
+			return { success: false };
 		} finally {
 			setIsUploading(false);
 		}
 	};
 
-	const uploadFileBlob = async (recipeId: number, file: File, fileParamName: string): Promise<boolean> => {
+	const uploadFileBlob = async (recipeId: number, file: File, fileParamName: string): Promise<{ success: boolean; data?: FileUploadResponse }> => {
 		setIsUploading(true);
 		try {
 			const formData = new FormData();
@@ -91,18 +93,19 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 			});
 
 			if (response.ok) {
+				const responseData = await response.json();
 				showToast('success', 'Success', `${fileParamName} uploaded successfully`);
 				clearFile();
-				return true;
+				return { success: true, data: responseData };
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || `Failed to upload ${fileParamName}`);
-				return false;
+				return { success: false };
 			}
 		} catch (error) {
 			console.error(`Error uploading ${fileParamName}:`, error);
 			showToast('error', 'Error', `Error uploading ${fileParamName}`);
-			return false;
+			return { success: false };
 		} finally {
 			setIsUploading(false);
 		}

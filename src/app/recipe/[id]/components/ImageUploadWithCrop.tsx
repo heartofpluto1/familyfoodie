@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
+import { FileUploadResponse } from '@/types/fileUpload';
 
 interface ImageUploadWithCropProps {
 	currentImageSrc?: string;
-	onImageUploaded?: () => void;
+	onImageUploaded?: (uploadResponse?: FileUploadResponse) => void;
 	recipeId?: number;
 	isEditing?: boolean;
 }
@@ -259,9 +260,9 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 			const croppedFile = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
 
 			// Upload the cropped image
-			const success = await imageUpload.uploadFileBlob(recipeId, croppedFile, 'image');
-			if (success && onImageUploaded) {
-				onImageUploaded();
+			const result = await imageUpload.uploadFileBlob(recipeId, croppedFile, 'image');
+			if (result.success && onImageUploaded) {
+				onImageUploaded(result.data);
 			}
 		}
 	};

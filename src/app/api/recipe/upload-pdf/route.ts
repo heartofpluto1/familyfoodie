@@ -3,6 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
+import { getRecipePdfUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeRow extends RowDataPacket {
 	filename: string;
@@ -70,11 +71,15 @@ async function postHandler(request: NextRequest) {
 			console.log(`Set database filename to ${uploadFilename} for new recipe`);
 		}
 
+		// Generate cache-busted URL for immediate display
+		const cacheBustedUrl = getRecipePdfUrl(uploadFilename, true);
+
 		return NextResponse.json({
 			success: true,
 			message: 'PDF uploaded successfully',
 			filename: `${uploadFilename}.pdf`,
 			url: uploadResult.url,
+			cacheBustedUrl,
 			storageMode: getStorageMode(),
 		});
 	} catch (error) {
