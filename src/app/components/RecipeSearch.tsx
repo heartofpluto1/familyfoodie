@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchIcon, RemoveIcon } from './Icons';
 
 interface RecipeSearchProps {
@@ -18,14 +19,30 @@ const RecipeSearch = ({ onSearch, resultsCount, totalCount, initialSearchTerm = 
 		setSearchTerm(initialSearchTerm);
 	}, [initialSearchTerm]);
 
-	// Debounced search effect
+	const router = useRouter();
+	const searchParams = useSearchParams();
+
+	// Update URL and trigger search when searchTerm changes
 	useEffect(() => {
 		const timeoutId = setTimeout(() => {
+			// Update URL search parameters
+			const params = new URLSearchParams(searchParams.toString());
+			if (searchTerm.trim()) {
+				params.set('search', searchTerm.trim());
+			} else {
+				params.delete('search');
+			}
+
+			// Update the URL without causing a page refresh
+			const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+			router.replace(newUrl, { scroll: false });
+
+			// Trigger the search callback
 			onSearch(searchTerm);
 		}, 200);
 
 		return () => clearTimeout(timeoutId);
-	}, [searchTerm, onSearch]);
+	}, [searchTerm, onSearch, router, searchParams]);
 
 	const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setSearchTerm(e.target.value);
