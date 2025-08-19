@@ -19,6 +19,7 @@ const eslintConfig = [
       "prettier/prettier": ["error", {
         endOfLine: "auto"
       }],
+      "@next/next/no-img-element": "off",
     },
   },
 ];
