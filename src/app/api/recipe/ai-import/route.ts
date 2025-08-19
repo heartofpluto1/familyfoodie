@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
+import { writeFile, access } from 'fs/promises';
 import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
@@ -247,6 +247,7 @@ async function importHandler(request: NextRequest) {
 			const filename = `rid_${recipeId}`;
 			let pdfSaved = false;
 			let heroImageSaved = false;
+			const fileErrors: string[] = [];
 
 			const staticDir = path.join(process.cwd(), 'public', 'static');
 
@@ -256,10 +257,15 @@ async function importHandler(request: NextRequest) {
 					const pdfBuffer = Buffer.from(await pdfFile.arrayBuffer());
 					const pdfPath = path.join(staticDir, `${filename}.pdf`);
 					await writeFile(pdfPath, pdfBuffer);
+
+					// Verify the file was actually written and is accessible
+					await access(pdfPath);
 					pdfSaved = true;
-					console.log(`PDF saved to: ${pdfPath}`);
+					console.log(`PDF saved and verified: ${pdfPath}`);
 				} catch (error) {
-					console.error('Error saving PDF:', error);
+					const errorMessage = `Failed to save PDF: ${error instanceof Error ? error.message : 'Unknown error'}`;
+					console.error(errorMessage, error);
+					fileErrors.push(errorMessage);
 				}
 			}
 
@@ -269,17 +275,42 @@ async function importHandler(request: NextRequest) {
 					const heroBuffer = Buffer.from(await heroImageFile.arrayBuffer());
 					const heroPath = path.join(staticDir, `${filename}.jpg`);
 					await writeFile(heroPath, heroBuffer);
+
+					// Verify the file was actually written and is accessible
+					await access(heroPath);
 					heroImageSaved = true;
-					console.log(`Hero image saved to: ${heroPath}`);
+					console.log(`Hero image saved and verified: ${heroPath}`);
 				} catch (error) {
-					console.error('Error saving hero image:', error);
+					const errorMessage = `Failed to save hero image: ${error instanceof Error ? error.message : 'Unknown error'}`;
+					console.error(errorMessage, error);
+					fileErrors.push(errorMessage);
 				}
+			}
+
+			// If critical files failed to save, return an error response
+			if (pdfFile && pdfFile.size > 0 && !pdfSaved) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'Recipe created but PDF file upload failed. Please try uploading the PDF again.',
+						recipeId,
+						fileErrors,
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Build success message with file upload status
+			let message = `Recipe imported successfully with ${addedIngredientsCount} ingredients (${newIngredientsCount} new, ${addedIngredientsCount - newIngredientsCount} existing)`;
+
+			if (fileErrors.length > 0) {
+				message += '. Warning: Some file uploads failed.';
 			}
 
 			return NextResponse.json({
 				success: true,
 				recipeId,
-				message: `Recipe imported successfully with ${addedIngredientsCount} ingredients (${newIngredientsCount} new, ${addedIngredientsCount - newIngredientsCount} existing)`,
+				message,
 				recipe: {
 					title: recipe.title,
 					description: recipe.description,
@@ -295,6 +326,7 @@ async function importHandler(request: NextRequest) {
 				totalIngredients: recipe.ingredients.length,
 				pdfSaved,
 				heroImageSaved,
+				fileErrors: fileErrors.length > 0 ? fileErrors : undefined,
 			});
 		} catch (dbError) {
 			await connection.rollback();
