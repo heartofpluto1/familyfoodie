@@ -53,7 +53,6 @@ export async function uploadFile(buffer: Buffer, filename: string, extension: st
 					contentType: contentType || (extension === 'pdf' ? 'application/pdf' : 'image/jpeg'),
 					cacheControl: 'public, max-age=31536000',
 				},
-				public: true,
 			});
 
 			addToast('success', 'GCS Upload Success', `Successfully uploaded ${fullFilename} to GCS`);
