@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import RecipeCard from './RecipeCard';
 import RecipeSearch from './RecipeSearch';
+import CollectionCard from './CollectionCard';
 import { SparklesIcon } from './Icons';
 
 interface RecipeListProps {
@@ -61,7 +62,7 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 				<div className="flex gap-3 flex-shrink-0">
 					<Link
 						href="/recipe/import"
-						className="inline-flex items-center bg-accent hover:bg-accent/90 gap-2 px-4 py-2 text-white rounded-sm transition-colors"
+						className="inline-flex items-center bg-blue-600 hover:bg-blue-700 gap-2 px-4 py-2 text-white rounded-sm transition-colors shadow-md hover:shadow-lg"
 					>
 						<SparklesIcon className="w-4 h-4" />
 						PDF Import (powered by AI)
@@ -69,6 +70,24 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 				</div>
 				<div className="flex-1 max-w-md">
 					<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} initialSearchTerm={searchTerm} />
+				</div>
+			</div>
+
+			{/* My Collections Section */}
+			<div className="mb-8">
+				<h2 className="text-xl text-foreground mb-4">My Collections</h2>
+				<div className="grid grid-cols-3 overflow-x-auto gap-6 pb-2">
+					<CollectionCard coverImage="/custom_collection_004.jpg" subscribed={true} />
+				</div>
+			</div>
+
+			{/* Featured Collections Section */}
+			<div className="mb-8">
+				<h2 className="text-xl text-foreground mb-4">Featured Collections</h2>
+				<div className="grid grid-cols-3 overflow-x-auto gap-6 pb-2">
+					<CollectionCard coverImage="/custom_collection_001.jpg" subscribed={false} />
+					<CollectionCard coverImage="/custom_collection_002.jpg" subscribed={false} />
+					<CollectionCard coverImage="/custom_collection_003.jpg" subscribed={false} />
 				</div>
 			</div>
 
