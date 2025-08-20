@@ -58,6 +58,13 @@ This file contains specific learnings and preferences for this Family Foodie cod
 4. Client-side interactions use authenticated API routes
 5. Logout via server-side route handler with cookie clearing
 
+### Authentication Helper Functions (Updated 2025-01-20)
+- **`getAuthenticatedUser(request)`**: Takes NextRequest, extracts session, validates admin status
+- **`getAuthenticatedUserFromSession(sessionData)`**: Takes decrypted session data, validates admin status  
+- **`requireAdminUser(request)`**: Returns authenticated admin user or null
+- **AVOID**: Function overloading - use separate named functions for clarity
+- **SESSION STRUCTURE**: `{ user: AuthenticatedUser, loginTime: number }`
+
 ### Data Protection
 - Sensitive data fetched server-side after auth verification
 - No database queries in client components
@@ -172,6 +179,39 @@ This file contains specific learnings and preferences for this Family Foodie cod
 - Navigation should collapse to a dropdown/select menu on small screens
 - Always test layouts at mobile viewport sizes
 
+## Admin System Architecture
+
+### Admin Authentication & Authorization
+- **ADMIN PROTECTION**: All admin functionality protected by `is_admin = true` database field
+- **PAGE PROTECTION**: Use `withAdminAuth` HOC for admin pages (not regular `withAuth`)
+- **API PROTECTION**: Use `requireAdminUser(request)` function in all admin API routes
+- **REDIRECT BEHAVIOR**: Non-admin users redirected to `/` (home), not login page
+- **SELF-PROTECTION**: Admins cannot delete themselves or modify their own privileges
+
+### Admin Component Structure
+- **`withAdminAuth`**: Server-side HOC that validates both authentication and admin status
+- **`requireAdminUser`**: Helper function for API routes, returns AuthenticatedUser or null
+- **AVOID**: Using regular `withAuth` for admin areas - it only checks authentication, not admin status
+
+### Admin Navigation
+- **HEADER INTEGRATION**: Admin link appears in navigation for users with `is_admin = true`
+- **CONDITIONAL RENDERING**: `{user?.is_admin && <AdminLink />}` pattern for admin-only UI elements
+- **RESPONSIVE**: Admin links included in both desktop and mobile navigation menus
+
+### Admin API Routes Structure
+```
+/api/admin/users/ - User management (GET, POST, PATCH, DELETE)
+/api/admin/users/[id]/ - Individual user operations  
+/api/admin/migrate/ - Database migration management
+```
+
+### Admin Pages Structure
+```
+/admin/ - Dashboard with admin tool cards
+/admin/users/ - User management interface
+/admin/migrations/ - Migration status and controls
+```
+
 ## Database Schema Reference
 
 **IMPORTANT**: Always refer to `docs/schema.sql` for the complete database schema when working with:
@@ -180,10 +220,17 @@ This file contains specific learnings and preferences for this Family Foodie cod
 - Adding new database-related functionality
 - Troubleshooting data structure issues
 
+### Recent Schema Changes (2025-01-20)
+- **TABLE RENAME**: `auth_user` → `users` (completed via migration 003)
+- **PERMISSION SIMPLIFICATION**: Removed `is_staff`, `is_superuser` → single `is_admin` boolean
+- **MULTI-TENANT REMOVAL**: Removed all `account_id` references, system now shared for all users
+- **USER_ID REMOVAL**: Removed `user_id` from menus/shopping tables - all data is now shared
+- **LAST LOGIN TRACKING**: `last_login` field updated automatically on successful authentication
+
 The schema file contains the complete MySQL table structures, indexes, and constraints for all tables including:
-- `users` - User authentication and management (migrated from Django auth_user)
-- `menus_recipe` - Recipe data with primaryType_id/secondaryType_id
-- `menus_recipeingredient` - Recipe ingredients with quantities
-- `menus_shoppinglist` - Shopping list items
+- `users` - User authentication and management (migrated from Django auth_user, simplified permissions)
+- `menus_recipe` - Recipe data with primaryType_id/secondaryType_id (shared system)
+- `menus_recipeingredient` - Recipe ingredients with quantities (shared system)
+- `menus_shoppinglist` - Shopping list items (shared system)
 - `menus_primarytype`/`menus_secondarytype` - Ingredient type categories
 - And all other supporting tables
