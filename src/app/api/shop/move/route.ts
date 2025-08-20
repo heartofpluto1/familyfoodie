@@ -17,11 +17,11 @@ async function handler(request: NextRequest) {
 			await connection.beginTransaction();
 
 			// Update the moved item
-			await connection.execute('UPDATE menus_shoppinglist SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ?', [fresh, sort, id, week, year]);
+			await connection.execute('UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ?', [fresh, sort, id, week, year]);
 
 			// Get all items in the target list (fresh or pantry) for this week/year
 			const [items] = await connection.execute(
-				'SELECT id, sort FROM menus_shoppinglist WHERE fresh = ? AND week = ? AND year = ? AND id != ? ORDER BY sort ASC',
+				'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND id != ? ORDER BY sort ASC',
 				[fresh, week, year, id]
 			);
 
@@ -37,7 +37,7 @@ async function handler(request: NextRequest) {
 				}
 
 				if (item.sort !== newSort) {
-					await connection.execute('UPDATE menus_shoppinglist SET sort = ? WHERE id = ?', [newSort, item.id]);
+					await connection.execute('UPDATE shopping_lists SET sort = ? WHERE id = ?', [newSort, item.id]);
 				}
 			}
 

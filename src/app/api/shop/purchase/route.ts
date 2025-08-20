@@ -11,7 +11,7 @@ async function handler(request: NextRequest) {
 		}
 
 		// Update the shopping list item
-		await pool.execute('UPDATE menus_shoppinglist SET purchased = ? WHERE id = ?', [purchased ? 1 : 0, id]);
+		await pool.execute('UPDATE shopping_lists SET purchased = ? WHERE id = ?', [purchased ? 1 : 0, id]);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

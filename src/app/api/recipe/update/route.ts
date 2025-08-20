@@ -26,7 +26,7 @@ async function updateHandler(request: NextRequest) {
 
 		// Update the recipe
 		const [result] = await pool.execute<ResultSetHeader>(
-			`UPDATE menus_recipe 
+			`UPDATE recipes 
 			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?
 			 WHERE id = ?`,
 			[name, description, prepTime || null, cookTime || null, seasonId || null, primaryTypeId || null, secondaryTypeId || null, id]

@@ -255,15 +255,15 @@ If the images don't contain a clear recipe, create the best recipe you can based
 				i.pantryCategory_id, 
 				i.supermarketCategory_id,
 				pc.name as pantryCategory_name
-			FROM menus_ingredient i 
-			LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id 
+			FROM ingredients i 
+			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id 
 			ORDER BY i.name
 		`);
 
 		// Get categories for new ingredients
-		const [pantryCategories] = await pool.execute<PantryCategory[]>('SELECT id, name FROM menus_pantrycategory ORDER BY name');
+		const [pantryCategories] = await pool.execute<PantryCategory[]>('SELECT id, name FROM category_pantry ORDER BY name');
 
-		const [supermarketCategories] = await pool.execute<SupermarketCategory[]>('SELECT id, name FROM menus_supermarketcategory ORDER BY name');
+		const [supermarketCategories] = await pool.execute<SupermarketCategory[]>('SELECT id, name FROM category_supermarket ORDER BY name');
 
 		// Use AI to match ingredient names with existing ingredients
 		const ingredientNames = recipe.ingredients.map(ing => ing.name);

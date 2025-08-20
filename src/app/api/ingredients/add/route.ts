@@ -23,7 +23,7 @@ async function addIngredientHandler(request: NextRequest) {
 		}
 
 		// Check if ingredient already exists
-		const [existingRows] = await pool.execute<RowDataPacket[]>('SELECT id FROM menus_ingredient WHERE name = ? AND public = 1', [name.trim()]);
+		const [existingRows] = await pool.execute<RowDataPacket[]>('SELECT id FROM ingredients WHERE name = ? AND public = 1', [name.trim()]);
 
 		if (existingRows.length > 0) {
 			return NextResponse.json({ error: 'An ingredient with this name already exists' }, { status: 400 });
@@ -31,7 +31,7 @@ async function addIngredientHandler(request: NextRequest) {
 
 		// Add the new ingredient
 		const [result] = await pool.execute(
-			`INSERT INTO menus_ingredient 
+			`INSERT INTO ingredients 
 			 (name, fresh, cost, stockcode, supermarketCategory_id, pantryCategory_id, public) 
 			 VALUES (?, ?, ?, ?, ?, ?, 1)`,
 			[name.trim(), fresh, price, stockcode, supermarketCategoryId, pantryCategoryId]

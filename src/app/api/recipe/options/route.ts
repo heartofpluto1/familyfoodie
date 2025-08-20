@@ -38,21 +38,21 @@ interface Preparation extends RowDataPacket {
 async function getHandler() {
 	try {
 		// Get all available options for dropdowns
-		const [seasons] = await pool.execute<Season[]>('SELECT id, name FROM menus_season ORDER BY name');
-		const [primaryTypes] = await pool.execute<PrimaryType[]>('SELECT id, name FROM menus_primarytype ORDER BY name');
-		const [secondaryTypes] = await pool.execute<SecondaryType[]>('SELECT id, name FROM menus_secondarytype ORDER BY name');
+		const [seasons] = await pool.execute<Season[]>('SELECT id, name FROM seasons ORDER BY name');
+		const [primaryTypes] = await pool.execute<PrimaryType[]>('SELECT id, name FROM type_proteins ORDER BY name');
+		const [secondaryTypes] = await pool.execute<SecondaryType[]>('SELECT id, name FROM type_carbs ORDER BY name');
 		const [ingredients] = await pool.execute<Ingredient[]>(`
 			SELECT 
 				i.id, 
 				i.name, 
 				pc.id as pantryCategory_id, 
 				pc.name as pantryCategory_name 
-			FROM menus_ingredient i 
-			LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id 
+			FROM ingredients i 
+			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id 
 			ORDER BY i.name
 		`);
-		const [measures] = await pool.execute<Measure[]>('SELECT id, name FROM menus_measure ORDER BY name');
-		const [preparations] = await pool.execute<Preparation[]>('SELECT id, name FROM menus_preperation ORDER BY name');
+		const [measures] = await pool.execute<Measure[]>('SELECT id, name FROM measurements ORDER BY name');
+		const [preparations] = await pool.execute<Preparation[]>('SELECT id, name FROM preparations ORDER BY name');
 
 		return NextResponse.json({
 			seasons,
