@@ -1,0 +1,113 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserById, updateUser, deleteUser } from '@/lib/queries/admin/users';
+import type { UserUpdate } from '@/types/user';
+import { getSessionFromRequest } from '@/lib/auth-middleware';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
+
+interface RouteParams {
+	params: Promise<{ id: string }>;
+}
+
+export async function GET(request: NextRequest, { params }: RouteParams) {
+	try {
+		// Get the authenticated user
+		const session = await getSessionFromRequest(request);
+
+		if (!session) {
+			return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+		}
+
+		const { id } = await params;
+		const userId = parseInt(id, 10);
+
+		if (isNaN(userId)) {
+			return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+		}
+
+		const userData = await getUserById(userId);
+
+		if (!userData) {
+			return NextResponse.json({ error: 'User not found' }, { status: 404 });
+		}
+
+		return NextResponse.json({ user: userData });
+	} catch (error) {
+		console.error('Error fetching user:', error);
+		return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
+	}
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+	try {
+		// Get the authenticated user
+		const session = await getSessionFromRequest(request);
+
+		if (!session) {
+			return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+		}
+
+		const { id } = await params;
+		const userId = parseInt(id, 10);
+
+		if (isNaN(userId)) {
+			return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+		}
+
+		const updates: UserUpdate = await request.json();
+
+		// Get current user information for self-protection checks
+		const currentUser = await getAuthenticatedUser(session);
+
+		// Prevent users from modifying their own privileges
+		if (userId === currentUser?.id && (updates.is_admin !== undefined || updates.is_active !== undefined)) {
+			return NextResponse.json({ error: 'Cannot modify your own privileges' }, { status: 400 });
+		}
+
+		await updateUser(userId, updates);
+
+		const updatedUser = await getUserById(userId);
+
+		return NextResponse.json({
+			message: 'User updated successfully',
+			user: updatedUser,
+		});
+	} catch (error) {
+		console.error('Error updating user:', error);
+		return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
+	}
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+	try {
+		// Get the authenticated user
+		const session = await getSessionFromRequest(request);
+
+		if (!session) {
+			return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+		}
+
+		const { id } = await params;
+		const userId = parseInt(id, 10);
+
+		if (isNaN(userId)) {
+			return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+		}
+
+		// Get current user information for self-protection checks
+		const currentUser = await getAuthenticatedUser(session);
+
+		// Prevent self-deletion
+		if (userId === currentUser?.id) {
+			return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
+		}
+
+		await deleteUser(userId);
+
+		return NextResponse.json({
+			message: 'User deleted successfully',
+		});
+	} catch (error) {
+		console.error('Error deleting user:', error);
+		return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+	}
+}

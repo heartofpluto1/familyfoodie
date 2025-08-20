@@ -9,8 +9,7 @@ export interface User {
 	first_name: string;
 	last_name: string;
 	is_active: boolean;
-	is_staff: boolean;
-	is_superuser: boolean;
+	is_admin: boolean;
 }
 
 export interface AuthResult {
@@ -47,7 +46,7 @@ async function verifyDjangoPassword(password: string, hashedPassword: string): P
 export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
 	try {
 		const [rows] = await pool.execute(
-			'SELECT id, username, email, first_name, last_name, password, is_active, is_staff, is_superuser FROM auth_user WHERE username = ? AND is_active = 1',
+			'SELECT id, username, email, first_name, last_name, password, is_active, is_admin FROM auth_user WHERE username = ? AND is_active = 1',
 			[username]
 		);
 
