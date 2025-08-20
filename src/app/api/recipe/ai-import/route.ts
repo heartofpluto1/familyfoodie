@@ -173,7 +173,7 @@ async function importHandler(request: NextRequest) {
 
 			// Insert the recipe with temporary filename
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO menus_recipe (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, duplicate, filename, public) 
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, duplicate, filename, public) 
 				 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)`,
 				[
 					recipe.title,
@@ -193,7 +193,7 @@ async function importHandler(request: NextRequest) {
 			const secureFilename = generateSecureFilename(recipeId, recipe.title);
 
 			// Update filename to use secure hash
-			await connection.execute<ResultSetHeader>('UPDATE menus_recipe SET filename = ? WHERE id = ?', [secureFilename, recipeId]);
+			await connection.execute<ResultSetHeader>('UPDATE recipes SET filename = ? WHERE id = ?', [secureFilename, recipeId]);
 
 			// Recipe is now globally available to all users
 
@@ -210,9 +210,7 @@ async function importHandler(request: NextRequest) {
 					ingredientId = ingredient.existing_ingredient_id;
 				} else {
 					// Check if ingredient already exists in database by name (case-insensitive)
-					const [existingRows] = await connection.execute<IngredientRow[]>('SELECT id FROM menus_ingredient WHERE LOWER(name) = LOWER(?)', [
-						ingredient.name,
-					]);
+					const [existingRows] = await connection.execute<IngredientRow[]>('SELECT id FROM ingredients WHERE LOWER(name) = LOWER(?)', [ingredient.name]);
 
 					if (existingRows.length > 0) {
 						// Ingredient exists, use its ID
@@ -224,7 +222,7 @@ async function importHandler(request: NextRequest) {
 						const supermarketCategory_id = ingredient.supermarketCategory_id || 1; // Default to first category
 
 						const [insertResult] = await connection.execute<ResultSetHeader>(
-							`INSERT INTO menus_ingredient (name, fresh, pantryCategory_id, supermarketCategory_id, public) 
+							`INSERT INTO ingredients (name, fresh, pantryCategory_id, supermarketCategory_id, public) 
 							 VALUES (?, ?, ?, ?, 1)`,
 							[ingredient.name, fresh ? 1 : 0, pantryCategory_id, supermarketCategory_id]
 						);
@@ -236,7 +234,7 @@ async function importHandler(request: NextRequest) {
 
 				// Add the ingredient to the recipe
 				await connection.execute(
-					`INSERT INTO menus_recipeingredient (recipe_id, ingredient_id, quantity, quantity4, quantityMeasure_id, primaryIngredient)
+					`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, quantity4, quantityMeasure_id, primaryIngredient)
 					 VALUES (?, ?, ?, ?, ?, ?)`,
 					[recipeId, ingredientId, ingredient.quantity_2_servings, ingredient.quantity_4_servings, ingredient.measureId || null, 0]
 				);

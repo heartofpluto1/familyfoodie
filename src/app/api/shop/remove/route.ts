@@ -17,7 +17,7 @@ async function handler(request: NextRequest) {
 			await connection.beginTransaction();
 
 			// Delete the shopping list item
-			const [result] = await connection.execute('DELETE FROM menus_shoppinglist WHERE id = ?', [id]);
+			const [result] = await connection.execute('DELETE FROM shopping_lists WHERE id = ?', [id]);
 
 			const deleteResult = result as { affectedRows: number };
 

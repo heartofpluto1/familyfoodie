@@ -10,9 +10,9 @@ export async function getIngredients() {
         i.stockcode,
         sc.name as supermarketCategory,
         pc.name as pantryCategory
-      FROM menus_ingredient i
-      LEFT JOIN menus_supermarketcategory sc ON i.supermarketCategory_id = sc.id
-      LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
+      FROM ingredients i
+      LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
+      LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
       WHERE public = 1
       ORDER BY name
     `);
@@ -30,11 +30,11 @@ export async function getAllIngredients() {
 			sc.name as supermarketCategory,
 			pc.name as pantryCategory,
 			COUNT(DISTINCT ri.recipe_id) as recipeCount
-		FROM menus_ingredient i
-		LEFT JOIN menus_supermarketcategory sc ON i.supermarketCategory_id = sc.id
-		LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
-		LEFT JOIN menus_recipeingredient ri ON i.id = ri.ingredient_id
-		LEFT JOIN menus_recipe r ON ri.recipe_id = r.id
+		FROM ingredients i
+		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
+		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
+		LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
+		LEFT JOIN recipes r ON ri.recipe_id = r.id
 		WHERE i.public = 1
 		GROUP BY i.id, i.name, i.fresh, i.cost, i.stockcode, sc.name, pc.name
 		ORDER BY sc.id, i.name;
@@ -54,7 +54,7 @@ export async function getAllIngredients() {
 export async function getSupermarketCategories() {
 	const [rows] = await pool.execute(`
 		SELECT id, name 
-		FROM menus_supermarketcategory 
+		FROM category_supermarket 
 		ORDER BY name
 	`);
 	return rows as { id: number; name: string }[];
@@ -63,7 +63,7 @@ export async function getSupermarketCategories() {
 export async function getPantryCategories() {
 	const [rows] = await pool.execute(`
 		SELECT id, name 
-		FROM menus_pantrycategory 
+		FROM category_pantry 
 		ORDER BY name
 	`);
 	return rows as { id: number; name: string }[];
@@ -87,12 +87,12 @@ export async function getShoppingList(week: string, year: string) {
             sc.name as supermarketCategory,
             pc.name as pantryCategory,
             sl.fresh
-        FROM menus_shoppinglist sl
-        LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
-        LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
-        LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
-        LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
-        LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
+        FROM shopping_lists sl
+        LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
+        LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+        LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
+        LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
+        LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 1        ORDER BY sl.sort, sl.id;
       `,
 		[week, year]
@@ -115,12 +115,12 @@ export async function getShoppingList(week: string, year: string) {
             sc.name as supermarketCategory,
             pc.name as pantryCategory,
             sl.fresh
-        FROM menus_shoppinglist sl
-        LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
-        LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
-        LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
-        LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
-        LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
+        FROM shopping_lists sl
+        LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
+        LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+        LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
+        LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
+        LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 0        ORDER BY sl.sort, sl.id;
     `,
 		[week, year]

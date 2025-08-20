@@ -31,7 +31,7 @@ async function putHandler(request: NextRequest) {
 
 		// Update the recipe ingredient
 		const [result] = await pool.execute<ResultSetHeader>(
-			`UPDATE menus_recipeingredient 
+			`UPDATE recipe_ingredients 
 			 SET quantity = ?, quantity4 = ?, quantityMeasure_id = ?
 			 WHERE id = ?`,
 			[quantity, quantity4, measureId || null, id]
@@ -60,7 +60,7 @@ async function postHandler(request: NextRequest) {
 
 		// Add the new recipe ingredient
 		const [result] = await pool.execute<ResultSetHeader>(
-			`INSERT INTO menus_recipeingredient (recipe_id, ingredient_id, quantity, quantity4, quantityMeasure_id, preperation_id, primaryIngredient)
+			`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, quantity4, quantityMeasure_id, preperation_id, primaryIngredient)
 			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			[recipeId, ingredientId, quantity, quantity4, measureId || null, preparationId || null, 0]
 		);
@@ -86,7 +86,7 @@ async function deleteHandler(request: NextRequest) {
 		}
 
 		// Delete the recipe ingredient
-		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM menus_recipeingredient WHERE id = ?`, [parseInt(id)]);
+		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM recipe_ingredients WHERE id = ?`, [parseInt(id)]);
 
 		if (result.affectedRows === 0) {
 			return NextResponse.json({ error: 'Recipe ingredient not found' }, { status: 404 });

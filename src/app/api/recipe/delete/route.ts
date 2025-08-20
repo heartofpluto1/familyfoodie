@@ -24,7 +24,7 @@ async function deleteHandler(request: NextRequest) {
 		}
 
 		// First, check if the recipe exists and get its filename
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, filename FROM menus_recipe WHERE id = ?', [parseInt(recipeId)]);
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
@@ -33,7 +33,7 @@ async function deleteHandler(request: NextRequest) {
 		const recipe = recipeRows[0];
 
 		// Check if the recipe is used in any planned weeks
-		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM menus_recipeweek WHERE recipe_id = ?', [parseInt(recipeId)]);
+		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM plans WHERE recipe_id = ?', [parseInt(recipeId)]);
 
 		if (planRows[0].count > 0) {
 			return NextResponse.json(
@@ -46,8 +46,8 @@ async function deleteHandler(request: NextRequest) {
 
 		// Check if any ingredients from this recipe have been used in shopping lists
 		const [shoppingListUsage] = await pool.execute<RowDataPacket[]>(
-			`SELECT COUNT(*) as count FROM menus_shoppinglist sl 
-			 INNER JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id 
+			`SELECT COUNT(*) as count FROM shopping_lists sl 
+			 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
 			 WHERE ri.recipe_id = ?`,
 			[parseInt(recipeId)]
 		);
@@ -77,19 +77,18 @@ async function deleteHandler(request: NextRequest) {
 				// No shopping list history - safe to fully delete
 
 				// First, get all ingredients used by this recipe so we can check for unused ones later
-				const [recipeIngredients] = await connection.execute<RowDataPacket[]>(
-					'SELECT DISTINCT ingredient_id FROM menus_recipeingredient WHERE recipe_id = ?',
-					[parseInt(recipeId)]
-				);
+				const [recipeIngredients] = await connection.execute<RowDataPacket[]>('SELECT DISTINCT ingredient_id FROM recipe_ingredients WHERE recipe_id = ?', [
+					parseInt(recipeId),
+				]);
 				const ingredientIds = recipeIngredients.map(row => row.ingredient_id);
 
 				// Delete recipe ingredients first (foreign key constraint)
-				await connection.execute('DELETE FROM menus_recipeingredient WHERE recipe_id = ?', [parseInt(recipeId)]);
+				await connection.execute('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [parseInt(recipeId)]);
 
 				// Account associations no longer exist - recipes are globally available
 
 				// Delete the recipe
-				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM menus_recipe WHERE id = ?', [parseInt(recipeId)]);
+				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 				if (deleteResult.affectedRows === 0) {
 					throw new Error('Failed to delete recipe from database');
@@ -101,17 +100,16 @@ async function deleteHandler(request: NextRequest) {
 
 				for (const ingredientId of ingredientIds) {
 					// Check if this ingredient is used in any other recipes
-					const [otherRecipeUse] = await connection.execute<RowDataPacket[]>(
-						'SELECT COUNT(*) as count FROM menus_recipeingredient WHERE ingredient_id = ?',
-						[ingredientId]
-					);
+					const [otherRecipeUse] = await connection.execute<RowDataPacket[]>('SELECT COUNT(*) as count FROM recipe_ingredients WHERE ingredient_id = ?', [
+						ingredientId,
+					]);
 
 					// Account ingredients table no longer exists
 
 					// Check if this ingredient has been used in shopping lists (via recipeingredient)
 					const [shoppingListUse] = await connection.execute<RowDataPacket[]>(
-						`SELECT COUNT(*) as count FROM menus_shoppinglist sl 
-						 INNER JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id 
+						`SELECT COUNT(*) as count FROM shopping_lists sl 
+						 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
 						 WHERE ri.ingredient_id = ?`,
 						[ingredientId]
 					);
@@ -119,10 +117,10 @@ async function deleteHandler(request: NextRequest) {
 					// If ingredient is not used anywhere else, delete it
 					if (otherRecipeUse[0].count === 0 && shoppingListUse[0].count === 0) {
 						// Get ingredient name for logging
-						const [ingredientName] = await connection.execute<RowDataPacket[]>('SELECT name FROM menus_ingredient WHERE id = ?', [ingredientId]);
+						const [ingredientName] = await connection.execute<RowDataPacket[]>('SELECT name FROM ingredients WHERE id = ?', [ingredientId]);
 
 						// Delete the unused ingredient
-						const [ingredientDeleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM menus_ingredient WHERE id = ?', [ingredientId]);
+						const [ingredientDeleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM ingredients WHERE id = ?', [ingredientId]);
 
 						if (ingredientDeleteResult.affectedRows > 0) {
 							deletedIngredientsCount++;

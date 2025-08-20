@@ -24,7 +24,7 @@ async function updateIngredientHandler(request: NextRequest) {
 
 		// Update the ingredient
 		await pool.execute(
-			`UPDATE menus_ingredient 
+			`UPDATE ingredients 
 			 SET name = ?, fresh = ?, cost = ?, stockcode = ?, 
 			     supermarketCategory_id = ?, pantryCategory_id = ?
 			 WHERE id = ? AND public = 1`,

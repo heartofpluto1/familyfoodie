@@ -34,7 +34,7 @@ async function postHandler(request: NextRequest) {
 		const buffer = Buffer.from(bytes);
 
 		// Get the current filename from the database
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT filename FROM menus_recipe WHERE id = ?', [parseInt(recipeId)]);
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
@@ -62,7 +62,7 @@ async function postHandler(request: NextRequest) {
 
 		// Update the database with filename if it was newly generated
 		if (!currentFilename) {
-			const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE menus_recipe SET filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
+			const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
 
 			if (updateResult.affectedRows === 0) {
 				return NextResponse.json({ error: 'Failed to update recipe filename' }, { status: 500 });

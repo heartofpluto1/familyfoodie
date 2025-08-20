@@ -18,7 +18,7 @@ async function deleteIngredientHandler(request: NextRequest) {
 		}
 
 		// Check if the ingredient is used in any recipes
-		const [recipeUsage] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as count FROM menus_recipeingredient WHERE ingredient_id = ?`, [id]);
+		const [recipeUsage] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as count FROM recipe_ingredients WHERE ingredient_id = ?`, [id]);
 
 		if (recipeUsage[0].count > 0) {
 			return NextResponse.json(
@@ -33,7 +33,7 @@ async function deleteIngredientHandler(request: NextRequest) {
 		// Account ingredients table no longer exists
 
 		// Delete the ingredient
-		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM menus_ingredient WHERE id = ? AND public = 1`, [id]);
+		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM ingredients WHERE id = ? AND public = 1`, [id]);
 
 		// Check if deletion was successful
 		if (result.affectedRows === 0) {

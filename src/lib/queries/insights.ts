@@ -30,7 +30,7 @@ export async function getAverageWeeklySpending() {
 			week, 
 			year, 
 			SUM(cost) as total_cost
-		FROM menus_shoppinglist
+		FROM shopping_lists
 		WHERE 1=1
 			AND ((year > ?) OR (year = ? AND week >= ?))
 			AND cost IS NOT NULL
@@ -64,10 +64,10 @@ export async function getTopFruitsAndVegetables() {
 		`SELECT 
 			COALESCE(i.name, sl.name) as name,
 			COUNT(DISTINCT CONCAT(sl.year, '-', sl.week)) as frequency
-		FROM menus_shoppinglist sl
-		LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
-		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
-		LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
+		FROM shopping_lists sl
+		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
+		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+		LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
 		WHERE 1=1
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
@@ -96,10 +96,10 @@ export async function getTopHerbs() {
 		`SELECT 
 			COALESCE(i.name, sl.name) as name,
 			COUNT(DISTINCT CONCAT(sl.year, '-', sl.week)) as frequency
-		FROM menus_shoppinglist sl
-		LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
-		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
-		LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
+		FROM shopping_lists sl
+		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
+		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+		LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
 		WHERE 1=1
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
@@ -128,8 +128,8 @@ export async function getTopRecipes() {
 			r.id,
 			r.name,
 			COUNT(DISTINCT CONCAT(rw.year, '-', rw.week)) as times_planned
-		FROM menus_recipeweek rw
-		INNER JOIN menus_recipe r ON rw.recipe_id = r.id
+		FROM plans rw
+		INNER JOIN recipes r ON rw.recipe_id = r.id
 		WHERE 1=1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
 		GROUP BY r.id, r.name
@@ -148,7 +148,7 @@ export async function getSpendingTrend() {
 			week, 
 			year, 
 			SUM(cost) as total_cost
-		FROM menus_shoppinglist
+		FROM shopping_lists
 		WHERE 1=1
 			AND cost IS NOT NULL
 		GROUP BY year, week
@@ -179,9 +179,9 @@ export async function getGardenSavings(topItems: TopIngredient[]) {
 			COALESCE(i.name, sl.name) as name,
 			SUM(sl.cost) as total_cost,
 			COUNT(DISTINCT CONCAT(sl.year, '-', sl.week)) as frequency
-		FROM menus_shoppinglist sl
-		LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
-		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
+		FROM shopping_lists sl
+		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
+		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		WHERE 1=1
 			AND sl.cost IS NOT NULL
 			AND sl.cost > 0
@@ -254,12 +254,12 @@ export async function getRecipePairingSuggestions() {
 					ELSE 1 
 				END AS rn,
 				@prev_ingredient := i.name
-			FROM menus_recipeingredient ri1
-			JOIN menus_recipe r1 ON ri1.recipe_id = r1.id
-			JOIN menus_ingredient i ON ri1.ingredient_id = i.id
-			LEFT JOIN menus_supermarketcategory sc ON i.supermarketCategory_id = sc.id
-			JOIN menus_recipeingredient ri2 ON ri2.ingredient_id = i.id AND ri2.recipe_id != ri1.recipe_id
-			JOIN menus_recipe r2 ON ri2.recipe_id = r2.id
+			FROM recipe_ingredients ri1
+			JOIN recipes r1 ON ri1.recipe_id = r1.id
+			JOIN ingredients i ON ri1.ingredient_id = i.id
+			LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
+			JOIN recipe_ingredients ri2 ON ri2.ingredient_id = i.id AND ri2.recipe_id != ri1.recipe_id
+			JOIN recipes r2 ON ri2.recipe_id = r2.id
 			CROSS JOIN (SELECT @row_number := 0, @prev_ingredient := '') AS vars
 			WHERE r1.duplicate = 0 
 				AND r2.duplicate = 0

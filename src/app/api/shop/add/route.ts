@@ -27,7 +27,7 @@ async function handler(request: NextRequest) {
 						i.cost,
 						i.stockcode,
 						i.supermarketCategory_id
-					FROM menus_ingredient i
+					FROM ingredients i
 					WHERE i.id = ? AND i.public = 1
 					LIMIT 1
 				`,
@@ -47,7 +47,7 @@ async function handler(request: NextRequest) {
 			const [sortRows] = await connection.execute(
 				`
 				SELECT COALESCE(MAX(sort), -1) as max_sort 
-				FROM menus_shoppinglist 
+				FROM shopping_lists 
 				WHERE week = ? AND year = ?
 			`,
 				[week, year]
@@ -59,10 +59,10 @@ async function handler(request: NextRequest) {
 			let insertResult;
 
 			if (knownIngredient) {
-				// Add known ingredient with data from menus_ingredient table
+				// Add known ingredient with data from ingredients table
 				[insertResult] = await connection.execute(
 					`
-					INSERT INTO menus_shoppinglist 
+					INSERT INTO shopping_lists 
 					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) 
 					VALUES (?, ?, 1, ?, ?, ?, NULL, 0, ?, ?)
 				`,
@@ -72,7 +72,7 @@ async function handler(request: NextRequest) {
 				// Add unknown ingredient as text with null values
 				[insertResult] = await connection.execute(
 					`
-					INSERT INTO menus_shoppinglist 
+					INSERT INTO shopping_lists 
 					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) 
 					VALUES (?, ?, 1, ?, ?, NULL, NULL, 0, NULL, NULL)
 				`,
