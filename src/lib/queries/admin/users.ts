@@ -16,8 +16,7 @@ export async function getAllUsers(): Promise<User[]> {
 			u.is_admin,
 			u.date_joined,
 			u.last_login,
-			u.account_id
-		FROM auth_user u
+		FROM users u
 		ORDER BY u.date_joined DESC
 	`);
 
@@ -37,8 +36,7 @@ export async function getUserById(userId: number): Promise<User | null> {
 			u.is_admin,
 			u.date_joined,
 			u.last_login,
-			u.account_id
-		FROM auth_user u
+		FROM users u
 		WHERE u.id = ?
 		`,
 		[userId]
@@ -78,11 +76,11 @@ export async function updateUser(userId: number, updates: UserUpdate): Promise<v
 
 	values.push(userId);
 
-	await pool.execute(`UPDATE auth_user SET ${fields.join(', ')} WHERE id = ?`, values);
+	await pool.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
 }
 
 export async function deleteUser(userId: number): Promise<void> {
-	await pool.execute('DELETE FROM auth_user WHERE id = ?', [userId]);
+	await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
 }
 
 export async function getUserStats(): Promise<{
@@ -95,7 +93,7 @@ export async function getUserStats(): Promise<{
 			COUNT(*) as total,
 			SUM(is_active) as active,
 			SUM(is_admin) as admins
-		FROM auth_user
+		FROM users
 	`);
 
 	return {

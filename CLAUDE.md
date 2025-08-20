@@ -59,7 +59,7 @@ This is a Next.js 15 application using the App Router pattern with TypeScript, f
 - `src/app/components/` - React components
 
 ### Database Integration
-- Uses existing Django database schema (auth_user table)
+- Uses users table for authentication (migrated from Django auth_user)
 - Connection pooling configured in `src/lib/db.js`
 - Structured queries in `src/lib/queries/` directory
 - Environment variables for database configuration (DB_HOST, DB_PORT, etc.)

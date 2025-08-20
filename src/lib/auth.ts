@@ -46,7 +46,7 @@ async function verifyDjangoPassword(password: string, hashedPassword: string): P
 export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
 	try {
 		const [rows] = await pool.execute(
-			'SELECT id, username, email, first_name, last_name, password, is_active, is_admin FROM auth_user WHERE username = ? AND is_active = 1',
+			'SELECT id, username, email, first_name, last_name, password, is_active, is_admin FROM users WHERE username = ? AND is_active = 1',
 			[username]
 		);
 
@@ -63,7 +63,7 @@ export async function authenticateUser(username: string, password: string): Prom
 		}
 
 		// Update last_login
-		await pool.execute('UPDATE auth_user SET last_login = NOW() WHERE id = ?', [user.id]);
+		await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
 		// Return user without password
 		const { ...userWithoutPassword } = user;
