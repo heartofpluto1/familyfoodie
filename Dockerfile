@@ -57,13 +57,22 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy migrations folder, startup script, and database module
+COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
+COPY --from=builder --chown=nextjs:nodejs /app/startup.sh ./startup.sh
+RUN mkdir -p ./src/lib
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/db.js ./src/lib/db.js
+# Copy production node_modules for migration dependencies
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+RUN chmod +x ./startup.sh
+
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 8080
 
-ENV PORT=3000
+ENV PORT=8080
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/config/next-config-js/output
 ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+CMD ["./startup.sh"]
