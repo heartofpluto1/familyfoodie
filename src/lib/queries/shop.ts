@@ -29,13 +29,12 @@ export async function getAllIngredients() {
 			i.stockcode,
 			sc.name as supermarketCategory,
 			pc.name as pantryCategory,
-			COUNT(DISTINCT CASE WHEN ar.archive = 0 THEN ri.recipe_id END) as recipeCount
+			COUNT(DISTINCT ri.recipe_id) as recipeCount
 		FROM menus_ingredient i
 		LEFT JOIN menus_supermarketcategory sc ON i.supermarketCategory_id = sc.id
 		LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
 		LEFT JOIN menus_recipeingredient ri ON i.id = ri.ingredient_id
 		LEFT JOIN menus_recipe r ON ri.recipe_id = r.id
-		LEFT JOIN menus_accountrecipe ar ON r.id = ar.recipe_id
 		WHERE i.public = 1
 		GROUP BY i.id, i.name, i.fresh, i.cost, i.stockcode, sc.name, pc.name
 		ORDER BY sc.id, i.name;
@@ -94,8 +93,7 @@ export async function getShoppingList(week: string, year: string) {
         LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
         LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
         LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
-        WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 1 AND sl.account_id = 1
-        ORDER BY sl.sort, sl.id;
+        WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 1        ORDER BY sl.sort, sl.id;
       `,
 		[week, year]
 	);
@@ -123,8 +121,7 @@ export async function getShoppingList(week: string, year: string) {
         LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
         LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
         LEFT JOIN menus_pantrycategory pc ON i.pantryCategory_id = pc.id
-        WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 0 AND sl.account_id = 1
-        ORDER BY sl.sort, sl.id;
+        WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 0        ORDER BY sl.sort, sl.id;
     `,
 		[week, year]
 	);

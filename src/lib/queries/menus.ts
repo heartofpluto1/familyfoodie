@@ -39,10 +39,6 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
       WHERE 
         ((menus_recipeweek.year = ${currentYear} AND menus_recipeweek.week <= ${currentWeek}) OR
         (menus_recipeweek.year = ${monthsAgoYear} AND menus_recipeweek.week >= ${monthsAgoWeek}))
-        AND EXISTS (
-          SELECT 1 FROM menus_accountrecipe ar 
-          WHERE ar.recipe_id = menus_recipe.id AND ar.archive = 0
-        )
       ORDER BY menus_recipeweek.year DESC, menus_recipeweek.week DESC
     `;
 
@@ -114,10 +110,6 @@ export async function getAllRecipes(): Promise<Recipe[]> {
 			r.cookTime
 		FROM menus_recipe r
 		WHERE r.duplicate = 0 
-		  AND EXISTS (
-		    SELECT 1 FROM menus_accountrecipe ar 
-		    WHERE ar.recipe_id = r.id AND ar.archive = 0
-		  )
 		ORDER BY r.name ASC
 	`;
 
@@ -155,10 +147,6 @@ export async function getAllRecipesWithDetails(): Promise<Recipe[]> {
 		LEFT JOIN menus_recipeingredient ri ON r.id = ri.recipe_id
 		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
 		WHERE r.duplicate = 0 
-		  AND EXISTS (
-		    SELECT 1 FROM menus_accountrecipe ar 
-		    WHERE ar.recipe_id = r.id AND ar.archive = 0
-		  )
 		GROUP BY r.id, r.name, r.filename, r.prepTime, r.cookTime, r.description, s.name
 		ORDER BY r.name ASC
 	`;
@@ -234,11 +222,7 @@ export async function getCurrentWeekRecipes(): Promise<Recipe[]> {
 			r.description
 		FROM menus_recipeweek rw
 		JOIN menus_recipe r ON rw.recipe_id = r.id
-		WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1 
-		  AND EXISTS (
-		    SELECT 1 FROM menus_accountrecipe ar 
-		    WHERE ar.recipe_id = r.id AND ar.archive = 0
-		  )
+		WHERE rw.week = ? AND rw.year = ? 
 		ORDER BY rw.id ASC
 	`;
 
@@ -262,11 +246,7 @@ export async function getNextWeekRecipes(): Promise<Recipe[]> {
 			r.description
 		FROM menus_recipeweek rw
 		JOIN menus_recipe r ON rw.recipe_id = r.id
-		WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1 
-		  AND EXISTS (
-		    SELECT 1 FROM menus_accountrecipe ar 
-		    WHERE ar.recipe_id = r.id AND ar.archive = 0
-		  )
+		WHERE rw.week = ? AND rw.year = ? 
 		ORDER BY rw.id ASC
 	`;
 
@@ -284,15 +264,15 @@ export async function saveWeekRecipes(week: number, year: number, recipeIds: num
 		await connection.beginTransaction();
 
 		// Delete existing recipes for the week
-		await connection.execute('DELETE FROM menus_recipeweek WHERE week = ? AND year = ? AND account_id = 1', [week, year]);
+		await connection.execute('DELETE FROM menus_recipeweek WHERE week = ? AND year = ?', [week, year]);
 
 		// Insert new recipes
 		if (recipeIds.length > 0) {
-			const values = recipeIds.map(id => [week, year, id, 1]);
-			const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
+			const values = recipeIds.map(id => [week, year, id]);
+			const placeholders = values.map(() => '(?, ?, ?)').join(', ');
 			const flatValues = values.flat();
 
-			await connection.execute(`INSERT INTO menus_recipeweek (week, year, recipe_id, account_id) VALUES ${placeholders}`, flatValues);
+			await connection.execute(`INSERT INTO menus_recipeweek (week, year, recipe_id) VALUES ${placeholders}`, flatValues);
 		}
 
 		await connection.commit();
@@ -308,7 +288,7 @@ export async function saveWeekRecipes(week: number, year: number, recipeIds: num
  * Delete all recipes for a specific week
  */
 export async function deleteWeekRecipes(week: number, year: number): Promise<void> {
-	await pool.execute('DELETE FROM menus_recipeweek WHERE week = ? AND year = ? AND account_id = 1', [week, year]);
+	await pool.execute('DELETE FROM menus_recipeweek WHERE week = ? AND year = ?', [week, year]);
 }
 
 /**
@@ -336,15 +316,10 @@ export async function getRecipesForRandomization(): Promise<Recipe[]> {
 		LEFT JOIN menus_recipeingredient ri ON r.id = ri.recipe_id
 		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
 		WHERE r.duplicate = 0 
-		  AND EXISTS (
-		    SELECT 1 FROM menus_accountrecipe ar 
-		    WHERE ar.recipe_id = r.id AND ar.archive = 0
-		  )
 		  AND r.id NOT IN (
 			SELECT DISTINCT recipe_id 
 			FROM menus_recipeweek 
-			WHERE ((year = ? AND week >= ?) OR (year > ? AND year <= ?)) AND account_id = 1
-		  )
+			WHERE ((year = ? AND week >= ?) OR (year > ? AND year <= ?))		  )
 		GROUP BY r.id, r.name, r.filename, r.prepTime, r.cookTime, r.description
 		ORDER BY r.name ASC
 	`;
@@ -398,7 +373,7 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 		await connection.beginTransaction();
 
 		// Delete existing shopping list items for the week
-		await connection.execute('DELETE FROM menus_shoppinglist WHERE week = ? AND year = ? AND account_id = 1', [week, year]);
+		await connection.execute('DELETE FROM menus_shoppinglist WHERE week = ? AND year = ?', [week, year]);
 
 		// Get all ingredients from recipes planned for this week
 		const ingredientsQuery = `
@@ -418,11 +393,9 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 			FROM menus_recipeweek rw
 			JOIN menus_recipeingredient ri ON rw.recipe_id = ri.recipe_id
 			JOIN menus_recipe r ON rw.recipe_id = r.id
-			JOIN menus_accountrecipe ar ON r.id = ar.recipe_id
 			JOIN menus_ingredient i ON ri.ingredient_id = i.id
 			LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
-			WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1 AND ar.archive = 0
-			ORDER BY 
+			WHERE rw.week = ? AND rw.year = ?			ORDER BY 
 				CASE 
 					WHEN i.fresh = 1 THEN i.supermarketCategory_id
 					WHEN i.fresh = 0 THEN i.pantryCategory_id
@@ -470,16 +443,15 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 				ingredient.cost, // cost from menus_ingredient table
 				ingredient.recipeIngredient_id,
 				0, // purchased = false
-				1, // account_id = 1
 				ingredient.stockcode, // stockcode from menus_ingredient table
 				ingredient.supermarketCategory_id, // supermarketCategory_id from menus_ingredient table
 			]);
 
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 
 			await connection.execute(
-				`INSERT INTO menus_shoppinglist (week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, account_id, stockcode, supermarketCategory_id) VALUES ${placeholders}`,
+				`INSERT INTO menus_shoppinglist (week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
@@ -528,10 +500,6 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		LEFT JOIN menus_preperation p ON ri.preperation_id = p.id
 		LEFT JOIN menus_measure m ON ri.quantityMeasure_id = m.id
 		WHERE r.id = ? AND r.duplicate = 0 
-		  AND EXISTS (
-		    SELECT 1 FROM menus_accountrecipe ar 
-		    WHERE ar.recipe_id = r.id AND ar.archive = 0
-		  )
 		ORDER BY pc.id ASC, i.name ASC
 	`;
 
@@ -601,7 +569,7 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 	const query = `
 		SELECT DISTINCT rw.week, rw.year
 		FROM menus_recipeweek rw
-		WHERE rw.account_id = 1
+		WHERE 1=1
 		AND (
 			(rw.year = ? AND rw.week >= ?) OR
 			(rw.year > ?)
@@ -625,11 +593,7 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 					r.description
 				FROM menus_recipeweek rw
 				JOIN menus_recipe r ON rw.recipe_id = r.id
-				WHERE rw.week = ? AND rw.year = ? AND rw.account_id = 1 
-				  AND EXISTS (
-				    SELECT 1 FROM menus_accountrecipe ar 
-				    WHERE ar.recipe_id = r.id AND ar.archive = 0
-				  )
+				WHERE rw.week = ? AND rw.year = ?
 				ORDER BY rw.id ASC
 			`;
 

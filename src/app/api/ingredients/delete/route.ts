@@ -30,8 +30,7 @@ async function deleteIngredientHandler(request: NextRequest) {
 			);
 		}
 
-		// Delete the ingredient from account ingredients first (if any exist)
-		await pool.execute(`DELETE FROM menus_accountingredient WHERE ingredient_id = ?`, [id]);
+		// Account ingredients table no longer exists
 
 		// Delete the ingredient
 		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM menus_ingredient WHERE id = ? AND public = 1`, [id]);

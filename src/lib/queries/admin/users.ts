@@ -15,7 +15,7 @@ export async function getAllUsers(): Promise<User[]> {
 			u.is_active,
 			u.is_admin,
 			u.date_joined,
-			u.last_login,
+			u.last_login
 		FROM users u
 		ORDER BY u.date_joined DESC
 	`);
@@ -35,7 +35,7 @@ export async function getUserById(userId: number): Promise<User | null> {
 			u.is_active,
 			u.is_admin,
 			u.date_joined,
-			u.last_login,
+			u.last_login
 		FROM users u
 		WHERE u.id = ?
 		`,

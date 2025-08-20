@@ -31,7 +31,7 @@ export async function getAverageWeeklySpending() {
 			year, 
 			SUM(cost) as total_cost
 		FROM menus_shoppinglist
-		WHERE account_id = 1
+		WHERE 1=1
 			AND ((year > ?) OR (year = ? AND week >= ?))
 			AND cost IS NOT NULL
 		GROUP BY year, week
@@ -68,7 +68,7 @@ export async function getTopFruitsAndVegetables() {
 		LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
 		LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
-		WHERE sl.account_id = 1
+		WHERE 1=1
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
 			AND (sc.name IN ('fresh-fruitvege') 
@@ -100,7 +100,7 @@ export async function getTopHerbs() {
 		LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
 		LEFT JOIN menus_supermarketcategory sc ON sl.supermarketCategory_id = sc.id
-		WHERE sl.account_id = 1
+		WHERE 1=1
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
 			AND (sc.name IN ('fresh-herbs') 
@@ -130,12 +130,8 @@ export async function getTopRecipes() {
 			COUNT(DISTINCT CONCAT(rw.year, '-', rw.week)) as times_planned
 		FROM menus_recipeweek rw
 		INNER JOIN menus_recipe r ON rw.recipe_id = r.id
-		WHERE rw.account_id = 1
+		WHERE 1=1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
-			AND EXISTS (
-				SELECT 1 FROM menus_accountrecipe ar 
-				WHERE ar.recipe_id = r.id AND ar.archive = 0
-			)
 		GROUP BY r.id, r.name
 		ORDER BY times_planned DESC
 		LIMIT 10`,
@@ -153,7 +149,7 @@ export async function getSpendingTrend() {
 			year, 
 			SUM(cost) as total_cost
 		FROM menus_shoppinglist
-		WHERE account_id = 1
+		WHERE 1=1
 			AND cost IS NOT NULL
 		GROUP BY year, week
 		ORDER BY year DESC, week DESC
@@ -186,7 +182,7 @@ export async function getGardenSavings(topItems: TopIngredient[]) {
 		FROM menus_shoppinglist sl
 		LEFT JOIN menus_recipeingredient ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN menus_ingredient i ON ri.ingredient_id = i.id
-		WHERE sl.account_id = 1
+		WHERE 1=1
 			AND sl.cost IS NOT NULL
 			AND sl.cost > 0
 			AND COALESCE(i.name, sl.name) IN (${itemNames.map(() => '?').join(', ')})
@@ -267,14 +263,6 @@ export async function getRecipePairingSuggestions() {
 			CROSS JOIN (SELECT @row_number := 0, @prev_ingredient := '') AS vars
 			WHERE r1.duplicate = 0 
 				AND r2.duplicate = 0
-				AND EXISTS (
-					SELECT 1 FROM menus_accountrecipe ar1 
-					WHERE ar1.recipe_id = r1.id AND ar1.archive = 0
-				)
-				AND EXISTS (
-					SELECT 1 FROM menus_accountrecipe ar2 
-					WHERE ar2.recipe_id = r2.id AND ar2.archive = 0
-				)
 				AND i.fresh = 1
 				AND (sc.name IN ('fresh-fruitvege', 'fresh-herbs') 
 					OR sc.name LIKE '%fruit%' 
