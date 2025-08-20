@@ -71,9 +71,15 @@ export async function POST(request: NextRequest) {
 		// Record successful login (clears failed attempts)
 		await rateLimiter.recordAttempt(request, true);
 
-		// Create session data
+		// Create session data with user permissions
 		const sessionData = JSON.stringify({
-			username,
+			user: {
+				id: authResult.user!.id,
+				username: authResult.user!.username,
+				email: authResult.user!.email,
+				is_admin: authResult.user!.is_admin,
+				is_active: authResult.user!.is_active,
+			},
 			loginTime: Date.now(),
 		});
 

@@ -4,7 +4,7 @@ import path from 'path';
 
 async function runMigrations() {
 	console.log('Starting database migrations...');
-	
+
 	// Check database connection first
 	try {
 		await pool.execute('SELECT 1');
