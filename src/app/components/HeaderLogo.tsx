@@ -12,7 +12,7 @@ interface HeaderLogoProps {
 const HeaderLogo = ({ session }: HeaderLogoProps) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
 	const isAuthenticated = !!session;
-	const user = session;
+	const user = session?.user;
 
 	const closeMenu = () => {
 		if (detailsRef.current) {
@@ -88,6 +88,14 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 									>
 										Insights
 									</Link>
+									{user?.is_admin && (
+										<Link
+											href="/admin"
+											className="transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
+										>
+											Admin
+										</Link>
+									)}
 								</div>
 							</nav>
 						)}
@@ -96,7 +104,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 						{isAuthenticated && (
 							<nav className="sm:hidden">
 								<details ref={detailsRef} className="relative">
-									<summary className="list-none cursor-pointer bg-surface border border-custom rounded-sm p-2 text-foreground hover:bg-accent/10 transition-colors flex items-center justify-center">
+									<summary className="list-none cursor-pointer bg-surface border border-custom rounded-sm p-2 text-foreground hover:bg-accent/10 transition-colors flex items-center justify-center [&::-webkit-details-marker]:hidden">
 										<BurgerIcon className="w-4 h-4" />
 									</summary>
 									<div className="absolute right-0 top-full mt-1 bg-surface border border-custom rounded-sm shadow-lg min-w-24 z-50">
@@ -127,6 +135,11 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										>
 											Insights
 										</Link>
+										{user?.is_admin && (
+											<Link href="/admin" className="block px-3 py-2 text-sm transition-colors">
+												Admin
+											</Link>
+										)}
 									</div>
 								</details>
 							</nav>

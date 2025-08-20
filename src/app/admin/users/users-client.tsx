@@ -144,12 +144,7 @@ export default function UsersClient() {
 	}
 
 	return (
-		<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-			<div className="mb-8">
-				<h1 className="text-3xl font-semibold text-foreground dark:text-gray-100 mb-2">User Management</h1>
-				<p className="text-muted dark:text-gray-400">Manage FamilyFoodie user accounts and permissions</p>
-			</div>
-
+		<div className="space-y-6">
 			{/* Stats Cards */}
 			{stats && (
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -190,6 +185,7 @@ export default function UsersClient() {
 								<th className="px-6 py-3 text-left text-xs font-medium text-muted dark:text-gray-400 uppercase tracking-wider">Status</th>
 								<th className="px-6 py-3 text-left text-xs font-medium text-muted dark:text-gray-400 uppercase tracking-wider">Permissions</th>
 								<th className="px-6 py-3 text-left text-xs font-medium text-muted dark:text-gray-400 uppercase tracking-wider">Joined</th>
+								<th className="px-6 py-3 text-left text-xs font-medium text-muted dark:text-gray-400 uppercase tracking-wider">Last Login</th>
 								<th className="px-6 py-3 text-left text-xs font-medium text-muted dark:text-gray-400 uppercase tracking-wider">Actions</th>
 							</tr>
 						</thead>
@@ -286,6 +282,9 @@ export default function UsersClient() {
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-sm text-muted dark:text-gray-400">
 										{new Date(user.date_joined).toLocaleDateString()}
+									</td>
+									<td className="px-6 py-4 whitespace-nowrap text-sm text-muted dark:text-gray-400">
+										{user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-sm">
 										{editingUser === user.id ? (
