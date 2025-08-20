@@ -31,7 +31,7 @@ export async function getAuthenticatedUser(request: NextRequest, forceRefresh = 
 		}
 
 		// Otherwise, fetch from database (for backward compatibility with old sessions)
-		const [rows] = await pool.execute('SELECT id, username, email, is_admin, is_active FROM auth_user WHERE id = ?', [session.user?.id || session.username]);
+		const [rows] = await pool.execute('SELECT id, username, email, is_admin, is_active FROM users WHERE id = ?', [session.user?.id || session.username]);
 
 		const users = rows as AuthenticatedUser[];
 		if (!users || users.length === 0) {

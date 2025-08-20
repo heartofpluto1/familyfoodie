@@ -181,7 +181,7 @@ This file contains specific learnings and preferences for this Family Foodie cod
 - Troubleshooting data structure issues
 
 The schema file contains the complete MySQL table structures, indexes, and constraints for all tables including:
-- `auth_user` - Django user authentication
+- `users` - User authentication and management (migrated from Django auth_user)
 - `menus_recipe` - Recipe data with primaryType_id/secondaryType_id
 - `menus_recipeingredient` - Recipe ingredients with quantities
 - `menus_shoppinglist` - Shopping list items

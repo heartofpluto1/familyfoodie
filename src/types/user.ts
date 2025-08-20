@@ -8,7 +8,6 @@ export interface User {
 	is_admin: boolean;
 	date_joined: string;
 	last_login: string | null;
-	account_id: number | null;
 }
 
 export interface UserUpdate {
