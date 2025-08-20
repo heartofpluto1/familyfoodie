@@ -13,7 +13,7 @@ const RecipesPageClient = ({ recipes }: RecipesPageClientProps) => {
 	return (
 		<>
 			<div className="mb-8">
-				<HeaderPage title="All Recipes" subtitle={`Discover from ${recipes.length} delicious recipes in our collection`} />
+				<HeaderPage title="Browse Recipes" subtitle={`Discover from ${recipes.length} delicious recipes in our collection`} />
 			</div>
 
 			<Suspense fallback={<div>Loading recipes...</div>}>
