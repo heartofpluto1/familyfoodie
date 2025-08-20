@@ -63,21 +63,16 @@ async function deleteHandler(request: NextRequest) {
 
 			if (hasShoppingListHistory) {
 				// Recipe has shopping list history - archive it instead of deleting
-				const [archiveResult] = await connection.execute<ResultSetHeader>('UPDATE menus_accountrecipe SET archive = 1 WHERE recipe_id = ?', [
-					parseInt(recipeId),
-				]);
-
-				if (archiveResult.affectedRows === 0) {
-					throw new Error('Failed to archive recipe - no account recipe association found');
-				}
-
-				await connection.commit();
-
-				return NextResponse.json({
-					success: true,
-					message: 'Recipe archived successfully (has shopping list history)',
-					archived: true,
-				});
+				// Archive functionality removed - recipes can no longer be archived
+				await connection.rollback();
+				return NextResponse.json(
+					{
+						success: false,
+						message: 'Cannot delete recipe with existing shopping list history',
+						archived: false,
+					},
+					{ status: 400 }
+				);
 			} else {
 				// No shopping list history - safe to fully delete
 
@@ -91,8 +86,7 @@ async function deleteHandler(request: NextRequest) {
 				// Delete recipe ingredients first (foreign key constraint)
 				await connection.execute('DELETE FROM menus_recipeingredient WHERE recipe_id = ?', [parseInt(recipeId)]);
 
-				// Delete account recipe associations (foreign key constraint)
-				await connection.execute('DELETE FROM menus_accountrecipe WHERE recipe_id = ?', [parseInt(recipeId)]);
+				// Account associations no longer exist - recipes are globally available
 
 				// Delete the recipe
 				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM menus_recipe WHERE id = ?', [parseInt(recipeId)]);
@@ -112,10 +106,7 @@ async function deleteHandler(request: NextRequest) {
 						[ingredientId]
 					);
 
-					// Check if this ingredient has account-specific settings
-					const [accountUse] = await connection.execute<RowDataPacket[]>('SELECT COUNT(*) as count FROM menus_accountingredient WHERE ingredient_id = ?', [
-						ingredientId,
-					]);
+					// Account ingredients table no longer exists
 
 					// Check if this ingredient has been used in shopping lists (via recipeingredient)
 					const [shoppingListUse] = await connection.execute<RowDataPacket[]>(
@@ -126,7 +117,7 @@ async function deleteHandler(request: NextRequest) {
 					);
 
 					// If ingredient is not used anywhere else, delete it
-					if (otherRecipeUse[0].count === 0 && accountUse[0].count === 0 && shoppingListUse[0].count === 0) {
+					if (otherRecipeUse[0].count === 0 && shoppingListUse[0].count === 0) {
 						// Get ingredient name for logging
 						const [ingredientName] = await connection.execute<RowDataPacket[]>('SELECT name FROM menus_ingredient WHERE id = ?', [ingredientId]);
 

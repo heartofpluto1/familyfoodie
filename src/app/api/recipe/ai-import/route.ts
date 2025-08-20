@@ -195,8 +195,7 @@ async function importHandler(request: NextRequest) {
 			// Update filename to use secure hash
 			await connection.execute<ResultSetHeader>('UPDATE menus_recipe SET filename = ? WHERE id = ?', [secureFilename, recipeId]);
 
-			// Associate recipe with account (using account_id = 1 like other routes)
-			await connection.execute(`INSERT INTO menus_accountrecipe (account_id, recipe_id, archive) VALUES (1, ?, 0)`, [recipeId]);
+			// Recipe is now globally available to all users
 
 			// Process and add ingredients
 			let addedIngredientsCount = 0;

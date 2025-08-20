@@ -48,7 +48,7 @@ async function handler(request: NextRequest) {
 				`
 				SELECT COALESCE(MAX(sort), -1) as max_sort 
 				FROM menus_shoppinglist 
-				WHERE week = ? AND year = ? AND account_id = 1
+				WHERE week = ? AND year = ?
 			`,
 				[week, year]
 			);
@@ -63,8 +63,8 @@ async function handler(request: NextRequest) {
 				[insertResult] = await connection.execute(
 					`
 					INSERT INTO menus_shoppinglist 
-					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, account_id, stockcode, supermarketCategory_id) 
-					VALUES (?, ?, 1, ?, ?, ?, NULL, 0, 1, ?, ?)
+					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) 
+					VALUES (?, ?, 1, ?, ?, ?, NULL, 0, ?, ?)
 				`,
 					[week, year, name, newSort, knownIngredient.cost, knownIngredient.stockcode, knownIngredient.supermarketCategory_id]
 				);
@@ -73,8 +73,8 @@ async function handler(request: NextRequest) {
 				[insertResult] = await connection.execute(
 					`
 					INSERT INTO menus_shoppinglist 
-					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, account_id, stockcode, supermarketCategory_id) 
-					VALUES (?, ?, 1, ?, ?, NULL, NULL, 0, 1, NULL, NULL)
+					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) 
+					VALUES (?, ?, 1, ?, ?, NULL, NULL, 0, NULL, NULL)
 				`,
 					[week, year, name, newSort]
 				);

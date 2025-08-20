@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import withAuth from '@/app/components/withAuth';
+import withAdminAuth from '@/app/components/withAdminAuth';
 import HeaderPage from '@/app/components/HeaderPage';
 
 export const metadata: Metadata = {
@@ -82,4 +82,4 @@ async function AdminPage() {
 // Force dynamic rendering for admin pages
 export const dynamic = 'force-dynamic';
 
-export default withAuth(AdminPage);
+export default withAdminAuth(AdminPage);

@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth-middleware';
+import { requireAdminUser } from '@/lib/auth-helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
 
 async function postHandler(request: NextRequest) {
 	try {
+		// Require admin permissions
+		const adminUser = await requireAdminUser(request);
+		if (!adminUser) {
+			return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+		}
+
 		// Additional check for migration token in production
 		// This adds an extra layer of security beyond session auth
 		if (process.env.NODE_ENV === 'production') {
@@ -34,8 +41,14 @@ async function postHandler(request: NextRequest) {
 	}
 }
 
-async function getHandler() {
+async function getHandler(request: NextRequest) {
 	try {
+		// Require admin permissions
+		const adminUser = await requireAdminUser(request);
+		if (!adminUser) {
+			return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+		}
+
 		// Check migration status without running them
 		// Useful for monitoring
 		return NextResponse.json({

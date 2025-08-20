@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserById, updateUser, deleteUser } from '@/lib/queries/admin/users';
 import type { UserUpdate } from '@/types/user';
-import { getSessionFromRequest } from '@/lib/auth-middleware';
-import { getAuthenticatedUser } from '@/lib/auth-helpers';
+import { requireAdminUser } from '@/lib/auth-helpers';
 
 interface RouteParams {
 	params: Promise<{ id: string }>;
@@ -10,11 +9,10 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
 	try {
-		// Get the authenticated user
-		const session = await getSessionFromRequest(request);
-
-		if (!session) {
-			return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+		// Require admin permissions
+		const adminUser = await requireAdminUser(request);
+		if (!adminUser) {
+			return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 		}
 
 		const { id } = await params;
@@ -39,11 +37,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
 	try {
-		// Get the authenticated user
-		const session = await getSessionFromRequest(request);
-
-		if (!session) {
-			return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+		// Require admin permissions
+		const adminUser = await requireAdminUser(request);
+		if (!adminUser) {
+			return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 		}
 
 		const { id } = await params;
@@ -55,11 +52,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 		const updates: UserUpdate = await request.json();
 
-		// Get current user information for self-protection checks
-		const currentUser = await getAuthenticatedUser(session);
-
 		// Prevent users from modifying their own privileges
-		if (userId === currentUser?.id && (updates.is_admin !== undefined || updates.is_active !== undefined)) {
+		if (userId === adminUser.id && (updates.is_admin !== undefined || updates.is_active !== undefined)) {
 			return NextResponse.json({ error: 'Cannot modify your own privileges' }, { status: 400 });
 		}
 
@@ -79,11 +73,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
 	try {
-		// Get the authenticated user
-		const session = await getSessionFromRequest(request);
-
-		if (!session) {
-			return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+		// Require admin permissions
+		const adminUser = await requireAdminUser(request);
+		if (!adminUser) {
+			return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 		}
 
 		const { id } = await params;
@@ -93,11 +86,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 			return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
 		}
 
-		// Get current user information for self-protection checks
-		const currentUser = await getAuthenticatedUser(session);
-
 		// Prevent self-deletion
-		if (userId === currentUser?.id) {
+		if (userId === adminUser.id) {
 			return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
 		}
 

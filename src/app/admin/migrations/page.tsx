@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import withAuth from '@/app/components/withAuth';
+import withAdminAuth from '@/app/components/withAdminAuth';
 import HeaderPage from '@/app/components/HeaderPage';
 import MigrationsClient from './migrations-client';
 
@@ -23,4 +23,4 @@ async function MigrationsPage() {
 // Force dynamic rendering for admin pages
 export const dynamic = 'force-dynamic';
 
-export default withAuth(MigrationsPage);
+export default withAdminAuth(MigrationsPage);
