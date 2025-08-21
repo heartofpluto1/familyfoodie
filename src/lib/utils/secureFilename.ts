@@ -86,7 +86,7 @@ export function getCollectionFileUrl(filename: string | null, extension: 'jpg' |
 }
 
 /**
- * Get image URL for a collection
+ * Get image URL for a collection (light mode)
  * Client-safe version that defaults to .jpg extension with automatic cache busting
  */
 export function getCollectionImageUrl(filename: string | null, bustCache?: boolean): string {
@@ -96,6 +96,23 @@ export function getCollectionImageUrl(filename: string | null, bustCache?: boole
 
 	// Default to jpg extension for images - always add cache busting to solve cache issues
 	const baseUrl = getCollectionFileUrl(filename, 'jpg', bustCache);
+
+	// Always add a timestamp for cache busting to solve persistent cache issues
+	const separator = baseUrl.includes('?') ? '&' : '?';
+	return `${baseUrl}${separator}t=${Date.now()}`;
+}
+
+/**
+ * Get dark mode image URL for a collection
+ * Client-safe version that defaults to .jpg extension with automatic cache busting
+ */
+export function getCollectionDarkImageUrl(filename_dark: string | null, bustCache?: boolean): string {
+	if (!filename_dark) {
+		return '/collections/custom_collection_004_dark.jpg'; // Default dark fallback
+	}
+
+	// Default to jpg extension for images - always add cache busting to solve cache issues
+	const baseUrl = getCollectionFileUrl(filename_dark, 'jpg', bustCache);
 
 	// Always add a timestamp for cache busting to solve persistent cache issues
 	const separator = baseUrl.includes('?') ? '&' : '?';
