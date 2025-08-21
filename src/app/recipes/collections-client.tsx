@@ -7,7 +7,7 @@ import CollectionCard from '@/app/components/CollectionCard';
 import HeaderPage from '@/app/components/HeaderPage';
 import { PlusIcon } from '@/app/components/Icons';
 import { generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
-import { getCollectionImageUrl } from '@/lib/utils/secureFilename';
+import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
 
 interface CollectionsPageClientProps {
 	collections: Collection[];
@@ -40,6 +40,7 @@ const CollectionsPageClient = ({ collections }: CollectionsPageClientProps) => {
 						>
 							<CollectionCard
 								coverImage={getCollectionImageUrl(collection.filename)}
+								darkCoverImage={getCollectionDarkImageUrl(collection.filename_dark)}
 								title={collection.title}
 								subtitle={collection.subtitle || undefined}
 								subscribed={true}

@@ -9,7 +9,7 @@ import CollectionCardSmall from '@/app/components/CollectionCardSmall';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useToast } from '@/app/components/ToastProvider';
 import { EditIcon, TrashIcon } from '@/app/components/Icons';
-import { getCollectionImageUrl } from '@/lib/utils/secureFilename';
+import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipesPageClientProps {
 	recipes: Recipe[];
@@ -92,6 +92,7 @@ const RecipesPageClient = ({ recipes, collections, selectedCollection }: Recipes
 					<div className="flex items-center gap-6">
 						<CollectionCardSmall
 							coverImage={getCollectionImageUrl(selectedCollection.filename)}
+							darkCoverImage={getCollectionDarkImageUrl(selectedCollection.filename_dark)}
 							title={selectedCollection.title}
 							subtitle={selectedCollection.subtitle || undefined}
 							subscribed={true}
