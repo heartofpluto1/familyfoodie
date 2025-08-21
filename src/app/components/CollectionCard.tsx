@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface CollectionCardProps {
 	coverImage: string;
 	title?: string;
@@ -9,6 +11,8 @@ interface CollectionCardProps {
 }
 
 const CollectionCard = ({ coverImage, subscribed, title, subtitle, recipeCount }: CollectionCardProps) => {
+	const [darkImageFailed, setDarkImageFailed] = useState(false);
+
 	// Peek card configurations
 	const peekCards = [
 		{ height: '380px', top: '10px', rotation: 3.6 },
@@ -56,13 +60,12 @@ const CollectionCard = ({ coverImage, subscribed, title, subtitle, recipeCount }
 					{/* Image with dark mode support - fallback to light mode if dark doesn't exist */}
 					<img src={coverImage} alt="Collection cover" className="absolute inset-0 w-full h-full object-cover dark:hidden" />
 					<img
-						src={coverImage.replace(/(\.[^.]+)$/, '_dark$1')}
+						src={darkImageFailed ? coverImage : coverImage.replace(/(\.[^.]+)$/, '_dark$1')}
 						alt="Collection cover"
 						className="absolute inset-0 w-full h-full object-cover hidden dark:block"
-						onError={e => {
+						onError={() => {
 							// If dark mode image fails to load, use the light mode image instead
-							const img = e.target as HTMLImageElement;
-							img.src = coverImage;
+							setDarkImageFailed(true);
 						}}
 					/>
 
