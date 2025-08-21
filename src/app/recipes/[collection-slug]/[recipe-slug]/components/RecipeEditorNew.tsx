@@ -13,9 +13,8 @@ import RecipeForm from '@/app/recipe/components/RecipeForm';
 import RecipeView from './RecipeView';
 import IngredientsTable from './IngredientsTable';
 import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
-import { useIngredientApi } from '../hooks/useIngredientApi';
 import { RecipeFormData, NewIngredient } from '@/app/recipe/types';
-import { getRecipeImageUrl, getRecipePdfUrl } from '@/lib/utils/secureFilename';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
@@ -28,7 +27,6 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
-	const ingredientApi = useIngredientApi();
 
 	// Separate edit modes
 	const [editMode, setEditMode] = useState<EditMode>('none');
@@ -168,7 +166,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 				quantity: ing.quantity,
 				quantity4: ing.quantity4,
 				measureId: ing.measure?.id,
-				preparationId: ing.preperation?.id,
+				preparationId: undefined, // preperation doesn't have an id in the type
 			}));
 
 			const response = await fetch('/api/recipe/update-ingredients', {
@@ -200,7 +198,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 		}
 	};
 
-	const handleImageUploadComplete = (response: any) => {
+	const handleImageUploadComplete = () => {
 		showToast('success', 'Success', 'Recipe image updated successfully');
 		setEditMode('none');
 		// Force refresh to show new image
@@ -319,7 +317,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 						{editMode === 'image' ? (
 							<div className="space-y-4">
 								<ImageUploadWithCrop
-									recipeId={recipe.id.toString()}
+									recipeId={recipe.id}
 									currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename, true) : undefined}
 									onImageUploaded={handleImageUploadComplete}
 								/>
@@ -361,7 +359,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 					</div>
 
 					{/* PDF Upload */}
-					<PdfUpload recipeId={recipe.id.toString()} currentPdfUrl={recipe.filename ? getRecipePdfUrl(recipe.filename) : undefined} />
+					<PdfUpload recipeId={recipe.id} />
 				</div>
 
 				{/* Right Column - Recipe Details */}
@@ -392,7 +390,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 						</div>
 
 						{editMode === 'details' ? (
-							<RecipeForm recipe={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
+							<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
 						) : (
 							<RecipeView recipe={recipe} />
 						)}
@@ -458,12 +456,11 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 			{/* Delete Confirmation Dialog */}
 			<ConfirmDialog
 				isOpen={showDeleteConfirm}
-				onClose={() => setShowDeleteConfirm(false)}
+				onCancel={() => setShowDeleteConfirm(false)}
 				onConfirm={handleDeleteRecipe}
 				title="Delete Recipe"
 				message={`Are you sure you want to delete "${recipe.name}"? This action cannot be undone.`}
 				confirmText="Delete"
-				confirmButtonClass="bg-red-600 hover:bg-red-700"
 			/>
 		</div>
 	);

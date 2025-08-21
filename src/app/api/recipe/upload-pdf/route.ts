@@ -69,7 +69,6 @@ async function postHandler(request: NextRequest) {
 				subject: 'Recipe Image converted to PDF',
 				author: 'Family Foodie App',
 				creator: 'Family Foodie Recipe Management System',
-				producer: 'jsPDF with enhanced quality settings',
 			});
 
 			// Get page dimensions

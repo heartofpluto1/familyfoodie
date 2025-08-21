@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RecipeDetail } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
@@ -48,7 +47,7 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 					setBackLink({ href: path, label });
 					return;
 				}
-			} catch (e) {
+			} catch {
 				// Invalid referrer URL, fall back to default
 			}
 		}
