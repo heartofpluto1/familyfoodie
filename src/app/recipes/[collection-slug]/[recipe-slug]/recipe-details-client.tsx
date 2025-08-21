@@ -135,7 +135,7 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 						</div>
 						<button
 							onClick={() => setShowDeleteConfirm(true)}
-							className="inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow-sm bg-red-600 hover:bg-red-700 text-white transition-all"
+							className="inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow bg-red-600 hover:bg-red-700 text-white transition-all"
 							title="Delete Recipe"
 						>
 							<TrashIcon className="w-4 h-4" />
