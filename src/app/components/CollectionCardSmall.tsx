@@ -1,17 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-
 interface CollectionCardSmallProps {
 	coverImage: string;
+	darkCoverImage?: string;
 	title?: string;
 	subtitle?: string;
 	subscribed: boolean;
 }
 
-const CollectionCardSmall = ({ coverImage, subscribed, title, subtitle }: CollectionCardSmallProps) => {
-	const [darkImageFailed, setDarkImageFailed] = useState(false);
-
+const CollectionCardSmall = ({ coverImage, darkCoverImage, subscribed, title, subtitle }: CollectionCardSmallProps) => {
 	// Peek card configurations (scaled down by half)
 	const peekCards = [
 		{ height: '190px', top: '5px', rotation: 3.6 },
@@ -56,17 +53,11 @@ const CollectionCardSmall = ({ coverImage, subscribed, title, subtitle }: Collec
 						boxShadow: '1px 1px 2.5px rgba(0, 0, 0, 0.22)',
 					}}
 				>
-					{/* Image with dark mode support - fallback to light mode if dark doesn't exist */}
-					<img src={coverImage} alt="Collection cover" className="absolute inset-0 w-full h-full object-cover dark:hidden" />
-					<img
-						src={darkImageFailed ? coverImage : coverImage.replace(/(\.[^.]+)$/, '_dark$1')}
-						alt="Collection cover"
-						className="absolute inset-0 w-full h-full object-cover hidden dark:block"
-						onError={() => {
-							// If dark mode image fails to load, use the light mode image instead
-							setDarkImageFailed(true);
-						}}
-					/>
+					{/* Image with dark mode support using semantic picture element */}
+					<picture className="absolute inset-0 w-full h-full">
+						{darkCoverImage && <source media="(prefers-color-scheme: dark)" srcSet={darkCoverImage} />}
+						<img src={coverImage} alt="Collection cover" className="w-full h-full object-cover" />
+					</picture>
 					<div
 						className="w-full h-full flex flex-col relative z-10"
 						style={{ background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), transparent 0, rgba(0, 0, 0, 0.8) 75px)' }}

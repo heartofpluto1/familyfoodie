@@ -17,16 +17,16 @@ async function deleteHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Invalid collection ID' }, { status: 400 });
 		}
 
-		// First, get the collection to find the filename for file deletion
-		const [rows] = await pool.execute('SELECT filename FROM collections WHERE id = ?', [parsedCollectionId]);
+		// First, get the collection to find both filenames for file deletion
+		const [rows] = await pool.execute('SELECT filename, filename_dark FROM collections WHERE id = ?', [parsedCollectionId]);
 
-		const collections = rows as Array<{ filename: string }>;
+		const collections = rows as Array<{ filename: string; filename_dark: string }>;
 		if (collections.length === 0) {
 			return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
 		}
 
 		const collection = collections[0];
-		const filename = collection.filename;
+		const { filename, filename_dark } = collection;
 
 		// Check if any recipes are using this collection
 		const [recipeRows] = await pool.execute('SELECT COUNT(*) as count FROM recipes WHERE collection_id = ?', [parsedCollectionId]);
@@ -44,9 +44,11 @@ async function deleteHandler(request: NextRequest) {
 		}
 
 		// Delete associated files (but not default images)
-		if (filename !== 'custom_collection_004') {
+		const isDefaultCollection = filename.startsWith('custom_collection_00');
+
+		if (!isDefaultCollection) {
 			console.log(`Storage mode: ${getStorageMode()}`);
-			console.log(`Deleting collection files for filename: ${filename}`);
+			console.log(`Deleting collection files for filename: ${filename}, filename_dark: ${filename_dark}`);
 
 			// Helper function to safely delete file using storage module
 			const safeDeleteStorageFile = async (filename: string, extension: string, description: string) => {
@@ -62,11 +64,15 @@ async function deleteHandler(request: NextRequest) {
 				}
 			};
 
-			// Delete light mode image if it exists
-			await safeDeleteStorageFile(filename, 'jpg', 'light mode image');
+			// Delete light mode image if it exists and is not a default
+			if (!filename.startsWith('custom_collection_00')) {
+				await safeDeleteStorageFile(filename, 'jpg', 'light mode image');
+			}
 
-			// Delete dark mode image if it exists
-			await safeDeleteStorageFile(`${filename}_dark`, 'jpg', 'dark mode image');
+			// Delete dark mode image if it exists, is not a default, and is different from light mode
+			if (!filename_dark.startsWith('custom_collection_00') && filename_dark !== filename) {
+				await safeDeleteStorageFile(filename_dark, 'jpg', 'dark mode image');
+			}
 		} else {
 			console.log('Skipping file deletion for default collection images');
 		}

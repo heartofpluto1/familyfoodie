@@ -45,6 +45,9 @@ async function createCollectionHandler(request: NextRequest) {
 			console.log(`Storage mode: ${getStorageMode()}`);
 			console.log(`Creating collection with filename: ${filename}`);
 
+			// Determine dark filename based on whether dark image is provided
+			let darkFilename: string;
+
 			// Upload images using the storage module (supports both local and GCS)
 			if (lightImage) {
 				const lightImageBuffer = Buffer.from(await lightImage.arrayBuffer());
@@ -60,29 +63,37 @@ async function createCollectionHandler(request: NextRequest) {
 			}
 
 			if (darkImage) {
+				// Dark image provided - use separate dark filename
+				darkFilename = `${filename}_dark`;
 				const darkImageBuffer = Buffer.from(await darkImage.arrayBuffer());
-				const darkUploadResult = await uploadFile(darkImageBuffer, `${filename}_dark`, 'jpg', 'image/jpeg', 'collections');
+				const darkUploadResult = await uploadFile(darkImageBuffer, darkFilename, 'jpg', 'image/jpeg', 'collections');
 
 				if (!darkUploadResult.success) {
 					console.error('Failed to upload dark image:', darkUploadResult.error);
-					// Note: We don't fail the entire operation if only dark image fails
-					console.warn('Dark mode image upload failed, but continuing with light mode only');
+					// Use light image as fallback for dark mode
+					darkFilename = filename;
+					console.warn('Dark mode image upload failed, using light image as fallback');
 				} else {
 					console.log('Successfully uploaded dark mode image');
 				}
+			} else {
+				// No dark image provided - use light image for dark mode
+				darkFilename = filename;
+				console.log('No dark image provided, using light image for dark mode');
 			}
 
-			// Update collection with generated filename
-			await pool.execute(`UPDATE collections SET filename = ? WHERE id = ?`, [filename, collectionId]);
+			// Update collection with both light and dark filenames
+			await pool.execute(`UPDATE collections SET filename = ?, filename_dark = ? WHERE id = ?`, [filename, darkFilename, collectionId]);
 		} else {
-			// No custom images, use default filename
+			// No custom images, use default filenames
 			filename = 'custom_collection_004';
+			const darkFilename = 'custom_collection_004_dark';
 
-			// Insert collection with default filename
+			// Insert collection with default filenames
 			const [result] = await pool.execute<ResultSetHeader>(
-				`INSERT INTO collections (title, subtitle, filename, created_at, updated_at) 
-				 VALUES (?, ?, ?, NOW(), NOW())`,
-				[title, subtitle || null, filename]
+				`INSERT INTO collections (title, subtitle, filename, filename_dark, created_at, updated_at) 
+				 VALUES (?, ?, ?, ?, NOW(), NOW())`,
+				[title, subtitle || null, filename, darkFilename]
 			);
 
 			collectionId = result.insertId;
