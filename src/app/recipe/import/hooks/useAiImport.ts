@@ -315,6 +315,7 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 				seasonId: recipeForm.seasonId,
 				primaryTypeId: recipeForm.primaryTypeId,
 				secondaryTypeId: recipeForm.secondaryTypeId,
+				collectionId: recipeForm.collectionId,
 				ingredients: ingredients.map(ing => {
 					const extendedIng = ing as RecipeIngredient & {
 						existing_ingredient_id?: number;
@@ -367,9 +368,14 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 				const data = await response.json();
 				showToast('success', 'Success', data.message);
 
-				// TODO: Update API to return full recipe data with collection info for proper URL generation
-				// For now, fallback to numeric ID redirect (this route will need updating)
-				router.push(`/recipe/${data.recipeId}`);
+				// Navigate to the recipe using the new URL structure
+				if (data.collectionSlug && data.recipeSlug) {
+					router.push(`/recipes/${data.collectionSlug}/${data.recipeSlug}`);
+				} else {
+					// Fallback if collection info is not available
+					showToast('warning', 'Navigation Issue', 'Recipe imported successfully but navigation may be incomplete.');
+					router.push('/recipes');
+				}
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || 'Failed to import recipe');

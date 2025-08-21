@@ -31,6 +31,7 @@ interface ExtractedRecipe {
 	seasonId?: number; // For form data
 	primaryTypeId?: number; // For form data
 	secondaryTypeId?: number; // For form data
+	collectionId?: number; // For form data
 }
 
 interface IngredientRow extends RowDataPacket {
@@ -195,6 +196,14 @@ async function importHandler(request: NextRequest) {
 			// Update filename to use secure hash
 			await connection.execute<ResultSetHeader>('UPDATE recipes SET filename = ? WHERE id = ?', [secureFilename, recipeId]);
 
+			// Assign recipe to collection if specified
+			if (recipe.collectionId) {
+				await connection.execute<ResultSetHeader>('INSERT INTO collection_recipes (collection_id, recipe_id) VALUES (?, ?)', [
+					recipe.collectionId,
+					recipeId,
+				]);
+			}
+
 			// Recipe is now globally available to all users
 
 			// Process and add ingredients
@@ -310,9 +319,20 @@ async function importHandler(request: NextRequest) {
 				message += '. Warning: Some file uploads failed.';
 			}
 
+			// Fetch collection information for URL generation
+			let collectionInfo = null;
+			if (recipe.collectionId) {
+				const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, slug, title FROM collections WHERE id = ?', [recipe.collectionId]);
+				if (collectionRows.length > 0) {
+					collectionInfo = collectionRows[0];
+				}
+			}
+
 			return NextResponse.json({
 				success: true,
 				recipeId,
+				recipeSlug: secureFilename,
+				collectionSlug: collectionInfo?.slug || null,
 				message,
 				recipe: {
 					title: recipe.title,
