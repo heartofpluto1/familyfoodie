@@ -7,6 +7,7 @@ import CollectionCard from '@/app/components/CollectionCard';
 import HeaderPage from '@/app/components/HeaderPage';
 import { PlusIcon } from '@/app/components/Icons';
 import { generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
+import { getCollectionImageUrl } from '@/lib/utils/secureFilename';
 
 interface CollectionsPageClientProps {
 	collections: Collection[];
@@ -38,7 +39,7 @@ const CollectionsPageClient = ({ collections }: CollectionsPageClientProps) => {
 							className="block hover:scale-105 hover:rotate-1 transition-transform duration-200"
 						>
 							<CollectionCard
-								coverImage={`/collections/${collection.filename}.jpg`}
+								coverImage={getCollectionImageUrl(collection.filename)}
 								title={collection.title}
 								subtitle={collection.subtitle || undefined}
 								subscribed={true}
