@@ -354,7 +354,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									{/* Camera edit button */}
 									<button
 										onClick={() => startEdit('image')}
-										className="w-10 h-10 bg-white bg-opacity-90 rounded-full shadow-md hover:bg-opacity-100 transition-all flex items-center justify-center"
+										className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
 										title="Edit image"
 									>
 										<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,7 +370,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									{/* Paper edit button */}
 									<button
 										onClick={() => startEdit('pdf')}
-										className="w-10 h-10 bg-white bg-opacity-90 rounded-full shadow-md hover:bg-opacity-100 transition-all flex items-center justify-center"
+										className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
 										title="Edit PDF"
 									>
 										<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -405,7 +405,6 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					{/* Recipe Details Form with inline edit button */}
 					<div className="p-4">
 						<div className="flex justify-between items-center mb-4">
-							<h2 className="text-lg font-semibold">Recipe Details</h2>
 							{editMode === 'details' ? (
 								<div className="flex gap-2">
 									<button
@@ -421,7 +420,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									</button>
 								</div>
 							) : (
-								<button onClick={() => startEdit('details')} className="p-2 text-gray-600 hover:text-gray-800 transition-colors" title="Edit details">
+								<button onClick={() => startEdit('details')} className="p-2 btn-default rounded hover:shadow-sm" title="Edit details">
 									<EditIcon className="w-4 h-4" />
 								</button>
 							)}
@@ -454,11 +453,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									</button>
 								</div>
 							) : (
-								<button
-									onClick={() => startEdit('ingredients')}
-									className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
-									title="Edit ingredients"
-								>
+								<button onClick={() => startEdit('ingredients')} className="p-2 btn-default rounded hover:shadow-sm" title="Edit ingredients">
 									<EditIcon className="w-4 h-4" />
 								</button>
 							)}
