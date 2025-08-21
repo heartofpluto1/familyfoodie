@@ -34,7 +34,7 @@ async function updateIngredientsHandler(request: NextRequest) {
 
 		// Delete removed ingredients
 		if (deletedIngredientIds.length > 0) {
-			await connection.execute(`DELETE FROM recipeingredients WHERE recipe_id = ? AND id IN (${deletedIngredientIds.map(() => '?').join(',')})`, [
+			await connection.execute(`DELETE FROM recipe_ingredients WHERE recipe_id = ? AND id IN (${deletedIngredientIds.map(() => '?').join(',')})`, [
 				recipeId,
 				...deletedIngredientIds,
 			]);
@@ -45,8 +45,8 @@ async function updateIngredientsHandler(request: NextRequest) {
 			if (ingredient.id) {
 				// Update existing ingredient
 				await connection.execute(
-					`UPDATE recipeingredients 
-					 SET ingredient_id = ?, quantity = ?, quantity4 = ?, measure_id = ?, preperation_id = ?
+					`UPDATE recipe_ingredients 
+					 SET ingredient_id = ?, quantity = ?, quantity4 = ?, quantityMeasure_id = ?, preperation_id = ?
 					 WHERE id = ? AND recipe_id = ?`,
 					[
 						ingredient.ingredientId,
@@ -61,9 +61,9 @@ async function updateIngredientsHandler(request: NextRequest) {
 			} else {
 				// Add new ingredient
 				await connection.execute(
-					`INSERT INTO recipeingredients (recipe_id, ingredient_id, quantity, quantity4, measure_id, preperation_id)
-					 VALUES (?, ?, ?, ?, ?, ?)`,
-					[recipeId, ingredient.ingredientId, ingredient.quantity, ingredient.quantity4, ingredient.measureId || null, ingredient.preparationId || null]
+					`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, quantity4, quantityMeasure_id, preperation_id, primaryIngredient)
+					 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+					[recipeId, ingredient.ingredientId, ingredient.quantity, ingredient.quantity4, ingredient.measureId || null, ingredient.preparationId || null, 0]
 				);
 			}
 		}
