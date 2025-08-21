@@ -45,3 +45,8 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code files
+/.claude/
+.claude-original-branch
+.claude-session-start

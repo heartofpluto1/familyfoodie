@@ -512,3 +512,120 @@ className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-
 - **SEARCH PATTERN**: Use `Grep` tool to find `bg-gray` patterns when adding new features
 - **CSS LOCATION**: Button styles are centralized in `src/app/globals.css`
 - **TESTING**: Always run `npm run lint` after button style changes to ensure formatting compliance
+
+## Git Worktree Enforcement - Claude Code Agent Isolation (Updated 2025-08-21)
+
+### Context-Aware Worktree System
+This project enforces that all Claude Code agents work in isolated git worktrees with semantic branch naming based on task context.
+
+### Hook System Architecture
+**Location**: `.claude/hooks/` directory with four main enforcement scripts:
+
+1. **SessionStart Hook** (`.claude/hooks/session-start.sh`)
+   - Initializes git worktree system without creating worktree immediately
+   - Ensures agent starts on main/master branch in primary working tree
+   - Pulls latest changes and prepares for context-aware worktree creation
+   - Sets up session state tracking
+
+2. **Context Capture Hook** (`.claude/hooks/capture-context.sh`)
+   - Captures user prompts to analyze task context
+   - Stores recent conversation context for semantic branch naming
+   - Filters out completion-related prompts to avoid conflicts
+
+3. **Validation Hook** (`.claude/hooks/validate-worktree.sh`)
+   - Runs before every file modification tool (Edit, Write, MultiEdit)
+   - Creates semantic worktree on first file modification attempt
+   - Analyzes captured context to generate meaningful branch names
+   - Uses conventional commit types: `fix-auth`, `feat-ui`, `refactor-database`
+
+4. **Task Completion Hook** (`.claude/hooks/task-complete.sh`)
+   - Triggered by completion keywords ("complete", "done", "finish", "ready for review", etc.)
+   - Runs comprehensive quality gates before PR creation
+   - Generates conventional commit messages based on branch names and file changes
+
+### Quality Gates Enforcement
+**Mandatory Checks** (must pass before PR creation):
+1. **Lint Validation**: `npm run lint` → `npm run lint:fix` → re-validate
+2. **Build Verification**: `npm run build` (must succeed)
+3. **Test Execution**: `npm test` (if test script exists)
+
+**Failure Handling**: If any quality gate fails, process stops and agent remains in worktree for manual fixes.
+
+### Semantic Branch Naming Intelligence
+**Context Analysis Patterns**:
+- **Action Detection**: "fix", "add", "update", "refactor", "test", "docs" → Conventional commit types
+- **Subject Detection**: "auth", "database", "ui", "api", "security", "recipe", "shopping", "collection"
+- **Fallback Strategy**: Extracts meaningful words or uses timestamp if no context available
+- **Uniqueness**: Automatically appends numbers for duplicate branch names
+
+**Example Branch Names**:
+- `fix-auth` (fixing authentication issues)
+- `feat-shopping` (adding shopping list features)  
+- `refactor-database` (refactoring database queries)
+- `docs-git-workflow` (updating git workflow documentation)
+
+### Conventional Commits Implementation
+**Automatic Commit Message Generation**:
+- **Format**: `type(scope): description` following conventional commits standard
+- **Type Extraction**: Derived from branch name prefix or file analysis
+- **Scope Detection**: Inferred from modified file paths (auth, api, ui, lib, hooks)
+- **Description**: Generated from branch name or intelligent file analysis
+
+**Example Commit Messages**:
+- `fix(auth): resolve login authentication issues`
+- `feat(ui): implement shopping list components`
+- `refactor(database): optimize query performance`
+- `docs(hooks): update git worktree workflow`
+
+### Automated Git Workflow
+**On Successful Quality Gates**:
+1. Stage all changes with `git add .`
+2. Create conventional commit with semantic message and Claude Code attribution
+3. Push branch to remote: `git push -u origin branch-name`
+4. Create GitHub PR using conventional commit title and auto-generated description
+5. Return to main branch and clean up worktree
+
+### PR Auto-Generation Features
+- **Conventional Titles**: Uses same format as commit messages for consistency
+- **Commit History**: Includes all commits since branching from main
+- **File Statistics**: Shows changed files and line counts
+- **Quality Assurance Notes**: Documents which quality gates were executed
+- **Test Plan**: Pre-filled checklist of completed validations
+- **Claude Code Attribution**: Clear attribution with generated tag
+
+### Configuration Files
+- **Settings**: `.claude/settings.json` - Hooks configuration and permissions
+- **Context Storage**: `.claude-task-context` - Temporary file storing recent user prompts
+- **Session State**: `.claude-session-start`, `.claude-original-branch` - Session tracking
+- **Worktree Info**: `.claude-worktree-branch`, `.claude-worktree-path` - Active worktree details
+
+### Hook Triggers and Workflow
+1. **UserPromptSubmit** → Captures task context for semantic analysis
+2. **PreToolUse** (Edit/Write/MultiEdit) → Creates worktree on first file modification
+3. **UserPromptSubmit** (completion keywords) → Quality gates and PR creation
+
+### Benefits Achieved
+- **Semantic Branches**: Meaningful branch names based on actual task context
+- **Conventional Commits**: Standardized commit format following industry best practices
+- **Intelligent Timing**: Worktree creation happens when needed, not prematurely
+- **Quality Assurance**: Automated lint/build/test enforcement prevents broken PRs
+- **Context-Aware PRs**: PR titles and descriptions reflect actual work done
+- **Isolation**: Agents cannot accidentally modify main branch
+- **Cleanup**: Automatic worktree removal and main branch return
+- **Transparency**: Clear attribution and change documentation
+
+### Manual Override (Emergency Use)
+If hooks need to be bypassed:
+```bash
+# Temporarily disable hooks
+mv .claude/settings.json .claude/settings.json.disabled
+
+# Re-enable hooks
+mv .claude/settings.json.disabled .claude/settings.json
+```
+
+### Troubleshooting
+- **Hook Execution Issues**: Check file permissions (`chmod +x .claude/hooks/*.sh`)
+- **Quality Gate Failures**: Review lint/build errors and fix manually in worktree
+- **GitHub CLI Missing**: Install `gh` CLI for automatic PR creation
+- **Network Issues**: Hooks gracefully handle offline scenarios
