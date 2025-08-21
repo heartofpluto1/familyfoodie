@@ -57,6 +57,44 @@ export function getRecipePdfUrl(filename: string | null, bustCache?: boolean): s
 	return getRecipeFileUrl(filename, 'pdf', bustCache);
 }
 
+/**
+ * Get the correct URL for a collection file (image)
+ * Uses same logic as recipes but with collections directory
+ */
+export function getCollectionFileUrl(filename: string | null, extension: 'jpg' | 'png' | 'jpeg', bustCache?: boolean): string {
+	// If no filename stored, return empty
+	if (!filename) {
+		return '';
+	}
+
+	// Check if the file appears to be migrated (32 char hex string)
+	const isMigrated = /^[a-f0-9]{32}$/.test(filename);
+
+	// Add cache busting parameter when requested
+	const cacheBuster = bustCache ? `?v=${Date.now()}` : '';
+
+	if (isGCSProduction && bucketName && isMigrated) {
+		// Production with GCS and migrated file - use GCS URL
+		return `https://storage.googleapis.com/${bucketName}/collections/${filename}.${extension}${cacheBuster}`;
+	} else {
+		// Development or unmigrated files - use local collections path
+		return `/collections/${filename}.${extension}${cacheBuster}`;
+	}
+}
+
+/**
+ * Get image URL for a collection
+ * Client-safe version that defaults to .jpg extension
+ */
+export function getCollectionImageUrl(filename: string | null, bustCache?: boolean): string {
+	if (!filename) {
+		return '/collections/custom_collection_004.jpg'; // Default fallback
+	}
+
+	// Default to jpg extension for images
+	return getCollectionFileUrl(filename, 'jpg', bustCache);
+}
+
 // Legacy function for backwards compatibility
 export function getSecureFileUrl(filename: string, extension: 'jpg' | 'pdf'): string {
 	return `/static/${filename}.${extension}`;
