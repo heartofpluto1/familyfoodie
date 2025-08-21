@@ -143,12 +143,12 @@ const RecipeCard = ({
 						transition: 'none',
 					}}
 				>
-					<Link href={generateRecipeUrl(displayRecipe)} className="block" target="_blank" rel="noopener noreferrer">
+					<Link href={generateRecipeUrl(displayRecipe)} className="block">
 						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(filename)} />
 					</Link>
 
 					<div className="p-4 flex flex-col flex-grow">
-						<Link href={generateRecipeUrl(displayRecipe)} target="_blank" rel="noopener noreferrer">
+						<Link href={generateRecipeUrl(displayRecipe)}>
 							<h3 className="text-lg text-foreground mb-2">{name}</h3>
 						</Link>
 

@@ -39,29 +39,71 @@ async function postHandler(request: NextRequest) {
 			const bytes = await file.arrayBuffer();
 			const originalBuffer = Buffer.from(bytes);
 
-			// Create a new PDF document
-			const doc = new jsPDF({
-				orientation: 'portrait',
-				unit: 'pt',
-				format: 'a4',
-			});
-
 			// Convert buffer to base64 for jsPDF
 			const base64Image = originalBuffer.toString('base64');
 			const imageData = `data:${file.type};base64,${base64Image}`;
 
-			// Get image dimensions and calculate scaling to fit A4
+			// Create image element to get actual dimensions
+			const img = new Image();
+			await new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = reject;
+				img.src = imageData;
+			});
+
+			// Determine optimal page orientation based on image aspect ratio
+			const imageAspectRatio = img.width / img.height;
+			const isLandscape = imageAspectRatio > 1.2; // Use landscape if significantly wider than tall
+
+			// Create PDF with optimal orientation
+			const doc = new jsPDF({
+				orientation: isLandscape ? 'landscape' : 'portrait',
+				unit: 'pt',
+				format: 'a4',
+				compress: true, // Enable PDF compression
+			});
+
+			// Add PDF metadata for better compatibility
+			doc.setProperties({
+				title: file.name || 'Recipe Image',
+				subject: 'Recipe Image converted to PDF',
+				author: 'Family Foodie App',
+				creator: 'Family Foodie Recipe Management System',
+			});
+
+			// Get page dimensions
 			const pageWidth = doc.internal.pageSize.getWidth();
 			const pageHeight = doc.internal.pageSize.getHeight();
-			const margin = 40;
+			const margin = 20; // Reduced margin for better image utilization
+
+			// Calculate available space
 			const maxWidth = pageWidth - margin * 2;
 			const maxHeight = pageHeight - margin * 2;
 
-			// Add image to PDF (centered and scaled to fit)
-			// Note: We'll use the full page size and let jsPDF handle the scaling
-			doc.addImage(imageData, 'JPEG', margin, margin, maxWidth, maxHeight, undefined, 'FAST');
+			// Calculate scaling to maintain aspect ratio
+			const scaleX = maxWidth / img.width;
+			const scaleY = maxHeight / img.height;
+			const scale = Math.min(scaleX, scaleY); // Use smaller scale to fit within page
 
-			// Convert PDF to buffer
+			// Calculate final dimensions and centering
+			const finalWidth = img.width * scale;
+			const finalHeight = img.height * scale;
+			const x = (pageWidth - finalWidth) / 2; // Center horizontally
+			const y = (pageHeight - finalHeight) / 2; // Center vertically
+
+			// Add image with high quality settings
+			doc.addImage(
+				imageData,
+				'JPEG',
+				x,
+				y,
+				finalWidth,
+				finalHeight,
+				undefined,
+				'SLOW' // Use SLOW compression for better quality
+			);
+
+			// Convert PDF to buffer with high quality output
 			const pdfOutput = doc.output('arraybuffer');
 			buffer = Buffer.from(pdfOutput);
 		} else {
