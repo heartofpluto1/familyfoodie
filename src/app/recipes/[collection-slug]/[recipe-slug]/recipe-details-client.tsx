@@ -6,6 +6,8 @@ import { RecipeDetail } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
 import HeaderPage from '@/app/components/HeaderPage';
 import RecipeEditor from './components/RecipeEditor';
+import { TrashIcon } from '@/app/components/Icons';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;
@@ -15,6 +17,8 @@ interface RecipeDetailsClientProps {
 const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) => {
 	const router = useRouter();
 	const [backLink, setBackLink] = useState<{ href: string; label: string } | null>(null);
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	useEffect(() => {
 		// Check if we can use browser history
@@ -88,6 +92,29 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 		}
 	};
 
+	const handleDeleteRecipe = async () => {
+		setIsDeleting(true);
+		try {
+			const response = await fetch('/api/recipe/delete', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ id: recipe.id }),
+			});
+
+			if (response.ok) {
+				router.push(`/recipes/${recipe.collection_url_slug || ''}`);
+			} else {
+				console.error('Failed to delete recipe');
+			}
+		} catch (error) {
+			console.error('Error deleting recipe:', error);
+		} finally {
+			setIsDeleting(false);
+			setShowDeleteConfirm(false);
+		}
+	};
+
 	return (
 		<>
 			<main className="container mx-auto px-4 py-8">
@@ -101,12 +128,32 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 				)}
 
 				<div className="mb-8">
-					<HeaderPage title={recipe.name} subtitle={subtitle} />
+					<div className="flex items-center justify-between">
+						<HeaderPage title={recipe.name} subtitle={subtitle} />
+						<button
+							onClick={() => setShowDeleteConfirm(true)}
+							className="inline-flex items-center justify-center btn-default w-10 h-10 rounded-full hover:shadow-sm bg-red-600 hover:bg-red-700 text-white"
+							title="Delete Recipe"
+						>
+							<TrashIcon className="w-4 h-4" />
+						</button>
+					</div>
 				</div>
 
 				{/* Recipe Editor handles both view and edit modes internally */}
 				<RecipeEditor recipe={recipe} collections={collections} />
 			</main>
+
+			{/* Delete Confirmation Dialog */}
+			<ConfirmDialog
+				isOpen={showDeleteConfirm}
+				onCancel={() => setShowDeleteConfirm(false)}
+				onConfirm={handleDeleteRecipe}
+				title="Delete Recipe"
+				message={`Are you sure you want to delete "${recipe.name}"? This action cannot be undone.`}
+				confirmText="Delete"
+				disabled={isDeleting}
+			/>
 		</>
 	);
 };

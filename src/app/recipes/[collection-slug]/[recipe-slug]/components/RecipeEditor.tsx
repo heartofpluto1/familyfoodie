@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
-import { SaveIcon, EditIcon, TrashIcon, CancelIcon } from '@/app/components/Icons';
+import { SaveIcon, EditIcon, CancelIcon } from '@/app/components/Icons';
 import { useToast } from '@/app/components/ToastProvider';
-import ConfirmDialog from '@/app/components/ConfirmDialog';
 import ImageUploadWithCrop from './ImageUploadWithCrop';
 import PdfUpload from './PdfUpload';
 import RecipeForm from '@/app/recipe/components/RecipeForm';
@@ -33,7 +32,6 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	// Separate edit modes
 	const [editMode, setEditMode] = useState<EditMode>('none');
 	const [isLoading, setIsLoading] = useState(false);
-	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	// Form data
@@ -325,46 +323,11 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 		]);
 	};
 
-	const handleDeleteRecipe = async () => {
-		setIsLoading(true);
-		try {
-			const response = await fetch('/api/recipe/delete', {
-				method: 'DELETE',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({ id: recipe.id }),
-			});
-
-			if (response.ok) {
-				showToast('success', 'Success', 'Recipe deleted successfully');
-				router.push(`/recipes/${recipe.collection_url_slug || ''}`);
-			} else {
-				const error = await response.json();
-				showToast('error', 'Error', error.error || 'Failed to delete recipe');
-			}
-		} catch (error) {
-			console.error('Error deleting recipe:', error);
-			showToast('error', 'Error', 'Failed to delete recipe');
-		} finally {
-			setIsLoading(false);
-			setShowDeleteConfirm(false);
-		}
-	};
-
 	return (
 		<div className="relative">
-			{/* Delete Button - Top Right */}
-			<button
-				onClick={() => setShowDeleteConfirm(true)}
-				className="absolute top-0 right-0 w-10 h-10 bg-red-600 text-white rounded-full shadow-md hover:bg-red-700 transition-all flex items-center justify-center z-10"
-				title="Delete Recipe"
-			>
-				<TrashIcon className="w-4 h-4" />
-			</button>
-
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
 				{/* Left Column - Images and Recipe Details */}
-				<div className="bg-white p-4 rounded-sm shadow space-y-4">
+				<div className="bg-white rounded-sm shadow space-y-4">
 					{/* Recipe Image Section with contextual edit buttons */}
 					<div className="relative">
 						{editMode === 'image' ? (
@@ -440,7 +403,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					)}
 
 					{/* Recipe Details Form with inline edit button */}
-					<div>
+					<div className="p-4">
 						<div className="flex justify-between items-center mb-4">
 							<h2 className="text-lg font-semibold">Recipe Details</h2>
 							{editMode === 'details' ? (
@@ -514,16 +477,6 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					</div>
 				</div>
 			</div>
-
-			{/* Delete Confirmation Dialog */}
-			<ConfirmDialog
-				isOpen={showDeleteConfirm}
-				onCancel={() => setShowDeleteConfirm(false)}
-				onConfirm={handleDeleteRecipe}
-				title="Delete Recipe"
-				message={`Are you sure you want to delete "${recipe.name}"? This action cannot be undone.`}
-				confirmText="Delete"
-			/>
 		</div>
 	);
 };
