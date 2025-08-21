@@ -1,5 +1,5 @@
 import { Storage } from '@google-cloud/storage';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import { writeFile, unlink, access, readFile } from 'fs/promises';
 import path from 'path';
 
@@ -37,13 +37,14 @@ export function getFileUrl(filename: string, extension: string): string {
 /**
  * Upload a file to storage (GCS in production, local in development)
  */
-export async function uploadFile(buffer: Buffer, filename: string, extension: string, contentType?: string): Promise<FileUploadResult> {
+export async function uploadFile(buffer: Buffer, filename: string, extension: string, contentType?: string, subdirectory?: string): Promise<FileUploadResult> {
 	const fullFilename = `${filename}.${extension}`;
+	const filePath = subdirectory ? `${subdirectory}/${fullFilename}` : fullFilename;
 
 	if (useGCS && bucket) {
 		// Production: Upload to Google Cloud Storage
 		try {
-			const file = bucket.file(fullFilename);
+			const file = bucket.file(filePath);
 
 			await file.save(buffer, {
 				metadata: {
@@ -54,7 +55,7 @@ export async function uploadFile(buffer: Buffer, filename: string, extension: st
 
 			return {
 				success: true,
-				url: getFileUrl(filename, extension),
+				url: subdirectory ? `https://storage.googleapis.com/${bucketName}/${filePath}` : getFileUrl(filename, extension),
 				filename: fullFilename,
 			};
 		} catch (error) {
@@ -67,15 +68,21 @@ export async function uploadFile(buffer: Buffer, filename: string, extension: st
 	} else {
 		// Development: Save to local filesystem
 		try {
-			const staticDir = path.join(process.cwd(), 'public', 'static');
-			const filePath = path.join(staticDir, fullFilename);
+			const baseDir = path.join(process.cwd(), 'public');
+			const targetDir = subdirectory ? path.join(baseDir, subdirectory) : path.join(baseDir, 'static');
+			const targetPath = path.join(targetDir, fullFilename);
 
-			await writeFile(filePath, buffer);
-			await access(filePath); // Verify file was written
+			// Ensure directory exists
+			if (!existsSync(targetDir)) {
+				mkdirSync(targetDir, { recursive: true });
+			}
+
+			await writeFile(targetPath, buffer);
+			await access(targetPath); // Verify file was written
 
 			return {
 				success: true,
-				url: getFileUrl(filename, extension),
+				url: subdirectory ? `/${subdirectory}/${fullFilename}` : getFileUrl(filename, extension),
 				filename: fullFilename,
 			};
 		} catch (error) {
