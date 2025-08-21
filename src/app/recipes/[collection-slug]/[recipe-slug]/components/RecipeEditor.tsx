@@ -6,6 +6,7 @@ import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
 import { SaveIcon, EditIcon, CancelIcon } from '@/app/components/Icons';
 import { useToast } from '@/app/components/ToastProvider';
+import Modal from '@/app/components/Modal';
 import ImageUploadWithCrop from './ImageUploadWithCrop';
 import PdfUpload from './PdfUpload';
 import RecipeForm from '@/app/recipe/components/RecipeForm';
@@ -21,7 +22,7 @@ interface RecipeEditorProps {
 	collections?: Collection[];
 }
 
-type EditMode = 'none' | 'image' | 'pdf' | 'details' | 'ingredients';
+type EditMode = 'none' | 'image' | 'details' | 'ingredients';
 
 const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	const router = useRouter();
@@ -33,6 +34,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	const [editMode, setEditMode] = useState<EditMode>('none');
 	const [isLoading, setIsLoading] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [showPdfModal, setShowPdfModal] = useState(false);
 
 	// Form data
 	const [recipeForm, setRecipeForm] = useState<RecipeFormData>({
@@ -323,6 +325,15 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 		]);
 	};
 
+	const handlePdfUploadComplete = () => {
+		showToast('success', 'Success', 'Recipe PDF updated successfully');
+		setShowPdfModal(false);
+		// Refresh page to show changes
+		setTimeout(() => {
+			window.location.reload();
+		}, 500);
+	};
+
 	return (
 		<div className="relative">
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto">
@@ -391,7 +402,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 											</button>
 											{/* Paper edit button */}
 											<button
-												onClick={() => startEdit('pdf')}
+												onClick={() => setShowPdfModal(true)}
 												className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
 												title="Edit PDF"
 											>
@@ -418,21 +429,6 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 							</div>
 						)}
 					</div>
-
-					{/* PDF Section - Only show when editing */}
-					{editMode === 'pdf' && (
-						<div className="space-y-4 px-4 pb-4">
-							<PdfUpload recipeId={recipe.id} />
-							<div className="flex gap-2">
-								<button
-									onClick={() => handleCancel()}
-									className="px-3 py-1 bg-gray-500 text-white rounded-sm hover:bg-gray-600 transition-colors text-sm"
-								>
-									Cancel
-								</button>
-							</div>
-						</div>
-					)}
 
 					{/* Recipe Details Form */}
 					<div className="px-4">
@@ -487,6 +483,11 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					</div>
 				</div>
 			</div>
+
+			{/* PDF Upload Modal */}
+			<Modal isOpen={showPdfModal} onClose={() => setShowPdfModal(false)} title="Recipe PDF" maxWidth="lg">
+				<PdfUpload recipeId={recipe.id} onPdfUploaded={handlePdfUploadComplete} />
+			</Modal>
 		</div>
 	);
 };
