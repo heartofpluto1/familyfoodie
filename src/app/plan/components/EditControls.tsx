@@ -26,19 +26,12 @@ export function EditControls({ isEditMode, isLoading, planActions, week, year }:
 	if (!isEditMode) {
 		return (
 			<div className="mb-6 flex justify-between items-center">
-				<button
-					onClick={planActions.handleEdit}
-					disabled={isLoading}
-					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
-				>
+				<button onClick={planActions.handleEdit} disabled={isLoading} className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50">
 					{isLoading ? 'Loading recipes...' : 'Edit Week'}
 				</button>
 
 				{week && year && (
-					<a
-						href={`/shop/${year}/${week}`}
-						className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2"
-					>
+					<a href={`/shop/${year}/${week}`} className="btn-default px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2">
 						<IntroShoppingCartIcon className="w-4 h-4" />
 						Shopping List
 					</a>
@@ -53,29 +46,22 @@ export function EditControls({ isEditMode, isLoading, planActions, week, year }:
 				<button
 					onClick={planActions.handleAutomate}
 					disabled={isLoading}
-					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
+					className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50"
 				>
 					Automate
 				</button>
-				<button
-					onClick={planActions.handleSave}
-					disabled={isLoading}
-					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
-				>
+				<button onClick={planActions.handleSave} disabled={isLoading} className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50">
 					Save
 				</button>
 				<button
 					onClick={handleDeleteClick}
 					disabled={isLoading}
-					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
+					className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50"
 					aria-label="Delete all recipes for this week"
 				>
 					Delete
 				</button>
-				<button
-					onClick={planActions.handleCancel}
-					className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors"
-				>
+				<button onClick={planActions.handleCancel} className="btn-default px-3 py-1.5 rounded text-sm font-medium">
 					Cancel
 				</button>
 			</div>

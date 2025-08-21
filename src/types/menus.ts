@@ -23,12 +23,16 @@ export interface PlannedMeal {
 	recipe_id: number;
 	recipe_name: string;
 	filename: string;
+	collection_id: number;
+	collection_title: string;
 }
 
 export interface Meal {
 	id: number;
 	name: string;
 	filename: string;
+	collection_id: number;
+	collection_title: string;
 }
 
 export interface Recipe {
@@ -41,6 +45,8 @@ export interface Recipe {
 	description?: string;
 	seasonName?: string;
 	ingredients?: string[];
+	collection_id: number;
+	collection_title: string;
 }
 
 export interface RecipeDetail {
@@ -53,6 +59,8 @@ export interface RecipeDetail {
 	seasonName?: string;
 	primaryTypeName?: string;
 	secondaryTypeName?: string;
+	collection_id: number;
+	collection_title: string;
 	ingredients: RecipeIngredient[];
 }
 

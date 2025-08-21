@@ -21,7 +21,7 @@ export function AddRecipeCard({ allRecipes, excludeIds, isLoading, onAddRecipe, 
 					<button
 						onClick={onAddRandomRecipe}
 						disabled={isLoading}
-						className="w-10 h-10 rounded-full bg-gray-600 hover:bg-gray-700 text-white flex items-center justify-center transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+						className="btn-default w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
 						title="Add random compatible recipe"
 						aria-label="Add random compatible recipe"
 					>

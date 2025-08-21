@@ -8,6 +8,7 @@ export interface RecipeFormData {
 	seasonId?: number;
 	primaryTypeId?: number;
 	secondaryTypeId?: number;
+	collectionId?: number;
 }
 
 export interface NewIngredient {

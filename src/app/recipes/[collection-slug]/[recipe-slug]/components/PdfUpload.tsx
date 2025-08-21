@@ -51,7 +51,7 @@ const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
 							type="button"
 							onClick={pdfUpload.clearFile}
 							disabled={pdfUpload.isUploading}
-							className="px-3 py-1 bg-gray-500 text-white rounded-sm hover:bg-gray-600 transition-colors disabled:opacity-50 text-xs"
+							className="btn-default px-3 py-1 rounded-sm disabled:opacity-50 text-xs"
 						>
 							{recipeId ? 'Cancel' : 'Remove'}
 						</button>

@@ -7,6 +7,7 @@ import { IngredientRow } from './IngredientRow';
 import { useIngredientEdit } from '../hooks/useIngredientEdit';
 import { useTableSort, SortColumn } from '../hooks/useTableSort';
 import { ChevronUpIcon, ChevronDownIcon } from '@/app/components/Icons';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 interface IngredientsTableProps {
 	ingredients: IngredientData[];
@@ -15,10 +16,20 @@ interface IngredientsTableProps {
 }
 
 export function IngredientsTable({ ingredients, supermarketCategories, pantryCategories }: IngredientsTableProps) {
-	const { editingId, editingData, isLoading, setEditingData, handleEdit, handleSave, handleCancel, handleDelete } = useIngredientEdit(
-		supermarketCategories,
-		pantryCategories
-	);
+	const {
+		editingId,
+		editingData,
+		isLoading,
+		setEditingData,
+		handleEdit,
+		handleSave,
+		handleCancel,
+		handleDeleteClick,
+		handleDeleteConfirm,
+		handleDeleteCancel,
+		showDeleteConfirm,
+		isDeleting,
+	} = useIngredientEdit(supermarketCategories, pantryCategories);
 
 	const { sortedIngredients, sortConfig, handleSort } = useTableSort(ingredients);
 
@@ -102,12 +113,24 @@ export function IngredientsTable({ ingredients, supermarketCategories, pantryCat
 							onEdit={handleEdit}
 							onSave={handleSave}
 							onCancel={handleCancel}
-							onDelete={handleDelete}
+							onDelete={handleDeleteClick}
 							onEditingDataChange={setEditingData}
 						/>
 					))}
 				</tbody>
 			</table>
+
+			{/* Delete Ingredient Confirmation Dialog */}
+			<ConfirmDialog
+				isOpen={showDeleteConfirm}
+				title="Delete Ingredient"
+				message="Are you sure you want to delete this ingredient? This action cannot be undone."
+				confirmText="Delete Ingredient"
+				cancelText="Cancel"
+				onConfirm={handleDeleteConfirm}
+				onCancel={handleDeleteCancel}
+				isLoading={isDeleting}
+			/>
 		</div>
 	);
 }

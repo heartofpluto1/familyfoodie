@@ -12,6 +12,7 @@ cloud-sql-proxy
 
 # static files
 /public/static
+/public/collections
 
 # testing
 /coverage

@@ -33,6 +33,10 @@ export interface ImportedRecipe {
 		width: number;
 		height: number;
 	};
+	selectedCollection?: {
+		id: number;
+		title: string;
+	};
 	ingredients: AIIngredient[];
 	instructions?: string[];
 	cuisine?: string;

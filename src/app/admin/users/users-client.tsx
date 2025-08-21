@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/app/components/ToastProvider';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import type { User } from '@/types/user';
 
 interface UserStats {
@@ -26,6 +27,9 @@ export default function UsersClient() {
 	const [editForm, setEditForm] = useState<Partial<User>>({});
 	const [searchTerm, setSearchTerm] = useState('');
 	const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [userToDelete, setUserToDelete] = useState<{ id: number; username: string } | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	const fetchCurrentUser = async () => {
 		try {
@@ -104,13 +108,17 @@ export default function UsersClient() {
 		}
 	};
 
-	const handleDelete = async (userId: number, username: string) => {
-		if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-			return;
-		}
+	const handleDeleteClick = (userId: number, username: string) => {
+		setUserToDelete({ id: userId, username });
+		setShowDeleteConfirm(true);
+	};
 
+	const handleDeleteConfirm = async () => {
+		if (!userToDelete) return;
+
+		setIsDeleting(true);
 		try {
-			const response = await fetch(`/api/admin/users/${userId}`, {
+			const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
 				method: 'DELETE',
 			});
 
@@ -121,10 +129,19 @@ export default function UsersClient() {
 			}
 
 			showToast('success', 'Success', 'User deleted successfully');
+			setShowDeleteConfirm(false);
+			setUserToDelete(null);
 			fetchUsers();
 		} catch (error) {
 			showToast('error', 'Error', error instanceof Error ? error.message : 'Failed to delete user');
+		} finally {
+			setIsDeleting(false);
 		}
+	};
+
+	const handleDeleteCancel = () => {
+		setShowDeleteConfirm(false);
+		setUserToDelete(null);
 	};
 
 	const filteredUsers = users.filter(
@@ -312,7 +329,7 @@ export default function UsersClient() {
 												</button>
 												{user.id !== currentUser?.id && (
 													<button
-														onClick={() => handleDelete(user.id, user.username)}
+														onClick={() => handleDeleteClick(user.id, user.username)}
 														className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
 													>
 														Delete
@@ -327,6 +344,18 @@ export default function UsersClient() {
 					</table>
 				</div>
 			</div>
+
+			{/* Delete Confirmation Dialog */}
+			<ConfirmDialog
+				isOpen={showDeleteConfirm}
+				title="Delete User"
+				message={`Are you sure you want to delete user "${userToDelete?.username}"? This action cannot be undone.`}
+				confirmText="Delete User"
+				cancelText="Cancel"
+				onConfirm={handleDeleteConfirm}
+				onCancel={handleDeleteCancel}
+				isLoading={isDeleting}
+			/>
 		</div>
 	);
 }

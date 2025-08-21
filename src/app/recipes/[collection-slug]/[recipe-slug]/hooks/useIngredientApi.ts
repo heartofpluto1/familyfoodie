@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useToast } from '@/app/components/ToastProvider';
 import { RecipeIngredient } from '@/types/menus';
 
@@ -26,6 +27,9 @@ interface RecipeOptions {
 
 export const useIngredientApi = () => {
 	const { showToast } = useToast();
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [ingredientToDelete, setIngredientToDelete] = useState<number | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	const addIngredient = async (data: IngredientData): Promise<number | null> => {
 		try {
@@ -77,18 +81,24 @@ export const useIngredientApi = () => {
 		}
 	};
 
-	const deleteIngredient = async (id: number): Promise<boolean> => {
-		if (!confirm('Are you sure you want to remove this ingredient?')) {
-			return false;
-		}
+	const deleteIngredientClick = (id: number) => {
+		setIngredientToDelete(id);
+		setShowDeleteConfirm(true);
+	};
 
+	const deleteIngredientConfirm = async (): Promise<boolean> => {
+		if (!ingredientToDelete) return false;
+
+		setIsDeleting(true);
 		try {
-			const response = await fetch(`/api/recipe/ingredients?id=${id}`, {
+			const response = await fetch(`/api/recipe/ingredients?id=${ingredientToDelete}`, {
 				method: 'DELETE',
 			});
 
 			if (response.ok) {
 				showToast('success', 'Success', 'Ingredient removed');
+				setShowDeleteConfirm(false);
+				setIngredientToDelete(null);
 				return true;
 			} else {
 				const error = await response.json();
@@ -99,7 +109,14 @@ export const useIngredientApi = () => {
 			console.error('Error removing ingredient:', error);
 			showToast('error', 'Error', 'Error removing ingredient');
 			return false;
+		} finally {
+			setIsDeleting(false);
 		}
+	};
+
+	const deleteIngredientCancel = () => {
+		setShowDeleteConfirm(false);
+		setIngredientToDelete(null);
 	};
 
 	const addMultipleIngredients = async (recipeId: number, ingredients: RecipeIngredient[], options?: RecipeOptions): Promise<boolean> => {
@@ -150,7 +167,12 @@ export const useIngredientApi = () => {
 	return {
 		addIngredient,
 		updateIngredient,
-		deleteIngredient,
+		deleteIngredientClick,
+		deleteIngredientConfirm,
+		deleteIngredientCancel,
 		addMultipleIngredients,
+		// Confirmation state
+		showDeleteConfirm,
+		isDeleting,
 	};
 };

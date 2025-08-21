@@ -7,6 +7,7 @@ export function useShoppingList(initialData: ShoppingListData, datestamp: DateSt
 	const [ingredients, setIngredients] = useState<ShoppingListData>(initialData);
 	const [cost, setCost] = useState<number>(0);
 	const [isResetting, setIsResetting] = useState<boolean>(false);
+	const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 	const { showToast } = useToast();
 
 	// Calculate total cost
@@ -88,11 +89,12 @@ export function useShoppingList(initialData: ShoppingListData, datestamp: DateSt
 		}
 	};
 
-	const resetList = async () => {
-		if (!confirm('Are you sure you want to reset the shopping list? This will rebuild it from your planned recipes for this week.')) {
-			return;
-		}
+	const resetListClick = () => {
+		setShowResetConfirm(true);
+	};
 
+	const resetListConfirm = async () => {
+		setShowResetConfirm(false);
 		setIsResetting(true);
 		try {
 			await ShoppingListService.resetList(datestamp.week, datestamp.year);
@@ -105,6 +107,10 @@ export function useShoppingList(initialData: ShoppingListData, datestamp: DateSt
 		}
 	};
 
+	const resetListCancel = () => {
+		setShowResetConfirm(false);
+	};
+
 	return {
 		ingredients,
 		setIngredients,
@@ -113,6 +119,10 @@ export function useShoppingList(initialData: ShoppingListData, datestamp: DateSt
 		addItem,
 		removeItem,
 		togglePurchase,
-		resetList,
+		resetListClick,
+		resetListConfirm,
+		resetListCancel,
+		// Confirmation state
+		showResetConfirm,
 	};
 }

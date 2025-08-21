@@ -3,11 +3,16 @@
 import HeaderPage from '@/app/components/HeaderPage';
 import { useToast } from '@/app/components/ToastProvider';
 import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
+import { Collection } from '@/lib/queries/collections';
 import PdfUploadSection from './components/PdfUploadSection';
 import RecipePreviewSection from './components/RecipePreviewSection';
 import { useAiImport } from './hooks/useAiImport';
 
-const AIRecipeImportClient = () => {
+interface AIRecipeImportClientProps {
+	collections: Collection[];
+}
+
+const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
 
@@ -33,7 +38,7 @@ const AIRecipeImportClient = () => {
 		setRecipeForm,
 		setIngredients,
 		handleHeroImageCropChange,
-	} = useAiImport(options, showToast);
+	} = useAiImport(options, collections, showToast);
 
 	const handleFileValidationError = (title: string, message: string) => {
 		showToast('error', title, message);
@@ -67,6 +72,7 @@ const AIRecipeImportClient = () => {
 							recipeForm={recipeForm}
 							ingredients={ingredients}
 							options={options}
+							collections={collections}
 							isProcessing={isProcessing}
 							processingStep={processingStep}
 							rawApiResponse={rawApiResponse}
@@ -88,7 +94,7 @@ const AIRecipeImportClient = () => {
 					{showPreview && !recipeDetail && (
 						<div className="text-center py-8">
 							<p className="text-gray-600 dark:text-gray-400">Unable to extract recipe data from this PDF.</p>
-							<button onClick={resetState} className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-sm transition-colors">
+							<button onClick={resetState} className="btn-default mt-4 px-4 py-2 rounded-sm">
 								Try Another PDF
 							</button>
 						</div>

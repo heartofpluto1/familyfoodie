@@ -8,6 +8,7 @@ import { PantryTableDnd } from './components/PantryTableDnd';
 import { AddItemInput } from './components/AddItemInput';
 import { formatPrice } from '@/lib/utils/formatting';
 import HeaderPage from '@/app/components/HeaderPage';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 
 interface ShoppingListClientProps {
@@ -26,7 +27,10 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 		allIngredients,
 		removeItem,
 		togglePurchase,
-		resetList,
+		resetListClick,
+		resetListConfirm,
+		resetListCancel,
+		showResetConfirm,
 		dndKitHandlers,
 		addItemValue,
 		handleInputChange,
@@ -47,11 +51,7 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 					<HeaderPage title={`Week ${datestamp.week} Shop`} subtitle={weekDateRange} />
 				</div>
 				<div className="mb-4 sm:mb-6">
-					<button
-						onClick={resetList}
-						disabled={isResetting}
-						className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
-					>
+					<button onClick={resetListClick} disabled={isResetting} className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50">
 						{isResetting ? 'Resetting...' : 'Reset List'}
 					</button>
 				</div>
@@ -98,11 +98,7 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 					<HeaderPage title={`Week ${datestamp.week} Shop`} subtitle={weekDateRange} />
 				</div>
 				<div className="mb-4 sm:mb-6">
-					<button
-						onClick={resetList}
-						disabled={isResetting}
-						className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
-					>
+					<button onClick={resetListClick} disabled={isResetting} className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50">
 						{isResetting ? 'Resetting...' : 'Reset List'}
 					</button>
 				</div>
@@ -131,6 +127,18 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 						<PantryTableDnd items={ingredients.pantry} overId={dndKitHandlers.overId} />
 					</div>
 				</div>
+
+				{/* Reset Shopping List Confirmation Dialog */}
+				<ConfirmDialog
+					isOpen={showResetConfirm}
+					title="Reset Shopping List"
+					message="Are you sure you want to reset the shopping list? This will rebuild it from your planned recipes for this week."
+					confirmText="Reset List"
+					cancelText="Cancel"
+					onConfirm={resetListConfirm}
+					onCancel={resetListCancel}
+					isLoading={isResetting}
+				/>
 			</div>
 		</DndContext>
 	);

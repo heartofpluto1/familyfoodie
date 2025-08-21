@@ -15,6 +15,9 @@ interface TopIngredient extends RowDataPacket {
 interface TopRecipe extends RowDataPacket {
 	id: number;
 	name: string;
+	filename: string;
+	collection_id: number;
+	collection_title: string;
 	times_planned: number;
 }
 
@@ -127,12 +130,16 @@ export async function getTopRecipes() {
 		`SELECT 
 			r.id,
 			r.name,
+			r.filename,
+			r.collection_id,
+			c.title as collection_title,
 			COUNT(DISTINCT CONCAT(rw.year, '-', rw.week)) as times_planned
 		FROM plans rw
 		INNER JOIN recipes r ON rw.recipe_id = r.id
+		INNER JOIN collections c ON r.collection_id = c.id
 		WHERE 1=1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
-		GROUP BY r.id, r.name
+		GROUP BY r.id, r.name, r.filename, r.collection_id, c.title
 		ORDER BY times_planned DESC
 		LIMIT 10`,
 		[cutoffYear, cutoffYear, cutoffWeek]
@@ -204,9 +211,13 @@ interface RecipePairing extends RowDataPacket {
 	recipe1_id: number;
 	recipe1_name: string;
 	recipe1_filename: string;
+	recipe1_collection_id: number;
+	recipe1_collection_title: string;
 	recipe2_id: number;
 	recipe2_name: string;
 	recipe2_filename: string;
+	recipe2_collection_id: number;
+	recipe2_collection_title: string;
 	shared_ingredient: string;
 	recipe1_quantity: string;
 	recipe2_quantity: string;
@@ -222,9 +233,13 @@ export async function getRecipePairingSuggestions() {
 			recipe1_id,
 			recipe1_name,
 			recipe1_filename,
+			recipe1_collection_id,
+			recipe1_collection_title,
 			recipe2_id,
 			recipe2_name,
 			recipe2_filename,
+			recipe2_collection_id,
+			recipe2_collection_title,
 			shared_ingredient,
 			recipe1_quantity,
 			recipe2_quantity,
@@ -236,9 +251,13 @@ export async function getRecipePairingSuggestions() {
 				r1.id as recipe1_id,
 				r1.name as recipe1_name,
 				r1.filename as recipe1_filename,
+				r1.collection_id as recipe1_collection_id,
+				c1.title as recipe1_collection_title,
 				r2.id as recipe2_id,
 				r2.name as recipe2_name,
 				r2.filename as recipe2_filename,
+				r2.collection_id as recipe2_collection_id,
+				c2.title as recipe2_collection_title,
 				i.name as shared_ingredient,
 				ri1.quantity as recipe1_quantity,
 				ri2.quantity as recipe2_quantity,
@@ -256,10 +275,12 @@ export async function getRecipePairingSuggestions() {
 				@prev_ingredient := i.name
 			FROM recipe_ingredients ri1
 			JOIN recipes r1 ON ri1.recipe_id = r1.id
+			INNER JOIN collections c1 ON r1.collection_id = c1.id
 			JOIN ingredients i ON ri1.ingredient_id = i.id
 			LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
 			JOIN recipe_ingredients ri2 ON ri2.ingredient_id = i.id AND ri2.recipe_id != ri1.recipe_id
 			JOIN recipes r2 ON ri2.recipe_id = r2.id
+			INNER JOIN collections c2 ON r2.collection_id = c2.id
 			CROSS JOIN (SELECT @row_number := 0, @prev_ingredient := '') AS vars
 			WHERE r1.duplicate = 0 
 				AND r2.duplicate = 0

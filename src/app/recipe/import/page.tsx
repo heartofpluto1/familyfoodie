@@ -1,11 +1,19 @@
 import { Metadata } from 'next';
 import AIRecipeImportClient from './ai-recipe-import-client';
+import { getCollectionsForDisplay } from '@/lib/queries/collections';
+import withAuth from '@/app/components/withAuth';
 
 export const metadata: Metadata = {
 	title: 'AI Recipe Import from PDF | Family Foodie',
 	description: 'Upload PDF files and let AI automatically extract recipe data',
 };
 
-export default function AIRecipeImportPage() {
-	return <AIRecipeImportClient />;
+async function AIRecipeImportPage() {
+	const collections = await getCollectionsForDisplay();
+
+	return <AIRecipeImportClient collections={collections} />;
 }
+
+// Force dynamic rendering for authenticated pages
+export const dynamic = 'force-dynamic';
+export default withAuth(AIRecipeImportPage);

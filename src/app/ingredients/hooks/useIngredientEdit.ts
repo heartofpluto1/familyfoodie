@@ -12,6 +12,9 @@ export const useIngredientEdit = (supermarketCategories: CategoryData[], pantryC
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [editingData, setEditingData] = useState<EditingIngredient | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [ingredientToDelete, setIngredientToDelete] = useState<number | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
 	const { showToast } = useToast();
 
 	const getCategoryId = (categoryName: string | null, categories: CategoryData[]): number | null => {
@@ -61,21 +64,31 @@ export const useIngredientEdit = (supermarketCategories: CategoryData[], pantryC
 		setEditingData(null);
 	};
 
-	const handleDelete = async (id: number) => {
-		if (!confirm('Are you sure you want to delete this ingredient? This action cannot be undone.')) {
-			return;
-		}
+	const handleDeleteClick = (id: number) => {
+		setIngredientToDelete(id);
+		setShowDeleteConfirm(true);
+	};
 
-		setIsLoading(true);
+	const handleDeleteConfirm = async () => {
+		if (!ingredientToDelete) return;
+
+		setIsDeleting(true);
 		try {
-			await ingredientService.deleteIngredient(id);
+			await ingredientService.deleteIngredient(ingredientToDelete);
 			showToast('success', 'Success', 'Ingredient deleted successfully');
+			setShowDeleteConfirm(false);
+			setIngredientToDelete(null);
 			window.location.reload();
 		} catch (error) {
 			showToast('error', 'Error', error instanceof Error ? error.message : 'Failed to delete ingredient');
 		} finally {
-			setIsLoading(false);
+			setIsDeleting(false);
 		}
+	};
+
+	const handleDeleteCancel = () => {
+		setShowDeleteConfirm(false);
+		setIngredientToDelete(null);
 	};
 
 	return {
@@ -86,6 +99,11 @@ export const useIngredientEdit = (supermarketCategories: CategoryData[], pantryC
 		handleEdit,
 		handleSave,
 		handleCancel,
-		handleDelete,
+		handleDeleteClick,
+		handleDeleteConfirm,
+		handleDeleteCancel,
+		// Confirmation state
+		showDeleteConfirm,
+		isDeleting,
 	};
 };

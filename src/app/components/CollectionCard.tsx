@@ -27,7 +27,7 @@ const CollectionCard = ({ coverImage, subscribed, title, subtitle }: CollectionC
 	};
 
 	return (
-		<div className="relative mt-1 w-[300px] h-[410px]">
+		<div className="relative mt-1 w-[296px] h-[410px]">
 			{/* Render peek cards */}
 			{peekCards.map((card, index) => (
 				<div
@@ -38,7 +38,7 @@ const CollectionCard = ({ coverImage, subscribed, title, subtitle }: CollectionC
 						top: card.top,
 						right: '-3px',
 						transform: `rotate(${card.rotation}deg)`,
-						backgroundColor: 'white',
+						backgroundColor: 'var(--peek-card-bg)',
 						boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.22)',
 					}}
 				/>
@@ -47,21 +47,29 @@ const CollectionCard = ({ coverImage, subscribed, title, subtitle }: CollectionC
 			{/* Main collection card - positioned in front */}
 			<div className="relative w-full h-[410px] z-10">
 				<article
-					className="relative border-custom rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black bg-cover bg-center text-black"
+					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black text-black"
 					style={{
-						backgroundImage: `url("${coverImage}")`,
 						boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.22)',
 					}}
 				>
+					{/* Native HTML picture element for dark mode support */}
+					<picture className="absolute inset-0 w-full h-full">
+						<source srcSet={coverImage.replace(/(\.[^.]+)$/, '_dark$1')} media="(prefers-color-scheme: dark)" />
+						<source srcSet={coverImage} media="(prefers-color-scheme: light)" />
+						<img src={coverImage} alt="Collection cover" className="w-full h-full object-cover" />
+					</picture>
+
 					<div
-						className="w-full h-full flex flex-col relative"
+						className="w-full h-full flex flex-col relative z-10"
 						style={{ background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), transparent 0, rgba(0, 0, 0, 0.8) 150px)' }}
 					>
 						<div className="p-12 pt-25 flex flex-col flex-grow">
-							<h3 className="text-lg font-bold text-center" style={{ lineHeight: '1.3' }}>
+							<h3 className="text-lg font-bold text-center" style={{ lineHeight: '1.3', display: 'none' }}>
 								{title && formatTitle(title)}
 							</h3>
-							<p className="pt-2 text-xs text-center">{subtitle}</p>
+							<p className="pt-2 text-xs text-center" style={{ display: 'none' }}>
+								{subtitle}
+							</p>
 						</div>
 
 						{/* Subscribe button */}

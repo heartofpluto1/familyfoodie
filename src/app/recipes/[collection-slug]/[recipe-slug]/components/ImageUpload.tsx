@@ -80,7 +80,7 @@ const ImageUpload = ({ currentImageSrc, onImageUploaded, recipeId, isEditing = f
 										type="button"
 										onClick={imageUpload.clearFile}
 										disabled={imageUpload.isUploading}
-										className="px-4 py-2 bg-gray-600 text-white rounded-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+										className="btn-default px-4 py-2 rounded-sm disabled:opacity-50"
 									>
 										{recipeId ? 'Cancel' : 'Remove'}
 									</button>
