@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink } from 'fs/promises';
+import { unlink, access } from 'fs/promises';
 import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
@@ -48,21 +48,28 @@ async function deleteHandler(request: NextRequest) {
 		if (filename !== 'custom_collection_004') {
 			const collectionsDir = path.join(process.cwd(), 'public', 'collections');
 
-			try {
-				// Delete light mode image
-				const lightImagePath = path.join(collectionsDir, `${filename}.jpg`);
-				await unlink(lightImagePath);
-			} catch (error) {
-				console.warn('Failed to delete light mode image:', error);
-			}
+			// Helper function to safely delete file if it exists
+			const safeDeleteFile = async (filePath: string, description: string) => {
+				try {
+					await access(filePath);
+					await unlink(filePath);
+					console.log(`Successfully deleted ${description}`);
+				} catch (error) {
+					if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+						console.log(`${description} not found, skipping deletion`);
+					} else {
+						console.warn(`Failed to delete ${description}:`, error);
+					}
+				}
+			};
 
-			try {
-				// Delete dark mode image
-				const darkImagePath = path.join(collectionsDir, `${filename}_dark.jpg`);
-				await unlink(darkImagePath);
-			} catch (error) {
-				console.warn('Failed to delete dark mode image:', error);
-			}
+			// Delete light mode image if it exists
+			const lightImagePath = path.join(collectionsDir, `${filename}.jpg`);
+			await safeDeleteFile(lightImagePath, 'light mode image');
+
+			// Delete dark mode image if it exists
+			const darkImagePath = path.join(collectionsDir, `${filename}_dark.jpg`);
+			await safeDeleteFile(darkImagePath, 'dark mode image');
 		} else {
 			console.log('Skipping file deletion for default collection images');
 		}
