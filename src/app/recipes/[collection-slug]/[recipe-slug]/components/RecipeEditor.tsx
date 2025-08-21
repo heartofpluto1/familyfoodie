@@ -466,11 +466,12 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 			</div>
 
 			{/* Image Upload Modal */}
-			<Modal isOpen={showImageModal} onClose={() => setShowImageModal(false)} title="Recipe Image" maxWidth="lg">
+			<Modal isOpen={showImageModal} onClose={() => setShowImageModal(false)} title="Recipe Image" maxWidth="xl">
 				<ImageUploadWithCrop
 					recipeId={recipe.id}
 					currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename, true) : undefined}
 					onImageUploaded={handleImageUploadComplete}
+					isEditing={true}
 				/>
 			</Modal>
 
