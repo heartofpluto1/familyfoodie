@@ -33,7 +33,6 @@ async function updateIngredientHandler(request: NextRequest) {
 
 		return NextResponse.json({ success: true, message: 'Ingredient updated successfully' });
 	} catch (error) {
-		console.error('Error updating ingredient:', error);
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update ingredient' }, { status: 500 });
 	}
 }
