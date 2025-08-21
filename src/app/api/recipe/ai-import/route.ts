@@ -174,8 +174,8 @@ async function importHandler(request: NextRequest) {
 
 			// Insert the recipe with temporary filename
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, duplicate, filename, public) 
-				 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)`,
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, duplicate, filename, public) 
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)`,
 				[
 					recipe.title,
 					recipe.description,
@@ -184,6 +184,7 @@ async function importHandler(request: NextRequest) {
 					recipe.seasonId || null,
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
+					recipe.collectionId || null,
 					`temp_${Date.now()}`,
 				]
 			);
@@ -195,14 +196,6 @@ async function importHandler(request: NextRequest) {
 
 			// Update filename to use secure hash
 			await connection.execute<ResultSetHeader>('UPDATE recipes SET filename = ? WHERE id = ?', [secureFilename, recipeId]);
-
-			// Assign recipe to collection if specified
-			if (recipe.collectionId) {
-				await connection.execute<ResultSetHeader>('INSERT INTO collection_recipes (collection_id, recipe_id) VALUES (?, ?)', [
-					recipe.collectionId,
-					recipeId,
-				]);
-			}
 
 			// Recipe is now globally available to all users
 
