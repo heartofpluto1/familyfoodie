@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import RecipesPageClient from './recipes-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
 import { getCollectionsForDisplay, getCollectionById } from '@/lib/queries/collections';
-import { generateSlugPath } from '@/lib/utils/urlHelpers';
+import { generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import withAuth from '@/app/components/withAuth';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +25,7 @@ async function RecipesPage({ searchParams }: RecipesPageProps) {
 	if (collectionId) {
 		const collection = await getCollectionById(collectionId);
 		if (collection) {
-			const slug = generateSlugPath(collection.id, collection.title);
+			const slug = collection.url_slug ? generateSlugPath(collection.id, collection.url_slug) : generateSlugFromTitle(collection.id, collection.title);
 			redirect(`/recipes/${slug}`);
 		}
 	}

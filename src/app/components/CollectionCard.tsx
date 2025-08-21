@@ -5,9 +5,10 @@ interface CollectionCardProps {
 	title?: string;
 	subtitle?: string;
 	subscribed: boolean;
+	recipeCount?: number;
 }
 
-const CollectionCard = ({ coverImage, subscribed, title, subtitle }: CollectionCardProps) => {
+const CollectionCard = ({ coverImage, subscribed, title, subtitle, recipeCount }: CollectionCardProps) => {
 	// Peek card configurations
 	const peekCards = [
 		{ height: '380px', top: '10px', rotation: 3.6 },
@@ -71,6 +72,22 @@ const CollectionCard = ({ coverImage, subscribed, title, subtitle }: CollectionC
 								{subtitle}
 							</p>
 						</div>
+
+						{/* Recipe count badge - triangle pointing to top-left */}
+						{recipeCount !== undefined && (
+							<div
+								className="absolute bottom-0 right-0 bg-white bg-opacity-90 text-black dark:bg-black dark:bg-opacity-60 dark:text-white flex items-end justify-end text-xs font-medium"
+								style={{
+									width: '48px',
+									height: '48px',
+									clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)',
+									paddingBottom: '4px',
+									paddingRight: '4px',
+								}}
+							>
+								{recipeCount}
+							</div>
+						)}
 
 						{/* Subscribe button */}
 						{!subscribed && (

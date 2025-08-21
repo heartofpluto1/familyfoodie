@@ -25,6 +25,8 @@ export interface PlannedMeal {
 	filename: string;
 	collection_id: number;
 	collection_title: string;
+	url_slug?: string;
+	collection_url_slug?: string;
 }
 
 export interface Meal {
@@ -33,6 +35,8 @@ export interface Meal {
 	filename: string;
 	collection_id: number;
 	collection_title: string;
+	url_slug?: string;
+	collection_url_slug?: string;
 }
 
 export interface Recipe {
@@ -47,6 +51,8 @@ export interface Recipe {
 	ingredients?: string[];
 	collection_id: number;
 	collection_title: string;
+	url_slug?: string;
+	collection_url_slug?: string;
 }
 
 export interface RecipeDetail {
@@ -61,6 +67,8 @@ export interface RecipeDetail {
 	secondaryTypeName?: string;
 	collection_id: number;
 	collection_title: string;
+	url_slug?: string;
+	collection_url_slug?: string;
 	ingredients: RecipeIngredient[];
 }
 

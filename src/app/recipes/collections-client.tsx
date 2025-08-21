@@ -6,7 +6,7 @@ import { Collection } from '@/lib/queries/collections';
 import CollectionCard from '@/app/components/CollectionCard';
 import HeaderPage from '@/app/components/HeaderPage';
 import { PlusIcon } from '@/app/components/Icons';
-import { generateSlugPath } from '@/lib/utils/urlHelpers';
+import { generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 interface CollectionsPageClientProps {
 	collections: Collection[];
@@ -34,7 +34,7 @@ const CollectionsPageClient = ({ collections }: CollectionsPageClientProps) => {
 					{collections.map(collection => (
 						<Link
 							key={collection.id}
-							href={`/recipes/${generateSlugPath(collection.id, collection.title)}`}
+							href={`/recipes/${collection.url_slug ? generateSlugPath(collection.id, collection.url_slug) : generateSlugFromTitle(collection.id, collection.title)}`}
 							className="block hover:scale-105 hover:rotate-1 transition-transform duration-200"
 						>
 							<CollectionCard
@@ -42,6 +42,7 @@ const CollectionsPageClient = ({ collections }: CollectionsPageClientProps) => {
 								title={collection.title}
 								subtitle={collection.subtitle || undefined}
 								subscribed={true}
+								recipeCount={collection.recipe_count}
 							/>
 						</Link>
 					))}

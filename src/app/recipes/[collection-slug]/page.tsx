@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import RecipesPageClient from '@/app/recipe/recipes-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
 import { getCollectionsForDisplay, getCollectionById } from '@/lib/queries/collections';
-import { parseSlugPath, generateSlugPath } from '@/lib/utils/urlHelpers';
+import { parseSlugPath, generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import withAuth from '@/app/components/withAuth';
 
 export async function generateMetadata({ params }: { params: Promise<{ 'collection-slug': string }> }): Promise<Metadata> {
@@ -55,8 +55,10 @@ async function RecipesPage({ params }: RecipesPageProps) {
 		notFound();
 	}
 
-	// Optional: Redirect if slug doesn't match current title (for SEO consistency)
-	const currentSlug = generateSlugPath(selectedCollection.id, selectedCollection.title);
+	// Optional: Redirect if slug doesn't match current url_slug (for SEO consistency)
+	const currentSlug = selectedCollection.url_slug
+		? generateSlugPath(selectedCollection.id, selectedCollection.url_slug)
+		: generateSlugFromTitle(selectedCollection.id, selectedCollection.title);
 	if (slug !== currentSlug) {
 		redirect(`/recipes/${currentSlug}`);
 	}

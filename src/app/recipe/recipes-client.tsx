@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useMemo, useEffect } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
@@ -18,34 +18,9 @@ interface RecipesPageClientProps {
 
 const RecipesPageClient = ({ recipes, collections, selectedCollection }: RecipesPageClientProps) => {
 	const { showToast } = useToast();
-	const [isDarkMode, setIsDarkMode] = useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
-
-	// Detect system dark mode preference
-	useEffect(() => {
-		// Check initial preference
-		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-		setIsDarkMode(mediaQuery.matches);
-
-		// Listen for changes
-		const handler = (e: MediaQueryListEvent) => {
-			setIsDarkMode(e.matches);
-		};
-
-		mediaQuery.addEventListener('change', handler);
-		return () => mediaQuery.removeEventListener('change', handler);
-	}, []);
-
-	// Helper function to get the correct image based on theme
-	const getImageForTheme = useMemo(() => {
-		return (baseImage: string) => {
-			if (!isDarkMode) return baseImage;
-			// Replace .jpg with _dark.jpg, or add _dark before the extension
-			return baseImage.replace(/(\.[^.]+)$/, '_dark$1');
-		};
-	}, [isDarkMode]);
 
 	const getSubtitle = () => {
 		if (selectedCollection) {
@@ -115,7 +90,7 @@ const RecipesPageClient = ({ recipes, collections, selectedCollection }: Recipes
 				<div className="mb-8">
 					<div className="flex items-center gap-6">
 						<CollectionCardSmall
-							coverImage={getImageForTheme(`/collections/${selectedCollection.filename}.jpg`)}
+							coverImage={`/collections/${selectedCollection.filename}.jpg`}
 							title={selectedCollection.title}
 							subtitle={selectedCollection.subtitle || undefined}
 							subscribed={true}

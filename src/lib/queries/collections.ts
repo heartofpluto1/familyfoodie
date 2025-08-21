@@ -5,6 +5,7 @@ export interface Collection {
 	title: string;
 	subtitle: string | null;
 	filename: string | null;
+	url_slug: string | null;
 	created_at: Date;
 	updated_at: Date;
 	recipe_count?: number;
@@ -20,12 +21,13 @@ export async function getAllCollections(): Promise<Collection[]> {
 			c.title,
 			c.subtitle,
 			c.filename,
+			c.url_slug,
 			c.created_at,
 			c.updated_at,
 			COUNT(r.id) as recipe_count
 		FROM collections c
 		LEFT JOIN recipes r ON c.id = r.collection_id
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.created_at, c.updated_at
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.url_slug, c.created_at, c.updated_at
 		ORDER BY c.id ASC
 	`;
 
@@ -43,13 +45,14 @@ export async function getCollectionById(id: number): Promise<Collection | null> 
 			c.title,
 			c.subtitle,
 			c.filename,
+			c.url_slug,
 			c.created_at,
 			c.updated_at,
 			COUNT(r.id) as recipe_count
 		FROM collections c
 		LEFT JOIN recipes r ON c.id = r.collection_id
 		WHERE c.id = ?
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.created_at, c.updated_at
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.url_slug, c.created_at, c.updated_at
 	`;
 
 	const [rows] = await pool.execute(query, [id]);

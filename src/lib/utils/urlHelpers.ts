@@ -6,13 +6,29 @@
 import type { Recipe } from '@/types/menus';
 
 /**
- * Generates a URL-safe slug path from an ID and title
+ * Generates a URL-safe slug path from an ID and url_slug
+ * @param id - The numeric ID of the resource
+ * @param urlSlug - The pre-generated URL slug from database
+ * @returns A string in format "{id}-{slug}"
+ * @example generateSlugPath(42, "italian-classics") => "42-italian-classics"
+ */
+export function generateSlugPath(id: number, urlSlug: string): string {
+	// Use the pre-generated url_slug from database
+	// If urlSlug is empty or undefined, fallback to basic slug
+	if (!urlSlug || urlSlug.trim() === '') {
+		return `${id}-untitled`;
+	}
+	return `${id}-${urlSlug}`;
+}
+
+/**
+ * Legacy function for generating slugs from titles (used for migration/fallback)
  * @param id - The numeric ID of the resource
  * @param title - The human-readable title to convert to slug
  * @returns A string in format "{id}-{slug}"
- * @example generateSlugPath(42, "Italian Classics") => "42-italian-classics"
+ * @example generateSlugFromTitle(42, "Italian Classics") => "42-italian-classics"
  */
-export function generateSlugPath(id: number, title: string): string {
+export function generateSlugFromTitle(id: number, title: string): string {
 	// Convert title to URL-safe slug (internal implementation)
 	const slug = title
 		.toLowerCase()
@@ -43,13 +59,15 @@ export function parseSlugPath(path: string): { id: number; slug: string } | null
 
 /**
  * Generates a recipe URL with collection context
- * @param recipe - The recipe object with collection data
+ * @param recipe - The recipe object with collection data (must include url_slug fields)
  * @returns A string in format "/recipes/{collection-slug}/{recipe-slug}"
  * @example generateRecipeUrl(recipe) => "/recipes/42-italian-classics/123-pasta-marinara"
  */
 export function generateRecipeUrl(recipe: Recipe): string {
-	const collectionSlug = generateSlugPath(recipe.collection_id, recipe.collection_title);
-	const recipeSlug = generateSlugPath(recipe.id, recipe.name);
+	const collectionSlug = recipe.collection_url_slug
+		? generateSlugPath(recipe.collection_id, recipe.collection_url_slug)
+		: generateSlugFromTitle(recipe.collection_id, recipe.collection_title);
+	const recipeSlug = recipe.url_slug ? generateSlugPath(recipe.id, recipe.url_slug) : generateSlugFromTitle(recipe.id, recipe.name);
 	return `/recipes/${collectionSlug}/${recipeSlug}`;
 }
 
