@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
-import { generateCollectionSecureFilename, ensureCollectionsDirectory } from '@/lib/utils/secureFilename.collections';
+import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
+import { uploadFile, getStorageMode } from '@/lib/storage';
 
 async function createCollectionHandler(request: NextRequest) {
 	try {
@@ -43,20 +42,34 @@ async function createCollectionHandler(request: NextRequest) {
 			collectionId = result.insertId;
 			filename = generateCollectionSecureFilename(collectionId, title);
 
-			// Ensure collections directory exists
-			const collectionsDir = ensureCollectionsDirectory();
+			console.log(`Storage mode: ${getStorageMode()}`);
+			console.log(`Creating collection with filename: ${filename}`);
 
-			// Save uploaded images
+			// Upload images using the storage module (supports both local and GCS)
 			if (lightImage) {
-				const lightImagePath = path.join(collectionsDir, `${filename}.jpg`);
 				const lightImageBuffer = Buffer.from(await lightImage.arrayBuffer());
-				await writeFile(lightImagePath, lightImageBuffer);
+				const lightUploadResult = await uploadFile(lightImageBuffer, filename, 'jpg', 'image/jpeg', 'collections');
+
+				if (!lightUploadResult.success) {
+					console.error('Failed to upload light image:', lightUploadResult.error);
+					// Clean up database entry if image upload fails
+					await pool.execute('DELETE FROM collections WHERE id = ?', [collectionId]);
+					return NextResponse.json({ error: 'Failed to upload light mode image' }, { status: 500 });
+				}
+				console.log('Successfully uploaded light mode image');
 			}
 
 			if (darkImage) {
-				const darkImagePath = path.join(collectionsDir, `${filename}_dark.jpg`);
 				const darkImageBuffer = Buffer.from(await darkImage.arrayBuffer());
-				await writeFile(darkImagePath, darkImageBuffer);
+				const darkUploadResult = await uploadFile(darkImageBuffer, `${filename}_dark`, 'jpg', 'image/jpeg', 'collections');
+
+				if (!darkUploadResult.success) {
+					console.error('Failed to upload dark image:', darkUploadResult.error);
+					// Note: We don't fail the entire operation if only dark image fails
+					console.warn('Dark mode image upload failed, but continuing with light mode only');
+				} else {
+					console.log('Successfully uploaded dark mode image');
+				}
 			}
 
 			// Update collection with generated filename

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
+import { deleteFile, getStorageMode } from '@/lib/storage';
 
 async function deleteHandler(request: NextRequest) {
 	try {
@@ -46,23 +45,28 @@ async function deleteHandler(request: NextRequest) {
 
 		// Delete associated files (but not default images)
 		if (filename !== 'custom_collection_004') {
-			const collectionsDir = path.join(process.cwd(), 'public', 'collections');
+			console.log(`Storage mode: ${getStorageMode()}`);
+			console.log(`Deleting collection files for filename: ${filename}`);
 
-			try {
-				// Delete light mode image
-				const lightImagePath = path.join(collectionsDir, `${filename}.jpg`);
-				await unlink(lightImagePath);
-			} catch (error) {
-				console.warn('Failed to delete light mode image:', error);
-			}
+			// Helper function to safely delete file using storage module
+			const safeDeleteStorageFile = async (filename: string, extension: string, description: string) => {
+				try {
+					const deleted = await deleteFile(filename, extension, 'collections');
+					if (deleted) {
+						console.log(`Successfully deleted ${description}`);
+					} else {
+						console.log(`${description} not found, skipping deletion`);
+					}
+				} catch (error) {
+					console.warn(`Failed to delete ${description}:`, error);
+				}
+			};
 
-			try {
-				// Delete dark mode image
-				const darkImagePath = path.join(collectionsDir, `${filename}_dark.jpg`);
-				await unlink(darkImagePath);
-			} catch (error) {
-				console.warn('Failed to delete dark mode image:', error);
-			}
+			// Delete light mode image if it exists
+			await safeDeleteStorageFile(filename, 'jpg', 'light mode image');
+
+			// Delete dark mode image if it exists
+			await safeDeleteStorageFile(`${filename}_dark`, 'jpg', 'dark mode image');
 		} else {
 			console.log('Skipping file deletion for default collection images');
 		}
