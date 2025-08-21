@@ -1,5 +1,71 @@
 'use client';
 
+// Extract hero image from JPG/JPEG file using coordinates
+const extractHeroImageFromImage = async (
+	file: File,
+	imageLocation: {
+		pageIndex: number;
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+	}
+): Promise<string | null> => {
+	try {
+		// Create an image element to load the file
+		const img = new Image();
+		const imageUrl = URL.createObjectURL(file);
+
+		// Load the image
+		await new Promise((resolve, reject) => {
+			img.onload = resolve;
+			img.onerror = reject;
+			img.src = imageUrl;
+		});
+
+		// Create canvas for cropping
+		const canvas = document.createElement('canvas');
+		const context = canvas.getContext('2d');
+		if (!context) throw new Error('Could not create canvas context');
+
+		// Calculate crop dimensions relative to the actual image size
+		const scaleX = img.naturalWidth / 600; // Assuming AI coordinates are based on 600px width
+		const scaleY = img.naturalHeight / 400; // Assuming AI coordinates are based on 400px height
+
+		const cropX = Math.max(0, Math.min(imageLocation.x * scaleX, img.naturalWidth));
+		const cropY = Math.max(0, Math.min(imageLocation.y * scaleY, img.naturalHeight));
+		const cropWidth = Math.min(imageLocation.width * scaleX, img.naturalWidth - cropX);
+		const cropHeight = Math.min(imageLocation.height * scaleY, img.naturalHeight - cropY);
+
+		// Set canvas size to the crop dimensions
+		canvas.width = cropWidth;
+		canvas.height = cropHeight;
+
+		// Draw the cropped portion of the image
+		context.drawImage(
+			img,
+			cropX,
+			cropY,
+			cropWidth,
+			cropHeight, // Source coordinates and dimensions
+			0,
+			0,
+			cropWidth,
+			cropHeight // Destination coordinates and dimensions
+		);
+
+		// Clean up the object URL
+		URL.revokeObjectURL(imageUrl);
+
+		// Convert to base64 JPEG
+		const heroImageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+		return heroImageDataUrl;
+	} catch (error) {
+		console.error('Error extracting hero image from image file:', error);
+		return null;
+	}
+};
+
 // Extract hero image from PDF or JPG using coordinates provided by AI
 export const extractHeroImageFromPdf = async (
 	file: File,
@@ -91,72 +157,6 @@ export const extractHeroImageFromPdf = async (
 		return heroImageDataUrl;
 	} catch (error) {
 		console.error('Error extracting hero image from PDF:', error);
-		return null;
-	}
-};
-
-// Extract hero image from JPG/JPEG file using coordinates
-const extractHeroImageFromImage = async (
-	file: File,
-	imageLocation: {
-		pageIndex: number;
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-	}
-): Promise<string | null> => {
-	try {
-		// Create an image element to load the file
-		const img = new Image();
-		const imageUrl = URL.createObjectURL(file);
-
-		// Load the image
-		await new Promise((resolve, reject) => {
-			img.onload = resolve;
-			img.onerror = reject;
-			img.src = imageUrl;
-		});
-
-		// Create canvas for cropping
-		const canvas = document.createElement('canvas');
-		const context = canvas.getContext('2d');
-		if (!context) throw new Error('Could not create canvas context');
-
-		// Calculate crop dimensions relative to the actual image size
-		const scaleX = img.naturalWidth / 600; // Assuming AI coordinates are based on 600px width
-		const scaleY = img.naturalHeight / 400; // Assuming AI coordinates are based on 400px height
-
-		const cropX = Math.max(0, Math.min(imageLocation.x * scaleX, img.naturalWidth));
-		const cropY = Math.max(0, Math.min(imageLocation.y * scaleY, img.naturalHeight));
-		const cropWidth = Math.min(imageLocation.width * scaleX, img.naturalWidth - cropX);
-		const cropHeight = Math.min(imageLocation.height * scaleY, img.naturalHeight - cropY);
-
-		// Set canvas size to the crop dimensions
-		canvas.width = cropWidth;
-		canvas.height = cropHeight;
-
-		// Draw the cropped portion of the image
-		context.drawImage(
-			img,
-			cropX,
-			cropY,
-			cropWidth,
-			cropHeight, // Source coordinates and dimensions
-			0,
-			0,
-			cropWidth,
-			cropHeight // Destination coordinates and dimensions
-		);
-
-		// Clean up the object URL
-		URL.revokeObjectURL(imageUrl);
-
-		// Convert to base64 JPEG
-		const heroImageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-		return heroImageDataUrl;
-	} catch (error) {
-		console.error('Error extracting hero image from image file:', error);
 		return null;
 	}
 };
