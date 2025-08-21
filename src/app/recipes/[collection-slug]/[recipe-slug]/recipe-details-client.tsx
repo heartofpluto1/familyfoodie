@@ -33,7 +33,7 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 			<main className="container mx-auto px-4 py-8">
 				{/* Collection breadcrumb link */}
 				<div className="mb-4">
-					<Link href={`/recipes/${recipe.collection_url_slug || ''}`} className="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+					<Link href={`/recipes/${recipe.collection_url_slug || ''}`} className="text-sm text-gray-600 hover:text-gray-800 hover:underline">
 						← Back to {recipe.collection_title || 'Collection'}
 					</Link>
 				</div>
