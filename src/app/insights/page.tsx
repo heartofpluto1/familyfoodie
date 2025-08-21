@@ -12,6 +12,7 @@ import { formatPrice } from '@/lib/utils/formatting';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 
 async function InsightsPage() {
 	const [weeklySpending, topFruitsAndVeggies, topHerbs, topRecipes, recipePairings] = await Promise.all([
@@ -236,7 +237,7 @@ async function InsightsPage() {
 												{index + 1}
 											</span>
 											<Link
-												href={`/recipe/${recipe.id}`}
+												href={generateRecipeUrl(recipe)}
 												target="_blank"
 												rel="noopener noreferrer"
 												className="text-sm font-medium text-secondary hover:text-foreground underline transition-colors"
@@ -292,7 +293,13 @@ async function InsightsPage() {
 													</div>
 													<div className="flex-1 min-w-0">
 														<Link
-															href={`/recipe/${pairing.recipe1_id}`}
+															href={generateRecipeUrl({
+																id: pairing.recipe1_id,
+																name: pairing.recipe1_name,
+																filename: pairing.recipe1_filename,
+																collection_id: pairing.recipe1_collection_id,
+																collection_title: pairing.recipe1_collection_title,
+															})}
 															target="_blank"
 															rel="noopener noreferrer"
 															className="text-sm font-medium text-secondary hover:text-foreground underline transition-colors block truncate"
@@ -316,7 +323,13 @@ async function InsightsPage() {
 													</div>
 													<div className="flex-1 min-w-0">
 														<Link
-															href={`/recipe/${pairing.recipe2_id}`}
+															href={generateRecipeUrl({
+																id: pairing.recipe2_id,
+																name: pairing.recipe2_name,
+																filename: pairing.recipe2_filename,
+																collection_id: pairing.recipe2_collection_id,
+																collection_title: pairing.recipe2_collection_title,
+															})}
 															target="_blank"
 															rel="noopener noreferrer"
 															className="text-sm font-medium text-secondary hover:text-foreground underline transition-colors block truncate"

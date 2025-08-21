@@ -12,12 +12,13 @@ interface UpdateRecipeRequest {
 	seasonId?: number;
 	primaryTypeId?: number;
 	secondaryTypeId?: number;
+	collectionId?: number;
 }
 
 async function updateHandler(request: NextRequest) {
 	try {
 		const body: UpdateRecipeRequest = await request.json();
-		const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId } = body;
+		const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId, collectionId } = body;
 
 		// Validate required fields
 		if (!id || !name) {
@@ -27,9 +28,9 @@ async function updateHandler(request: NextRequest) {
 		// Update the recipe
 		const [result] = await pool.execute<ResultSetHeader>(
 			`UPDATE recipes 
-			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?
+			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?, collection_id = ?
 			 WHERE id = ?`,
-			[name, description, prepTime || null, cookTime || null, seasonId || null, primaryTypeId || null, secondaryTypeId || null, id]
+			[name, description, prepTime || null, cookTime || null, seasonId || null, primaryTypeId || null, secondaryTypeId || null, collectionId || null, id]
 		);
 
 		if (result.affectedRows === 0) {

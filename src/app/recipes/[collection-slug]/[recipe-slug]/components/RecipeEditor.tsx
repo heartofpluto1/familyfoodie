@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
+import { Collection } from '@/lib/queries/collections';
 import { SaveIcon, EditIcon, TrashIcon } from '@/app/components/Icons';
 import { useToast } from '@/app/components/ToastProvider';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import ImageUploadWithCrop from './ImageUploadWithCrop';
 import PdfUpload from './PdfUpload';
-import RecipeForm from '../../components/RecipeForm';
+import RecipeForm from '@/app/recipe/components/RecipeForm';
 import RecipeView from './RecipeView';
 import IngredientsTable from './IngredientsTable';
 import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
@@ -20,13 +21,14 @@ import { FileUploadResponse } from '@/types/fileUpload';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
+	collections?: Collection[];
 	isEditing?: boolean;
 	onStartEdit?: () => void;
 	onSave?: (recipeId: number) => void;
 	onCancel?: () => void;
 }
 
-const RecipeEditor = ({ recipe, isEditing: externalIsEditing, onStartEdit, onSave, onCancel }: RecipeEditorProps) => {
+const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onStartEdit, onSave, onCancel }: RecipeEditorProps) => {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
@@ -48,6 +50,7 @@ const RecipeEditor = ({ recipe, isEditing: externalIsEditing, onStartEdit, onSav
 		seasonId: undefined,
 		primaryTypeId: undefined,
 		secondaryTypeId: undefined,
+		collectionId: recipe?.collection_id,
 	});
 
 	// Ingredients
@@ -296,7 +299,7 @@ const RecipeEditor = ({ recipe, isEditing: externalIsEditing, onStartEdit, onSav
 									}
 								}}
 								disabled={isLoading}
-								className="px-4 py-2 bg-gray-500 text-white rounded-sm hover:bg-gray-600 transition-colors disabled:opacity-50"
+								className="btn-default px-4 py-2 rounded-sm disabled:opacity-50"
 							>
 								Cancel
 							</button>
@@ -328,7 +331,7 @@ const RecipeEditor = ({ recipe, isEditing: externalIsEditing, onStartEdit, onSav
 					<div className="p-6 space-y-4">
 						{isEditing ? (
 							<div className="space-y-4">
-								<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} isNewRecipe={false} />
+								<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} isNewRecipe={false} />
 								{recipe && <PdfUpload recipeId={recipe.id} onPdfUploaded={handlePdfUploadComplete} />}
 							</div>
 						) : (

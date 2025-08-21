@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth-middleware';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 import OpenAI from 'openai';
+import { getAllCollections } from '@/lib/queries/collections';
 
 interface StructuredIngredient {
 	name: string;
@@ -54,6 +55,10 @@ interface ExtractedRecipe {
 		y: number;
 		width: number;
 		height: number;
+	};
+	selectedCollection?: {
+		id: number;
+		title: string;
 	};
 	ingredients: {
 		name: string;
@@ -109,6 +114,9 @@ async function previewHandler(request: NextRequest) {
 				};
 			})
 		);
+
+		// Fetch all collections for AI selection
+		const collections = await getAllCollections();
 
 		// Use OpenAI to extract recipe from images
 		const completion = await openai.chat.completions.create({
@@ -167,6 +175,10 @@ Please extract and structure the recipe data as follows:
    - Provide pixel coordinates as: top-left x, top-left y, width, height in "imageLocation"
    - Set "hasHeroImage" to true if you found an image
    - If no hero image is visible, set "hasHeroImage" to false
+14. Select the most appropriate collection for this recipe from the available collections below. Consider the cuisine type, cooking style, dietary preferences, and overall theme. If no collection seems like a particularly good fit, simply return the first collection in the list.
+
+Available Collections:
+${collections.map(c => `${c.id}: "${c.title}"${c.subtitle ? ` - ${c.subtitle}` : ''}`).join('\n')}
 
 IMPORTANT: Return only valid JSON with this exact structure:
 {
@@ -186,6 +198,10 @@ IMPORTANT: Return only valid JSON with this exact structure:
     "y": 20,
     "width": 600,
     "height": 400,
+  },
+  "selectedCollection": {
+    "id": 2,
+    "title": "Family Favorites"
   },
   "ingredients": [
     {"name": "Flour", "quantity_2_servings": "1", "quantity_4_servings": "2", "unit": "cup", "supermarketCategory": "center aisles", "pantryCategory": "pantry"},

@@ -4,7 +4,7 @@
 	/* Typography */
 	--font-heading: var(--font-heading), 'Times New Roman', serif;
 	--font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-	
+
 	/* Light mode - Clean greys */
 	--background: #fafafa;
 	--surface: #ffffff;
@@ -20,6 +20,8 @@
 	--red-text: rgba(220, 38, 38, 1); /* red-600 equivalent */
 	--red-bg: rgba(220, 38, 38, 0.1);
 	--red-border: rgba(220, 38, 38, 0.2);
+	/* Peek card background */
+	--peek-card-bg: #ffffff;
 }
 
 @theme inline {
@@ -56,6 +58,8 @@
 		--red-text: rgba(248, 113, 113, 1); /* red-400 equivalent - softer in dark mode */
 		--red-bg: rgba(248, 113, 113, 0.1);
 		--red-border: rgba(248, 113, 113, 0.2);
+		/* Peek card background */
+		--peek-card-bg: #afafaf;
 	}
 }
 
@@ -68,7 +72,12 @@ body {
 		color 0.2s ease;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
 	font-family: var(--font-heading);
 }
 
@@ -272,4 +281,26 @@ button,
 a,
 [role='button'] {
 	cursor: pointer;
+}
+
+/* Dark/Light mode button classes */
+.btn-default {
+	background-color: #d1d5dc;
+	color: black;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-default:hover {
+	background-color: #b8bcc3;
+}
+
+@media (prefers-color-scheme: dark) {
+	.btn-default {
+		background-color: #2e2e2e;
+		color: white;
+	}
+	
+	.btn-default:hover {
+		background-color: #404040;
+	}
 }

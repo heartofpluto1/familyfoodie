@@ -71,7 +71,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										Shop
 									</Link>
 									<Link
-										href="/recipe"
+										href="/recipes"
 										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
 									>
 										Recipes
@@ -118,7 +118,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 											Shop
 										</Link>
 										<Link
-											href="/recipe"
+											href="/recipes"
 											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
 										>
 											Recipes
@@ -150,12 +150,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 							{isAuthenticated ? (
 								<div className="flex items-center space-x-2 sm:space-x-3">
 									<span className="text-xs sm:text-sm text-foreground xs:inline">{user?.username}</span>
-									<Link
-										href="/logout"
-										prefetch={false}
-										className="bg-accent text-background p-1.5 sm:p-2 rounded-sm hover:bg-accent/90 transition-colors inline-block"
-										title="Logout"
-									>
+									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
 									</Link>
 								</div>
