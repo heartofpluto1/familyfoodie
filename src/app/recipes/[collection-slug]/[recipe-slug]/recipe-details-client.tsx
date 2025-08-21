@@ -128,8 +128,11 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 				)}
 
 				<div className="mb-8">
-					<div className="flex items-center justify-between">
-						<HeaderPage title={recipe.name} subtitle={subtitle} />
+					<div className="flex items-start justify-between">
+						<div>
+							<h2 className="text-2xl text-foreground">{recipe.name}</h2>
+							<p className="text-sm text-muted">{subtitle}</p>
+						</div>
 						<button
 							onClick={() => setShowDeleteConfirm(true)}
 							className="inline-flex items-center justify-center btn-default w-10 h-10 rounded-full hover:shadow-sm bg-red-600 hover:bg-red-700 text-white"

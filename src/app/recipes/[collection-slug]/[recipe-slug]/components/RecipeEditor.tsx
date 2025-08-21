@@ -348,7 +348,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 							</div>
 						) : (
 							<div className="relative">
-								<img key={refreshKey} src={getRecipeImageUrl(recipe.filename, editMode !== 'none')} alt={recipe.name} className="w-full rounded-sm" />
+								<img key={refreshKey} src={getRecipeImageUrl(recipe.filename, editMode !== 'none')} alt={recipe.name} className="w-full" />
 								{/* Edit buttons */}
 								<div className="absolute bottom-4 right-4 flex gap-2">
 									{/* Camera edit button */}
