@@ -29,6 +29,7 @@ const RecipeCard = ({
 	const [displayRecipe, setDisplayRecipe] = useState(recipe);
 	const [isFlipping, setIsFlipping] = useState(false);
 	const [showNewContent, setShowNewContent] = useState(false);
+	const [cacheBuster] = useState(() => Date.now());
 
 	// Update displayRecipe when recipe prop changes (from parent state)
 	React.useEffect(() => {
@@ -72,7 +73,7 @@ const RecipeCard = ({
 		if (newRecipe) {
 			// Preload the new recipe image before starting animation
 			const img = new Image();
-			img.src = getRecipeImageUrl(newRecipe.filename);
+			img.src = `${getRecipeImageUrl(newRecipe.filename)}?t=${cacheBuster}`;
 
 			// Start animation when image is loaded (or immediately if already cached)
 			img.onload = () => {
@@ -144,7 +145,7 @@ const RecipeCard = ({
 					}}
 				>
 					<Link href={generateRecipeUrl(displayRecipe)} className="block">
-						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(filename)} />
+						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={`${getRecipeImageUrl(filename)}?t=${cacheBuster}`} />
 					</Link>
 
 					<div className="p-4 flex flex-col flex-grow">
