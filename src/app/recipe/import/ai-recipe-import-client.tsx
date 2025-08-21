@@ -48,7 +48,7 @@ const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 		<>
 			<main className="container mx-auto px-4 py-8">
 				<div className="mb-8">
-					<HeaderPage title="Import from PDF" subtitle="Upload a recipe PDF and let AI extract the recipe data automatically" />
+					<HeaderPage title="Import Recipe" subtitle="Upload a recipe PDF or image and let AI extract the recipe data automatically" />
 				</div>
 
 				<div className={showPreview ? 'w-full' : 'max-w-4xl mx-auto'}>
@@ -93,9 +93,9 @@ const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 					{/* Error state when no recipe data */}
 					{showPreview && !recipeDetail && (
 						<div className="text-center py-8">
-							<p className="text-gray-600 dark:text-gray-400">Unable to extract recipe data from this PDF.</p>
+							<p className="text-gray-600 dark:text-gray-400">Unable to extract recipe data from this file.</p>
 							<button onClick={resetState} className="btn-default mt-4 px-4 py-2 rounded-sm">
-								Try Another PDF
+								Try Another File
 							</button>
 						</div>
 					)}

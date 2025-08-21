@@ -82,20 +82,35 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 
 	const extractAndPreview = async () => {
 		if (!selectedFile) {
-			showToast('error', 'Error', 'Please select a PDF file first');
+			showToast('error', 'Error', 'Please select a file first');
 			return;
 		}
 
 		setIsProcessing(true);
-		setProcessingStep('Converting PDF to images');
 
 		try {
-			// Convert PDF to images first
-			const images = await convertPdfToImages(selectedFile);
-			setProcessingStep(`Sending ${images.length} images to AI for analysis`);
+			let images: string[] = [];
+			const isImage = selectedFile.type.startsWith('image/');
 
-			// Store the images for later use in cropping
-			setPdfImages(images);
+			if (isImage) {
+				// For JPG/JPEG, read the file directly as base64
+				setProcessingStep('Processing image');
+				const reader = new FileReader();
+				const imageDataUrl = await new Promise<string>((resolve, reject) => {
+					reader.onload = e => resolve(e.target?.result as string);
+					reader.onerror = reject;
+					reader.readAsDataURL(selectedFile);
+				});
+				images = [imageDataUrl];
+				setPdfImages(images);
+				setProcessingStep('Sending image to AI for analysis');
+			} else {
+				// For PDF, convert to images first
+				setProcessingStep('Converting PDF to images');
+				images = await convertPdfToImages(selectedFile);
+				setPdfImages(images);
+				setProcessingStep(`Sending ${images.length} images to AI for analysis`);
+			}
 
 			// Send images to preview endpoint
 			const formData = new FormData();

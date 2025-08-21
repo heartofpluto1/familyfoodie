@@ -116,12 +116,13 @@ const PdfUploadSection = ({
 	}, [isProcessing]);
 
 	const validateAndSelectFile = (file: File) => {
-		if (file.type !== 'application/pdf') {
-			onFileValidationError('Invalid File', 'Please select a PDF file');
+		const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
+		if (!validTypes.includes(file.type)) {
+			onFileValidationError('Invalid File', 'Please select a PDF or JPG image file');
 			return;
 		}
 		if (file.size > 10 * 1024 * 1024) {
-			onFileValidationError('File Too Large', 'PDF must be smaller than 10MB');
+			onFileValidationError('File Too Large', 'File must be smaller than 10MB');
 			return;
 		}
 		onFileSelect(file);
@@ -164,7 +165,7 @@ const PdfUploadSection = ({
 				{!isProcessing && (
 					<div>
 						{/* Hidden file input */}
-						<input ref={fileInputRef} type="file" accept=".pdf,application/pdf" onChange={handleFileSelect} className="hidden" />
+						<input ref={fileInputRef} type="file" accept=".pdf,application/pdf,.jpg,.jpeg,image/jpeg" onChange={handleFileSelect} className="hidden" />
 
 						{/* Custom drag and drop area */}
 						<div
@@ -181,9 +182,9 @@ const PdfUploadSection = ({
 								<UploadIcon className={`mx-auto h-12 w-12 ${isDragOver ? 'text-blue-400' : 'text-gray-400'}`} />
 								<div className="mt-4">
 									<p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-										{isDragOver ? 'Drop your PDF here' : 'Drop your PDF here or click to browse'}
+										{isDragOver ? 'Drop your file here' : 'Drop your PDF or image here or click to browse'}
 									</p>
-									<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Supports PDF files up to 10MB</p>
+									<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Supports PDF and JPG files up to 10MB</p>
 								</div>
 								{!isDragOver && (
 									<button className="btn-default mt-3 inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium">
