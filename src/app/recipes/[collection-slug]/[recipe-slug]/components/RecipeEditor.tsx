@@ -446,9 +446,9 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 
 				{/* Right Column - Ingredients with inline edit button */}
 				<div>
-					<div className="bg-white rounded-sm shadow">
-						<div className="p-4 border-b flex justify-between items-center">
-							<h2 className="text-lg font-semibold">Ingredients</h2>
+					<div>
+						<div className="pb-4 flex justify-between items-center">
+							<h2 className="text-lg">Ingredients</h2>
 							{editMode === 'ingredients' ? (
 								<div className="flex gap-2">
 									<button
