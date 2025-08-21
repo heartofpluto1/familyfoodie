@@ -47,14 +47,19 @@ const CollectionCardSmall = ({ coverImage, subscribed, title, subtitle }: Collec
 			{/* Main collection card - positioned in front */}
 			<div className="relative w-full h-[205px] z-10">
 				<article
-					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black bg-cover bg-center text-black"
+					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black text-black"
 					style={{
-						backgroundImage: `url("${coverImage}")`,
 						boxShadow: '1px 1px 2.5px rgba(0, 0, 0, 0.22)',
 					}}
 				>
+					{/* Native HTML picture element for dark mode support */}
+					<picture className="absolute inset-0 w-full h-full">
+						<source srcSet={coverImage.replace(/(\.[^.]+)$/, '_dark$1')} media="(prefers-color-scheme: dark)" />
+						<source srcSet={coverImage} media="(prefers-color-scheme: light)" />
+						<img src={coverImage} alt="Collection cover" className="w-full h-full object-cover" />
+					</picture>
 					<div
-						className="w-full h-full flex flex-col relative"
+						className="w-full h-full flex flex-col relative z-10"
 						style={{ background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), transparent 0, rgba(0, 0, 0, 0.8) 75px)' }}
 					>
 						<div className="p-6 pt-12 flex flex-col flex-grow">
