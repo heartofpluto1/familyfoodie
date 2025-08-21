@@ -39,13 +39,16 @@ DEALLOCATE PREPARE add_recipes_slug_stmt;
 -- Update collections table with generated slugs from titles
 UPDATE collections 
 SET url_slug = LOWER(
-    TRIM(
+    REPLACE(
         REPLACE(
             REPLACE(
                 REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(title, ' ', '-'),
+                            REPLACE(
+                                TRIM(title), 
+                                ' ', '-'
+                            ),
                             '&', 'and'
                         ),
                         ',', ''
@@ -64,13 +67,16 @@ WHERE url_slug IS NULL AND title IS NOT NULL;
 -- Update recipes table with generated slugs from names
 UPDATE recipes 
 SET url_slug = LOWER(
-    TRIM(
+    REPLACE(
         REPLACE(
             REPLACE(
                 REPLACE(
                     REPLACE(
                         REPLACE(
-                            REPLACE(name, ' ', '-'),
+                            REPLACE(
+                                TRIM(name), 
+                                ' ', '-'
+                            ),
                             '&', 'and'
                         ),
                         ',', ''
