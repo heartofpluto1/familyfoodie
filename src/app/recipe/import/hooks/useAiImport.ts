@@ -246,17 +246,27 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 			});
 			setIngredients(convertedIngredients);
 
-			// Extract hero image if available
-			if (importedRecipe.hasHeroImage && importedRecipe.imageLocation) {
-				setProcessingStep('Extracting hero image');
-				try {
-					const heroImageDataUrl = await extractHeroImageFromPdf(selectedFile, importedRecipe.imageLocation);
-					setHeroImage(heroImageDataUrl);
-					setHeroImageCrop(importedRecipe.imageLocation);
-				} catch (error) {
-					console.warn('Failed to extract hero image:', error);
-					// Continue without hero image
-				}
+			// Extract hero image if available, or use first page as fallback
+			let heroImageLocation = importedRecipe.imageLocation;
+			if (!importedRecipe.hasHeroImage || !importedRecipe.imageLocation) {
+				// Use first page as fallback with default crop settings
+				heroImageLocation = {
+					pageIndex: 0,
+					x: 0,
+					y: 0,
+					width: 600,
+					height: 400,
+				};
+			}
+
+			setProcessingStep('Extracting hero image');
+			try {
+				const heroImageDataUrl = await extractHeroImageFromPdf(selectedFile, heroImageLocation);
+				setHeroImage(heroImageDataUrl);
+				setHeroImageCrop(heroImageLocation);
+			} catch (error) {
+				console.warn('Failed to extract hero image:', error);
+				// Continue without hero image
 			}
 
 			setShowPreview(true);
