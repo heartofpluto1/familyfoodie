@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { RecipeDetail } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
 import HeaderPage from '@/app/components/HeaderPage';
-import RecipeEditorNew from './components/RecipeEditorNew';
+import RecipeEditor from './components/RecipeEditor';
 
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;
@@ -104,8 +104,8 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 					<HeaderPage title={recipe.name} subtitle={subtitle} />
 				</div>
 
-				{/* Recipe Editor with three separate edit modes */}
-				<RecipeEditorNew recipe={recipe} collections={collections} />
+				{/* Recipe Editor handles both view and edit modes internally */}
+				<RecipeEditor recipe={recipe} collections={collections} />
 			</main>
 		</>
 	);
