@@ -266,3 +266,9 @@ export const RefreshIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.51 9A9 9 0 0118.36 5.64L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
 	</svg>
 );
+
+export const CancelIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+	</svg>
+);

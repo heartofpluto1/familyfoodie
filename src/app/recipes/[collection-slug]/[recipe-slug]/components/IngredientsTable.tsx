@@ -51,7 +51,7 @@ const IngredientsTable = ({
 	onAddNewIngredientRow,
 }: IngredientsTableProps) => {
 	return (
-		<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden">
+		<div className="bg-white border border-custom rounded-sm shadow-md overflow-visible">
 			<div className="overflow-visible">
 				<table className="w-full">
 					<thead>

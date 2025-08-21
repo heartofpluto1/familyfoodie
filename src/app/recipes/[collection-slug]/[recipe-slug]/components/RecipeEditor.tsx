@@ -1,45 +1,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
-import { SaveIcon, EditIcon, TrashIcon } from '@/app/components/Icons';
+import { SaveIcon, EditIcon, CancelIcon } from '@/app/components/Icons';
 import { useToast } from '@/app/components/ToastProvider';
-import ConfirmDialog from '@/app/components/ConfirmDialog';
+import Modal from '@/app/components/Modal';
 import ImageUploadWithCrop from './ImageUploadWithCrop';
 import PdfUpload from './PdfUpload';
 import RecipeForm from '@/app/recipe/components/RecipeForm';
 import RecipeView from './RecipeView';
 import IngredientsTable from './IngredientsTable';
 import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
-import { useRecipeApi } from '../hooks/useRecipeApi';
 import { useIngredientApi } from '../hooks/useIngredientApi';
 import { RecipeFormData, NewIngredient } from '@/app/recipe/types';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
-import { FileUploadResponse } from '@/types/fileUpload';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
 	collections?: Collection[];
-	isEditing?: boolean;
-	onStartEdit?: () => void;
-	onSave?: (recipeId: number) => void;
-	onCancel?: () => void;
 }
 
-const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onStartEdit, onSave, onCancel }: RecipeEditorProps) => {
-	const router = useRouter();
+type EditMode = 'none' | 'details' | 'ingredients';
+
+const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
-	const recipeApi = useRecipeApi();
 	const ingredientApi = useIngredientApi();
 
-	// Use external edit state if provided, otherwise manage internally
-	const [internalIsEditing, setInternalIsEditing] = useState(false);
-	const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
+	// Separate edit modes
+	const [editMode, setEditMode] = useState<EditMode>('none');
 	const [isLoading, setIsLoading] = useState(false);
-	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [refreshKey, setRefreshKey] = useState(0);
+	const [showPdfModal, setShowPdfModal] = useState(false);
+	const [showImageModal, setShowImageModal] = useState(false);
 
 	// Form data
 	const [recipeForm, setRecipeForm] = useState<RecipeFormData>({
@@ -55,6 +49,7 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 
 	// Ingredients
 	const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+	const [deletedIngredientIds, setDeletedIngredientIds] = useState<number[]>([]);
 	const [newIngredients, setNewIngredients] = useState<NewIngredient[]>([
 		{
 			ingredientName: '',
@@ -88,7 +83,46 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 		}
 	}, [recipe]);
 
-	const handleSave = async () => {
+	// Handle edit mode changes
+	const startEdit = (mode: EditMode) => {
+		// Cancel any current edit before starting new one
+		if (editMode !== 'none' && editMode !== mode) {
+			handleCancel();
+		}
+		setEditMode(mode);
+	};
+
+	const handleCancel = () => {
+		// Reset form data to original recipe values
+		setRecipeForm({
+			name: recipe?.name || '',
+			description: recipe?.description || '',
+			prepTime: recipe?.prepTime,
+			cookTime: recipe?.cookTime,
+			seasonId: undefined,
+			primaryTypeId: undefined,
+			secondaryTypeId: undefined,
+			collectionId: recipe?.collection_id,
+		});
+
+		// Reset ingredients
+		setIngredients(recipe.ingredients);
+		setDeletedIngredientIds([]);
+		setNewIngredients([
+			{
+				ingredientName: '',
+				quantity: '',
+				quantity4: '',
+				measureId: '',
+				preparationId: '',
+			},
+		]);
+
+		setEditMode('none');
+	};
+
+	// Save handlers for each edit mode
+	const handleSaveDetails = async () => {
 		if (!recipeForm.name.trim() || !recipeForm.description.trim()) {
 			showToast('error', 'Error', 'Recipe name and description are required');
 			return;
@@ -96,29 +130,97 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 
 		setIsLoading(true);
 		try {
-			// Update existing recipe
-			const success = await recipeApi.updateRecipe(recipe.id, recipeForm);
-			if (success) {
-				showToast('success', 'Success', 'Recipe updated successfully');
-				if (onSave) {
-					onSave(recipe.id);
-				}
-				if (externalIsEditing === undefined) {
-					setInternalIsEditing(false);
-				}
+			const response = await fetch('/api/recipe/update-details', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({
+					id: recipe.id,
+					...recipeForm,
+				}),
+			});
+
+			if (response.ok) {
+				showToast('success', 'Success', 'Recipe details updated successfully');
+				setEditMode('none');
 				// Refresh page to show updated data
 				window.location.reload();
+			} else {
+				const error = await response.json();
+				showToast('error', 'Error', error.error || 'Failed to update recipe details');
 			}
 		} catch (error) {
-			console.error('Error saving recipe:', error);
-			showToast('error', 'Error', 'Error updating recipe');
+			console.error('Error saving recipe details:', error);
+			showToast('error', 'Error', 'Failed to update recipe details');
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
+	const handleSaveIngredients = async () => {
+		setIsLoading(true);
+		try {
+			// Prepare ingredients data
+			const ingredientsData = ingredients.map(ing => ({
+				id: ing.id > 0 ? ing.id : undefined,
+				ingredientId: ing.ingredient.id,
+				quantity: ing.quantity,
+				quantity4: ing.quantity4,
+				measureId: ing.measure?.id,
+				preparationId: undefined, // preperation doesn't have an id in the type
+			}));
+
+			const response = await fetch('/api/recipe/update-ingredients', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({
+					recipeId: recipe.id,
+					ingredients: ingredientsData,
+					deletedIngredientIds,
+				}),
+			});
+
+			if (response.ok) {
+				showToast('success', 'Success', 'Recipe ingredients updated successfully');
+				setEditMode('none');
+				setDeletedIngredientIds([]);
+				// Refresh page to show updated data
+				window.location.reload();
+			} else {
+				const error = await response.json();
+				showToast('error', 'Error', error.error || 'Failed to update ingredients');
+			}
+		} catch (error) {
+			console.error('Error saving ingredients:', error);
+			showToast('error', 'Error', 'Failed to update ingredients');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleImageUploadComplete = () => {
+		showToast('success', 'Success', 'Recipe image updated successfully');
+		setShowImageModal(false);
+		// Force refresh to show new image
+		setRefreshKey(prev => prev + 1);
+		// Also refresh the page after a short delay
+		setTimeout(() => {
+			window.location.reload();
+		}, 500);
+	};
+
 	const handleDeleteIngredient = async (id: number) => {
-		ingredientApi.deleteIngredientClick(id);
+		// For ingredients being edited, track for deletion
+		if (editMode === 'ingredients') {
+			setIngredients(prev => prev.filter(ing => ing.id !== id));
+			if (id > 0) {
+				setDeletedIngredientIds(prev => [...prev, id]);
+			}
+		} else {
+			// Original behavior for immediate deletion
+			ingredientApi.deleteIngredientClick(id);
+		}
 	};
 
 	const handleAddIngredient = async (index: number) => {
@@ -139,19 +241,11 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 			return;
 		}
 
-		// Add to database immediately
-		const newId = await ingredientApi.addIngredient({
-			recipeId: recipe.id,
-			ingredientId: selectedIngredient.id,
-			quantity: newIngredient.quantity,
-			quantity4: newIngredient.quantity4,
-			measureId: selectedMeasure?.id,
-			preparationId: selectedPreparation?.id,
-		});
-
-		if (newId) {
-			const newIngredientRecord: RecipeIngredient = {
-				id: newId,
+		if (editMode === 'ingredients') {
+			// Add to local state (will be saved when user clicks save)
+			const tempId = -Date.now(); // Temporary negative ID for new ingredients
+			const newRecipeIngredient: RecipeIngredient = {
+				id: tempId,
 				quantity: newIngredient.quantity,
 				quantity4: newIngredient.quantity4,
 				ingredient: {
@@ -162,22 +256,52 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 						name: selectedIngredient.pantryCategory_name,
 					},
 				},
+				measure: selectedMeasure,
 				preperation: selectedPreparation ? { name: selectedPreparation.name } : undefined,
-				measure: selectedMeasure ? { id: selectedMeasure.id, name: selectedMeasure.name } : undefined,
 			};
-			setIngredients(prev => [...prev, newIngredientRecord]);
+
+			setIngredients(prev => [...prev, newRecipeIngredient]);
+		} else {
+			// Original behavior - add to database immediately
+			const newId = await ingredientApi.addIngredient({
+				recipeId: recipe.id,
+				ingredientId: selectedIngredient.id,
+				quantity: newIngredient.quantity,
+				quantity4: newIngredient.quantity4,
+				measureId: selectedMeasure?.id,
+				preparationId: selectedPreparation?.id,
+			});
+
+			if (newId) {
+				const newIngredientRecord: RecipeIngredient = {
+					id: newId,
+					quantity: newIngredient.quantity,
+					quantity4: newIngredient.quantity4,
+					ingredient: {
+						id: selectedIngredient.id,
+						name: selectedIngredient.name,
+						pantryCategory: {
+							id: selectedIngredient.pantryCategory_id,
+							name: selectedIngredient.pantryCategory_name,
+						},
+					},
+					preperation: selectedPreparation ? { name: selectedPreparation.name } : undefined,
+					measure: selectedMeasure ? { id: selectedMeasure.id, name: selectedMeasure.name } : undefined,
+				};
+				setIngredients(prev => [...prev, newIngredientRecord]);
+			}
 		}
 
-		// Reset this specific row
-		const updatedNewIngredients = [...newIngredients];
-		updatedNewIngredients[index] = {
+		// Clear the input row
+		const updated = [...newIngredients];
+		updated[index] = {
 			ingredientName: '',
 			quantity: '',
 			quantity4: '',
 			measureId: '',
 			preparationId: '',
 		};
-		setNewIngredients(updatedNewIngredients);
+		setNewIngredients(updated);
 	};
 
 	const handleRemoveNewIngredient = (index: number) => {
@@ -200,171 +324,164 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 		]);
 	};
 
-	const handleImageUploadComplete = async (uploadResponse?: FileUploadResponse) => {
-		showToast('success', 'Success', 'Image uploaded successfully');
-
-		// Preload cache-busted image URL to warm the cache before page reload
-		if (uploadResponse?.cacheBustedUrl) {
-			const img = new Image();
-			img.onload = () => {
-				// Once cache-busted image is loaded, reload the page
-				window.location.reload();
-			};
-			img.onerror = () => {
-				// If preload fails, still reload the page
-				window.location.reload();
-			};
-			img.src = uploadResponse.cacheBustedUrl;
-		}
-		window.location.reload();
-	};
-
-	const handlePdfUploadComplete = async (uploadResponse?: FileUploadResponse) => {
-		showToast('success', 'Success', 'PDF uploaded successfully');
-
-		// Preload cache-busted PDF URL to warm the cache before page reload
-		if (uploadResponse?.cacheBustedUrl) {
-			// For PDFs, we can't preload like images, so just fetch the URL to warm cache
-			try {
-				await fetch(uploadResponse.cacheBustedUrl, { method: 'HEAD' });
-			} catch (error) {
-				console.warn('Failed to preload PDF:', error);
-			}
-		}
-
-		// Reload the page after preloading
-		window.location.reload();
-	};
-
-	const handleDeleteRecipe = async () => {
-		if (!recipe) return;
-
-		setIsLoading(true);
-		try {
-			const success = await recipeApi.deleteRecipe(recipe.id);
-			if (success) {
-				router.push('/recipe'); // Navigate to recipe list
-			}
-		} catch (error) {
-			console.error('Error deleting recipe:', error);
-		} finally {
-			setIsLoading(false);
-			setShowDeleteConfirm(false);
-		}
+	const handlePdfUploadComplete = () => {
+		showToast('success', 'Success', 'Recipe PDF updated successfully');
+		setShowPdfModal(false);
+		// Refresh page to show changes
+		setTimeout(() => {
+			window.location.reload();
+		}, 500);
 	};
 
 	return (
-		<>
-			{/* Action Buttons for Edit Mode */}
-			{
-				<div className="mb-6 flex">
-					{!isEditing ? (
-						<button
-							onClick={() => (externalIsEditing === undefined ? setInternalIsEditing(true) : onStartEdit?.())}
-							className="flex items-center gap-2 px-4 py-2 bg-accent text-background rounded-sm hover:bg-accent/90 transition-colors"
-						>
-							<EditIcon className="w-4 h-4" />
-							Edit Recipe
-						</button>
-					) : (
-						<div className="flex items-center gap-2">
-							<button
-								onClick={handleSave}
-								disabled={isLoading}
-								className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-sm hover:bg-green-700 transition-colors disabled:opacity-50"
-							>
-								<SaveIcon className="w-4 h-4" />
-								{isLoading ? 'Saving...' : 'Save'}
-							</button>
-							<button
-								onClick={() => {
-									if (externalIsEditing === undefined) {
-										setInternalIsEditing(false);
-										// Reset form data
-										setRecipeForm({
-											name: recipe?.name || '',
-											description: recipe?.description || '',
-											prepTime: recipe?.prepTime,
-											cookTime: recipe?.cookTime,
-											seasonId: undefined,
-											primaryTypeId: undefined,
-											secondaryTypeId: undefined,
-										});
-										setIngredients(recipe?.ingredients || []);
-									} else {
-										onCancel?.();
-									}
-								}}
-								disabled={isLoading}
-								className="btn-default px-4 py-2 rounded-sm disabled:opacity-50"
-							>
-								Cancel
-							</button>
-							<button
-								onClick={() => setShowDeleteConfirm(true)}
-								disabled={isLoading}
-								className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-sm hover:bg-red-700 transition-colors disabled:opacity-50"
-								title="Delete recipe"
-							>
-								<TrashIcon className="w-4 h-4" />
-								Delete
-							</button>
-						</div>
-					)}
-				</div>
-			}
-
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-				{/* Left Column - Recipe Details */}
-				<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden">
-					{/* Recipe Image */}
-					<ImageUploadWithCrop
-						isEditing={isEditing}
-						currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename) : undefined}
-						recipeId={recipe?.id}
-						onImageUploaded={handleImageUploadComplete}
-					/>
-
-					<div className="p-6 space-y-4">
-						{isEditing ? (
-							<div className="space-y-4">
-								<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} isNewRecipe={false} />
-								{recipe && <PdfUpload recipeId={recipe.id} onPdfUploaded={handlePdfUploadComplete} />}
+		<div className="relative">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto">
+				{/* Left Column - Images and Recipe Details */}
+				<div className="space-y-4 rounded-sm">
+					<div className="bg-white border border-custom shadow rounded-sm pb-4 space-y-4">
+						{/* Recipe Image Section with contextual edit buttons */}
+						<div className="relative">
+							<img key={refreshKey} src={getRecipeImageUrl(recipe.filename, editMode !== 'none')} alt={recipe.name} className="w-full rounded-t-sm" />
+							{/* Edit buttons */}
+							<div className="absolute bottom-4 right-4 flex gap-2">
+								{editMode === 'details' ? (
+									<>
+										{/* Save button */}
+										<button
+											onClick={handleSaveDetails}
+											disabled={isLoading}
+											className="w-10 h-10 bg-green-600 text-white rounded-full shadow-sm hover:bg-green-700 hover:shadow transition-colors disabled:opacity-50 flex items-center justify-center"
+											title="Save"
+										>
+											<SaveIcon className="w-4 h-4" />
+										</button>
+										{/* Cancel button */}
+										<button
+											onClick={handleCancel}
+											className="w-10 h-10 bg-gray-500 text-white rounded-full shadow-sm hover:bg-gray-600 hover:shadow transition-colors flex items-center justify-center"
+											title="Cancel"
+										>
+											<CancelIcon className="w-4 h-4" />
+										</button>
+									</>
+								) : (
+									<>
+										{/* Camera edit button */}
+										<button
+											onClick={() => setShowImageModal(true)}
+											className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
+											title="Edit image"
+										>
+											<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+												/>
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+											</svg>
+										</button>
+										{/* Paper edit button */}
+										<button
+											onClick={() => setShowPdfModal(true)}
+											className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
+											title="Edit PDF"
+										>
+											<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth={2}
+													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+												/>
+											</svg>
+										</button>
+										{/* Recipe Details edit button */}
+										<button
+											onClick={() => startEdit('details')}
+											className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
+											title="Edit details"
+										>
+											<EditIcon className="w-4 h-4" />
+										</button>
+									</>
+								)}
 							</div>
-						) : (
-							recipe && <RecipeView recipe={recipe} />
-						)}
+						</div>
+
+						{/* Recipe Details Form */}
+						<div className="px-4">
+							{editMode === 'details' ? (
+								<div className="pb-4">
+									<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
+								</div>
+							) : (
+								<RecipeView recipe={recipe} />
+							)}
+						</div>
 					</div>
 				</div>
 
-				{/* Right Column - Ingredients */}
-				<div className="space-y-6">
-					<IngredientsTable
-						ingredients={ingredients}
-						isEditing={isEditing}
-						options={options}
-						newIngredients={newIngredients}
-						onNewIngredientsChange={setNewIngredients}
-						onDeleteIngredient={handleDeleteIngredient}
-						onAddIngredient={handleAddIngredient}
-						onRemoveNewIngredient={handleRemoveNewIngredient}
-						onAddNewIngredientRow={handleAddNewIngredientRow}
-					/>
+				{/* Right Column - Ingredients with inline edit button */}
+				<div>
+					<div>
+						<div className="pb-4 flex justify-between items-center">
+							<h2 className="text-lg">Ingredients</h2>
+							{editMode === 'ingredients' ? (
+								<div className="flex gap-2">
+									<button
+										onClick={handleSaveIngredients}
+										disabled={isLoading}
+										className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
+										title="Save"
+									>
+										<SaveIcon className="w-4 h-4" />
+									</button>
+									<button
+										onClick={handleCancel}
+										className="p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
+										title="Cancel"
+									>
+										<CancelIcon className="w-4 h-4" />
+									</button>
+								</div>
+							) : (
+								<button onClick={() => startEdit('ingredients')} className="p-2 btn-default rounded-full hover:shadow" title="Edit ingredients">
+									<EditIcon className="w-4 h-4" />
+								</button>
+							)}
+						</div>
+						<IngredientsTable
+							ingredients={ingredients}
+							isEditing={editMode === 'ingredients'}
+							options={options}
+							newIngredients={newIngredients}
+							onNewIngredientsChange={setNewIngredients}
+							onDeleteIngredient={handleDeleteIngredient}
+							onAddIngredient={handleAddIngredient}
+							onRemoveNewIngredient={handleRemoveNewIngredient}
+							onAddNewIngredientRow={handleAddNewIngredientRow}
+						/>
+					</div>
 				</div>
 			</div>
 
-			{/* Delete Confirmation Dialog */}
-			<ConfirmDialog
-				isOpen={showDeleteConfirm}
-				title="Delete Recipe"
-				message={`Are you sure you want to delete "${recipe?.name}"? This will permanently delete the recipe, all its ingredients, and any associated files. This action cannot be undone.`}
-				confirmText="Delete Recipe"
-				cancelText="Cancel"
-				onConfirm={handleDeleteRecipe}
-				onCancel={() => setShowDeleteConfirm(false)}
-				isLoading={isLoading}
-			/>
-		</>
+			{/* Image Upload Modal */}
+			<Modal isOpen={showImageModal} onClose={() => setShowImageModal(false)} title="Recipe Image" maxWidth="xl">
+				<ImageUploadWithCrop
+					recipeId={recipe.id}
+					currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename, true) : undefined}
+					onImageUploaded={handleImageUploadComplete}
+					isEditing={true}
+				/>
+			</Modal>
+
+			{/* PDF Upload Modal */}
+			<Modal isOpen={showPdfModal} onClose={() => setShowPdfModal(false)} title="Recipe PDF" maxWidth="lg">
+				<PdfUpload recipeId={recipe.id} onPdfUploaded={handlePdfUploadComplete} />
+			</Modal>
+		</div>
 	);
 };
 
