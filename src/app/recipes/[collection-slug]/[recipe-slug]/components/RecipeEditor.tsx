@@ -208,16 +208,28 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 			const img = new Image();
 			img.onload = () => {
 				// Once cache-busted image is loaded, switch to view mode to show fresh image
-				setIsEditing(false);
+				if (externalIsEditing === undefined) {
+					setInternalIsEditing(false);
+				} else if (onCancel) {
+					onCancel();
+				}
 			};
 			img.onerror = () => {
 				// If preload fails, still switch to view mode
-				setIsEditing(false);
+				if (externalIsEditing === undefined) {
+					setInternalIsEditing(false);
+				} else if (onCancel) {
+					onCancel();
+				}
 			};
 			img.src = uploadResponse.cacheBustedUrl;
 		} else {
 			// Fallback: switch to view mode immediately
-			setIsEditing(false);
+			if (externalIsEditing === undefined) {
+				setInternalIsEditing(false);
+			} else if (onCancel) {
+				onCancel();
+			}
 		}
 	};
 
