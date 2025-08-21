@@ -325,7 +325,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 
 	return (
 		<div className="relative">
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mx-auto">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-auto">
 				{/* Left Column - Images and Recipe Details */}
 				<div className="bg-white rounded-sm shadow space-y-4">
 					{/* Recipe Image Section with contextual edit buttons */}
@@ -351,37 +351,69 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 								<img key={refreshKey} src={getRecipeImageUrl(recipe.filename, editMode !== 'none')} alt={recipe.name} className="w-full" />
 								{/* Edit buttons */}
 								<div className="absolute bottom-4 right-4 flex gap-2">
-									{/* Camera edit button */}
-									<button
-										onClick={() => startEdit('image')}
-										className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
-										title="Edit image"
-									>
-										<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-											/>
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-										</svg>
-									</button>
-									{/* Paper edit button */}
-									<button
-										onClick={() => startEdit('pdf')}
-										className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
-										title="Edit PDF"
-									>
-										<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-											/>
-										</svg>
-									</button>
+									{editMode === 'details' ? (
+										<>
+											{/* Save button */}
+											<button
+												onClick={handleSaveDetails}
+												disabled={isLoading}
+												className="w-10 h-10 bg-green-600 text-white rounded-full shadow-md hover:bg-green-700 hover:shadow-sm transition-colors disabled:opacity-50 flex items-center justify-center"
+												title="Save"
+											>
+												<SaveIcon className="w-4 h-4" />
+											</button>
+											{/* Cancel button */}
+											<button
+												onClick={handleCancel}
+												className="w-10 h-10 bg-gray-500 text-white rounded-full shadow-md hover:bg-gray-600 hover:shadow-sm transition-colors flex items-center justify-center"
+												title="Cancel"
+											>
+												<CancelIcon className="w-4 h-4" />
+											</button>
+										</>
+									) : (
+										<>
+											{/* Camera edit button */}
+											<button
+												onClick={() => startEdit('image')}
+												className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
+												title="Edit image"
+											>
+												<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+													/>
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+												</svg>
+											</button>
+											{/* Paper edit button */}
+											<button
+												onClick={() => startEdit('pdf')}
+												className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
+												title="Edit PDF"
+											>
+												<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+													/>
+												</svg>
+											</button>
+											{/* Recipe Details edit button */}
+											<button
+												onClick={() => startEdit('details')}
+												className="w-10 h-10 btn-default rounded-full shadow-md hover:shadow-sm flex items-center justify-center"
+												title="Edit details"
+											>
+												<EditIcon className="w-4 h-4" />
+											</button>
+										</>
+									)}
 								</div>
 							</div>
 						)}
@@ -402,33 +434,8 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 						</div>
 					)}
 
-					{/* Recipe Details Form with inline edit button */}
+					{/* Recipe Details Form */}
 					<div className="px-4">
-						<div className="flex justify-between items-center mb-4">
-							{editMode === 'details' ? (
-								<div className="flex gap-2">
-									<button
-										onClick={handleSaveDetails}
-										disabled={isLoading}
-										className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
-										title="Save"
-									>
-										<SaveIcon className="w-4 h-4" />
-									</button>
-									<button
-										onClick={handleCancel}
-										className="p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
-										title="Cancel"
-									>
-										<CancelIcon className="w-4 h-4" />
-									</button>
-								</div>
-							) : (
-								<button onClick={() => startEdit('details')} className="p-2 btn-default rounded-full hover:shadow-sm" title="Edit details">
-									<EditIcon className="w-4 h-4" />
-								</button>
-							)}
-						</div>
 						{editMode === 'details' ? (
 							<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
 						) : (
