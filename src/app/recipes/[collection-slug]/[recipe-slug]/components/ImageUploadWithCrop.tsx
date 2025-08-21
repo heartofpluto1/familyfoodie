@@ -252,9 +252,14 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 
 	const handleImageUpload = async () => {
 		if (recipeId && croppedImageDataUrl) {
-			// Convert base64 to blob
-			const response = await fetch(croppedImageDataUrl);
-			const blob = await response.blob();
+			// Convert base64 to blob without fetch
+			const byteCharacters = atob(croppedImageDataUrl.split(',')[1]);
+			const byteNumbers = new Array(byteCharacters.length);
+			for (let i = 0; i < byteCharacters.length; i++) {
+				byteNumbers[i] = byteCharacters.charCodeAt(i);
+			}
+			const byteArray = new Uint8Array(byteNumbers);
+			const blob = new Blob([byteArray], { type: 'image/jpeg' });
 
 			// Create a File object from the blob
 			const croppedFile = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
