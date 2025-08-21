@@ -39,7 +39,7 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 			const img = new Image();
 			img.onload = () => {
 				// Calculate scale for display (fit to container)
-				const containerWidth = 600;
+				const containerWidth = 500; // Reduced from 600 to fit better in modals
 				const displayScale = Math.min(containerWidth / img.width, 1);
 				setScale(displayScale);
 
@@ -279,105 +279,107 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 		return (
 			<div className="space-y-4">
 				{/* Crop Interface */}
-				<div className="relative inline-block overflow-hidden">
-					<canvas
-						ref={canvasRef}
-						className="block cursor-crosshair"
-						style={{
-							maxWidth: '600px',
-							width: originalImage ? `${originalImage.width * scale}px` : '600px',
-							height: originalImage ? `${originalImage.height * scale}px` : '400px',
-						}}
-						onMouseDown={handleCanvasMouseDown}
-					/>
+				<div className="flex justify-center">
+					<div className="relative inline-block overflow-hidden">
+						<canvas
+							ref={canvasRef}
+							className="block cursor-crosshair mx-auto"
+							style={{
+								maxWidth: '500px',
+								width: originalImage ? `${originalImage.width * scale}px` : '500px',
+								height: originalImage ? `${originalImage.height * scale}px` : '400px',
+							}}
+							onMouseDown={handleCanvasMouseDown}
+						/>
 
-					{/* Dark overlay for non-cropped areas - top */}
-					<div
-						className="absolute pointer-events-none"
-						style={{
-							left: 0,
-							top: 0,
-							width: '100%',
-							height: `${cropRect.y * scale}px`,
-							backgroundColor: 'rgba(0, 0, 0, 0.5)',
-						}}
-					/>
-
-					{/* Dark overlay for non-cropped areas - bottom */}
-					<div
-						className="absolute pointer-events-none"
-						style={{
-							left: 0,
-							top: `${(cropRect.y + cropRect.height) * scale}px`,
-							width: '100%',
-							height: `calc(100% - ${(cropRect.y + cropRect.height) * scale}px)`,
-							backgroundColor: 'rgba(0, 0, 0, 0.5)',
-						}}
-					/>
-
-					{/* Dark overlay for non-cropped areas - left */}
-					<div
-						className="absolute pointer-events-none"
-						style={{
-							left: 0,
-							top: `${cropRect.y * scale}px`,
-							width: `${cropRect.x * scale}px`,
-							height: `${cropRect.height * scale}px`,
-							backgroundColor: 'rgba(0, 0, 0, 0.5)',
-						}}
-					/>
-
-					{/* Dark overlay for non-cropped areas - right */}
-					<div
-						className="absolute pointer-events-none"
-						style={{
-							left: `${(cropRect.x + cropRect.width) * scale}px`,
-							top: `${cropRect.y * scale}px`,
-							width: `calc(100% - ${(cropRect.x + cropRect.width) * scale}px)`,
-							height: `${cropRect.height * scale}px`,
-							backgroundColor: 'rgba(0, 0, 0, 0.5)',
-						}}
-					/>
-
-					{/* Crop Overlay */}
-					<div
-						className="absolute border-2 border-dashed border-white pointer-events-none"
-						style={{
-							left: `${cropRect.x * scale}px`,
-							top: `${cropRect.y * scale}px`,
-							width: `${cropRect.width * scale}px`,
-							height: `${cropRect.height * scale}px`,
-						}}
-					>
-						{/* Drag handle in center */}
+						{/* Dark overlay for non-cropped areas - top */}
 						<div
-							className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-white bg-blue-500 bg-opacity-75 rounded-full cursor-move pointer-events-auto"
-							onMouseDown={e => handleDragStart(e, 'move')}
+							className="absolute pointer-events-none"
+							style={{
+								left: 0,
+								top: 0,
+								width: '100%',
+								height: `${cropRect.y * scale}px`,
+								backgroundColor: 'rgba(0, 0, 0, 0.5)',
+							}}
+						/>
+
+						{/* Dark overlay for non-cropped areas - bottom */}
+						<div
+							className="absolute pointer-events-none"
+							style={{
+								left: 0,
+								top: `${(cropRect.y + cropRect.height) * scale}px`,
+								width: '100%',
+								height: `calc(100% - ${(cropRect.y + cropRect.height) * scale}px)`,
+								backgroundColor: 'rgba(0, 0, 0, 0.5)',
+							}}
+						/>
+
+						{/* Dark overlay for non-cropped areas - left */}
+						<div
+							className="absolute pointer-events-none"
+							style={{
+								left: 0,
+								top: `${cropRect.y * scale}px`,
+								width: `${cropRect.x * scale}px`,
+								height: `${cropRect.height * scale}px`,
+								backgroundColor: 'rgba(0, 0, 0, 0.5)',
+							}}
+						/>
+
+						{/* Dark overlay for non-cropped areas - right */}
+						<div
+							className="absolute pointer-events-none"
+							style={{
+								left: `${(cropRect.x + cropRect.width) * scale}px`,
+								top: `${cropRect.y * scale}px`,
+								width: `calc(100% - ${(cropRect.x + cropRect.width) * scale}px)`,
+								height: `${cropRect.height * scale}px`,
+								backgroundColor: 'rgba(0, 0, 0, 0.5)',
+							}}
+						/>
+
+						{/* Crop Overlay */}
+						<div
+							className="absolute border-2 border-dashed border-white pointer-events-none"
+							style={{
+								left: `${cropRect.x * scale}px`,
+								top: `${cropRect.y * scale}px`,
+								width: `${cropRect.width * scale}px`,
+								height: `${cropRect.height * scale}px`,
+							}}
 						>
-							<div className="flex items-center justify-center w-full h-full text-white text-xs">⊕</div>
-						</div>
+							{/* Drag handle in center */}
+							<div
+								className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-white bg-blue-500 bg-opacity-75 rounded-full cursor-move pointer-events-auto"
+								onMouseDown={e => handleDragStart(e, 'move')}
+							>
+								<div className="flex items-center justify-center w-full h-full text-white text-xs">⊕</div>
+							</div>
 
-						{/* Resize handles */}
-						<div
-							className="absolute -top-1 -left-1 w-3 h-3 bg-white border border-blue-500 cursor-nw-resize pointer-events-auto"
-							onMouseDown={e => handleDragStart(e, 'nw')}
-						/>
-						<div
-							className="absolute -top-1 -right-1 w-3 h-3 bg-white border border-blue-500 cursor-ne-resize pointer-events-auto"
-							onMouseDown={e => handleDragStart(e, 'ne')}
-						/>
-						<div
-							className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border border-blue-500 cursor-sw-resize pointer-events-auto"
-							onMouseDown={e => handleDragStart(e, 'sw')}
-						/>
-						<div
-							className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-blue-500 cursor-se-resize pointer-events-auto"
-							onMouseDown={e => handleDragStart(e, 'se')}
-						/>
+							{/* Resize handles */}
+							<div
+								className="absolute -top-1 -left-1 w-3 h-3 bg-white border border-blue-500 cursor-nw-resize pointer-events-auto"
+								onMouseDown={e => handleDragStart(e, 'nw')}
+							/>
+							<div
+								className="absolute -top-1 -right-1 w-3 h-3 bg-white border border-blue-500 cursor-ne-resize pointer-events-auto"
+								onMouseDown={e => handleDragStart(e, 'ne')}
+							/>
+							<div
+								className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border border-blue-500 cursor-sw-resize pointer-events-auto"
+								onMouseDown={e => handleDragStart(e, 'sw')}
+							/>
+							<div
+								className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-blue-500 cursor-se-resize pointer-events-auto"
+								onMouseDown={e => handleDragStart(e, 'se')}
+							/>
 
-						{/* Dimensions label */}
-						<div className="absolute -top-6 left-0 text-xs text-white bg-black bg-opacity-75 px-2 py-1 rounded pointer-events-none">
-							{Math.round(cropRect.width)} × {Math.round(cropRect.height)}
+							{/* Dimensions label */}
+							<div className="absolute -top-6 left-0 text-xs text-white bg-black bg-opacity-75 px-2 py-1 rounded pointer-events-none">
+								{Math.round(cropRect.width)} × {Math.round(cropRect.height)}
+							</div>
 						</div>
 					</div>
 				</div>
