@@ -315,7 +315,9 @@ async function importHandler(request: NextRequest) {
 			// Fetch collection information for URL generation
 			let collectionInfo = null;
 			if (recipe.collectionId) {
-				const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, slug, title FROM collections WHERE id = ?', [recipe.collectionId]);
+				const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, url_slug, title FROM collections WHERE id = ?', [
+					recipe.collectionId,
+				]);
 				if (collectionRows.length > 0) {
 					collectionInfo = collectionRows[0];
 				}
@@ -325,7 +327,7 @@ async function importHandler(request: NextRequest) {
 				success: true,
 				recipeId,
 				recipeSlug: secureFilename,
-				collectionSlug: collectionInfo?.slug || null,
+				collectionSlug: collectionInfo?.url_slug || null,
 				message,
 				recipe: {
 					title: recipe.title,
