@@ -414,7 +414,9 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					{/* Recipe Details Form */}
 					<div className="px-4">
 						{editMode === 'details' ? (
-							<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
+							<div className="pb-4">
+								<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
+							</div>
 						) : (
 							<RecipeView recipe={recipe} />
 						)}
