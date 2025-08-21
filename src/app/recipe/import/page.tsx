@@ -5,7 +5,7 @@ import withAuth from '@/app/components/withAuth';
 
 export const metadata: Metadata = {
 	title: 'AI Recipe Import | Family Foodie',
-	description: 'Upload PDF or image files and let AI automatically extract recipe data',
+	description: 'Upload PDF or JPG files and let AI automatically extract recipe data',
 };
 
 async function AIRecipeImportPage() {

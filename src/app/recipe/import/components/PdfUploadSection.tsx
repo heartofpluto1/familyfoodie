@@ -118,7 +118,7 @@ const PdfUploadSection = ({
 	const validateAndSelectFile = (file: File) => {
 		const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
 		if (!validTypes.includes(file.type)) {
-			onFileValidationError('Invalid File', 'Please select a PDF or JPG image file');
+			onFileValidationError('Invalid File', 'Please select a PDF or JPG file');
 			return;
 		}
 		if (file.size > 10 * 1024 * 1024) {
@@ -182,7 +182,7 @@ const PdfUploadSection = ({
 								<UploadIcon className={`mx-auto h-12 w-12 ${isDragOver ? 'text-blue-400' : 'text-gray-400'}`} />
 								<div className="mt-4">
 									<p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-										{isDragOver ? 'Drop your file here' : 'Drop your PDF or image here or click to browse'}
+										{isDragOver ? 'Drop your file here' : 'Drop your PDF or JPG here or click to browse'}
 									</p>
 									<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Supports PDF and JPG files up to 10MB</p>
 								</div>
