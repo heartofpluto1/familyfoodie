@@ -247,17 +247,13 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 			setIngredients(convertedIngredients);
 
 			// Extract hero image if available, or use first page as fallback
-			let heroImageLocation = importedRecipe.imageLocation;
-			if (!importedRecipe.hasHeroImage || !importedRecipe.imageLocation) {
-				// Use first page as fallback with default crop settings
-				heroImageLocation = {
-					pageIndex: 0,
-					x: 0,
-					y: 0,
-					width: 600,
-					height: 400,
-				};
-			}
+			const heroImageLocation = importedRecipe.imageLocation || {
+				pageIndex: 0,
+				x: 0,
+				y: 0,
+				width: 600,
+				height: 400,
+			};
 
 			setProcessingStep('Extracting hero image');
 			try {
