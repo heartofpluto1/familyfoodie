@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/app/components/ToastProvider';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 interface Migration {
 	version: string;
@@ -28,6 +29,7 @@ export default function MigrationsClient() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isRunning, setIsRunning] = useState(false);
+	const [showRunConfirm, setShowRunConfirm] = useState(false);
 
 	const fetchStatus = useCallback(async () => {
 		try {
@@ -50,11 +52,12 @@ export default function MigrationsClient() {
 		}
 	}, [showToast]);
 
-	const runMigrations = async () => {
-		if (!confirm('Are you sure you want to run pending migrations? This action cannot be undone.')) {
-			return;
-		}
+	const handleRunMigrationsClick = () => {
+		setShowRunConfirm(true);
+	};
 
+	const handleRunMigrationsConfirm = async () => {
+		setShowRunConfirm(false);
 		try {
 			setIsRunning(true);
 			const response = await fetch('/api/admin/migrate', {
@@ -77,6 +80,10 @@ export default function MigrationsClient() {
 		} finally {
 			setIsRunning(false);
 		}
+	};
+
+	const handleRunMigrationsCancel = () => {
+		setShowRunConfirm(false);
 	};
 
 	useEffect(() => {
@@ -149,7 +156,7 @@ export default function MigrationsClient() {
 				</button>
 				{status.summary.pending > 0 && (
 					<button
-						onClick={runMigrations}
+						onClick={handleRunMigrationsClick}
 						disabled={isRunning}
 						className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50"
 					>
@@ -200,6 +207,18 @@ export default function MigrationsClient() {
 					</table>
 				</div>
 			</div>
+
+			{/* Run Migrations Confirmation Dialog */}
+			<ConfirmDialog
+				isOpen={showRunConfirm}
+				title="Run Pending Migrations"
+				message="Are you sure you want to run pending migrations? This action cannot be undone."
+				confirmText="Run Migrations"
+				cancelText="Cancel"
+				onConfirm={handleRunMigrationsConfirm}
+				onCancel={handleRunMigrationsCancel}
+				isLoading={false}
+			/>
 		</div>
 	);
 }

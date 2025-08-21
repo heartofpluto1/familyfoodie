@@ -3,6 +3,7 @@ import { Recipe } from '@/types/menus';
 import { SwapIcon, RemoveIcon, TimeIcon } from './Icons';
 import React, { useState } from 'react';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 
 interface RecipeCardProps {
 	recipe: Recipe;
@@ -58,7 +59,7 @@ const RecipeCard = ({
 		}
 	}, [triggerAnimation, newRecipe, displayRecipe.id, onAnimationComplete]);
 
-	const { id, name, filename, prepTime, cookTime, cost } = displayRecipe;
+	const { name, filename, prepTime, cookTime, cost } = displayRecipe;
 	const totalTime = (prepTime || 0) + (cookTime || 0);
 
 	const handleSwapRecipe = async () => {
@@ -142,12 +143,12 @@ const RecipeCard = ({
 						transition: 'none',
 					}}
 				>
-					<Link href={`/recipe/${id}`} className="block" target="_blank" rel="noopener noreferrer">
+					<Link href={generateRecipeUrl(displayRecipe)} className="block" target="_blank" rel="noopener noreferrer">
 						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(filename)} />
 					</Link>
 
 					<div className="p-4 flex flex-col flex-grow">
-						<Link href={`/recipe/${id}`} target="_blank" rel="noopener noreferrer">
+						<Link href={generateRecipeUrl(displayRecipe)} target="_blank" rel="noopener noreferrer">
 							<h3 className="text-lg text-foreground mb-2">{name}</h3>
 						</Link>
 

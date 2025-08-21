@@ -398,7 +398,7 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 							setShowCropper(false);
 						}}
 						disabled={imageUpload.isUploading}
-						className="px-4 py-2 bg-gray-600 text-white rounded-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+						className="btn-default px-4 py-2 rounded-sm disabled:opacity-50"
 					>
 						Cancel
 					</button>

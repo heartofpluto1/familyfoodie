@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
+import { Collection } from '@/lib/queries/collections';
 import RecipeCard from './RecipeCard';
 import RecipeSearch from './RecipeSearch';
-import CollectionCard from './CollectionCard';
 import { SparklesIcon } from './Icons';
 
 interface RecipeListProps {
 	recipes: Recipe[];
+	collections: Collection[];
 }
 
 const RecipeList = ({ recipes }: RecipeListProps) => {
@@ -73,24 +74,6 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 				</div>
 			</div>
 
-			{/* My Collections Section */}
-			<div className="mb-8">
-				<h2 className="text-xl text-foreground mb-4">My Collections</h2>
-				<div className="grid grid-cols-3 overflow-x-auto gap-6 pb-2">
-					<CollectionCard coverImage="/custom_collection_004.jpg" subscribed={true} />
-				</div>
-			</div>
-
-			{/* Featured Collections Section */}
-			<div className="mb-8">
-				<h2 className="text-xl text-foreground mb-4">Featured Collections</h2>
-				<div className="grid grid-cols-3 overflow-x-auto gap-6 pb-2">
-					<CollectionCard coverImage="/custom_collection_001.jpg" subscribed={false} />
-					<CollectionCard coverImage="/custom_collection_002.jpg" subscribed={false} />
-					<CollectionCard coverImage="/custom_collection_003.jpg" subscribed={false} />
-				</div>
-			</div>
-
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{filteredRecipes.map(recipe => (
 					<RecipeCard key={recipe.id} recipe={recipe} />
@@ -99,14 +82,17 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 
 			{filteredRecipes.length === 0 && searchTerm && (
 				<div className="text-center py-12">
-					<p className="text-muted text-lg">No recipes found for &quot;{searchTerm}&quot;.</p>
-					<p className="text-sm text-muted mt-2">Try searching with different keywords or ingredients.</p>
+					<p className="text-muted text-lg">Hmm, we couldn&apos;t find any recipes for &quot;{searchTerm}&quot;!</p>
+					<p className="text-sm text-muted mt-2">
+						Try searching with different keywords or ingredients - maybe something delicious is hiding under a different name. 🍳
+					</p>
 				</div>
 			)}
 
 			{recipes.length === 0 && (
 				<div className="text-center py-12">
-					<p className="text-muted text-lg">No recipes found.</p>
+					<p className="text-muted text-lg">Your recipe collection is waiting for its first scrumptious addition! 👨‍🍳</p>
+					<p className="text-sm text-muted mt-2">Time to start building your collection of culinary delights.</p>
 				</div>
 			)}
 		</>

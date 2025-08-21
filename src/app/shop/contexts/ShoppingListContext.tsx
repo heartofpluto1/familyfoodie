@@ -20,7 +20,10 @@ interface ShoppingListContextType {
 	addItem: () => Promise<void>;
 	removeItem: (itemId: number, itemName: string) => Promise<void>;
 	togglePurchase: (itemId: number, currentPurchased: boolean) => Promise<void>;
-	resetList: () => Promise<void>;
+	resetListClick: () => void;
+	resetListConfirm: () => Promise<void>;
+	resetListCancel: () => void;
+	showResetConfirm: boolean;
 
 	// Drag and drop state and actions (dnd-kit)
 	dndKitHandlers: {
@@ -73,7 +76,10 @@ export function ShoppingListProvider({ children, initialData, datestamp, allIngr
 		addItem: handleAddItem,
 		removeItem: shoppingList.removeItem,
 		togglePurchase: shoppingList.togglePurchase,
-		resetList: shoppingList.resetList,
+		resetListClick: shoppingList.resetListClick,
+		resetListConfirm: shoppingList.resetListConfirm,
+		resetListCancel: shoppingList.resetListCancel,
+		showResetConfirm: shoppingList.showResetConfirm,
 
 		// Drag and drop (dnd-kit)
 		dndKitHandlers: {

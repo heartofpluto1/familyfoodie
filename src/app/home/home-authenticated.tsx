@@ -5,6 +5,7 @@ import type { Stats, Meal, Menu } from '@/types/menus';
 import { IntroShoppingCartIcon } from '@/app/components/Icons';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 
 interface HomeAuthenticatedProps {
 	plans: Menu[];
@@ -68,7 +69,13 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 					<Image src={getRecipeImageUrl(meal.filename)} alt="thumb" width="48" height="48" className="w-full h-full object-cover" unoptimized={true} />
 				</span>
 				<Link
-					href={`/recipe/${meal.id}`}
+					href={generateRecipeUrl({
+						id: meal.id,
+						name: meal.name,
+						filename: meal.filename,
+						collection_id: meal.collection_id,
+						collection_title: meal.collection_title,
+					} as Parameters<typeof generateRecipeUrl>[0])}
 					className="text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors hover:underline"
 				>
 					{meal.name}

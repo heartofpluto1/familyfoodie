@@ -6,6 +6,7 @@ import IngredientsPreviewTable from './IngredientsPreviewTable';
 import HeroImageCropper from './HeroImageCropper';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { RecipeFormData } from '@/app/recipe/types';
+import { Collection } from '@/lib/queries/collections';
 import { RecipeOptions } from '../utils/recipeUtils';
 import { ImportedRecipe, Category, PreviewResponse } from '../types/importTypes';
 
@@ -14,6 +15,7 @@ interface RecipePreviewSectionProps {
 	recipeForm: RecipeFormData;
 	ingredients: RecipeIngredient[];
 	options: RecipeOptions | null;
+	collections: Collection[];
 	isProcessing: boolean;
 	processingStep: string;
 	rawApiResponse?: PreviewResponse | null; // Add raw API response for debugging
@@ -34,6 +36,7 @@ const RecipePreviewSection = ({
 	recipeForm,
 	ingredients,
 	options,
+	collections,
 	isProcessing,
 	processingStep,
 	heroImage,
@@ -76,11 +79,7 @@ const RecipePreviewSection = ({
 						</>
 					)}
 				</button>
-				<button
-					onClick={onCancel}
-					disabled={isProcessing}
-					className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-				>
+				<button onClick={onCancel} disabled={isProcessing} className="btn-default px-4 py-2 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed">
 					Cancel & Try Another
 				</button>
 			</div>
@@ -103,7 +102,14 @@ const RecipePreviewSection = ({
 				) : null}
 
 				<div className="p-6 space-y-4">
-					<RecipeForm formData={recipeForm} onChange={onRecipeFormChange} options={options} isNewRecipe={true} seasonReason={seasonReason} />
+					<RecipeForm
+						formData={recipeForm}
+						onChange={onRecipeFormChange}
+						options={options}
+						collections={collections}
+						isNewRecipe={true}
+						seasonReason={seasonReason}
+					/>
 				</div>
 			</div>
 
