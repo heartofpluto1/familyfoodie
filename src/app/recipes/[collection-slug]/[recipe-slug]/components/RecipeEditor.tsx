@@ -203,33 +203,17 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 	const handleImageUploadComplete = async (uploadResponse?: FileUploadResponse) => {
 		showToast('success', 'Success', 'Image uploaded successfully');
 
-		// Preload the new image to ensure it's cached, then switch to view mode
+		// Force refresh of the current image by triggering a re-render
+		// Since we're in edit mode, the cache-busted URL will show the new image
 		if (uploadResponse?.cacheBustedUrl) {
+			// Preload the new image to ensure browser cache is updated
 			const img = new Image();
 			img.onload = () => {
-				// Once cache-busted image is loaded, switch to view mode to show fresh image
-				if (externalIsEditing === undefined) {
-					setInternalIsEditing(false);
-				} else if (onCancel) {
-					onCancel();
-				}
-			};
-			img.onerror = () => {
-				// If preload fails, still switch to view mode
-				if (externalIsEditing === undefined) {
-					setInternalIsEditing(false);
-				} else if (onCancel) {
-					onCancel();
-				}
+				// Force component re-render to show the fresh image
+				// The cache-busted URL in edit mode will now show the new image
+				setRecipeForm(prev => ({ ...prev }));
 			};
 			img.src = uploadResponse.cacheBustedUrl;
-		} else {
-			// Fallback: switch to view mode immediately
-			if (externalIsEditing === undefined) {
-				setInternalIsEditing(false);
-			} else if (onCancel) {
-				onCancel();
-			}
 		}
 	};
 
