@@ -325,7 +325,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 
 	return (
 		<div className="relative">
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mx-auto">
 				{/* Left Column - Images and Recipe Details */}
 				<div className="bg-white rounded-sm shadow space-y-4">
 					{/* Recipe Image Section with contextual edit buttons */}
@@ -403,24 +403,28 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					)}
 
 					{/* Recipe Details Form with inline edit button */}
-					<div className="p-4">
+					<div className="px-4">
 						<div className="flex justify-between items-center mb-4">
 							{editMode === 'details' ? (
 								<div className="flex gap-2">
 									<button
 										onClick={handleSaveDetails}
 										disabled={isLoading}
-										className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+										className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
 										title="Save"
 									>
 										<SaveIcon className="w-4 h-4" />
 									</button>
-									<button onClick={handleCancel} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors" title="Cancel">
+									<button
+										onClick={handleCancel}
+										className="p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
+										title="Cancel"
+									>
 										<CancelIcon className="w-4 h-4" />
 									</button>
 								</div>
 							) : (
-								<button onClick={() => startEdit('details')} className="p-2 btn-default rounded hover:shadow-sm" title="Edit details">
+								<button onClick={() => startEdit('details')} className="p-2 btn-default rounded-full hover:shadow-sm" title="Edit details">
 									<EditIcon className="w-4 h-4" />
 								</button>
 							)}
@@ -443,17 +447,21 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									<button
 										onClick={handleSaveIngredients}
 										disabled={isLoading}
-										className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+										className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
 										title="Save"
 									>
 										<SaveIcon className="w-4 h-4" />
 									</button>
-									<button onClick={handleCancel} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors" title="Cancel">
+									<button
+										onClick={handleCancel}
+										className="p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
+										title="Cancel"
+									>
 										<CancelIcon className="w-4 h-4" />
 									</button>
 								</div>
 							) : (
-								<button onClick={() => startEdit('ingredients')} className="p-2 btn-default rounded hover:shadow-sm" title="Edit ingredients">
+								<button onClick={() => startEdit('ingredients')} className="p-2 btn-default rounded-full hover:shadow-sm" title="Edit ingredients">
 									<EditIcon className="w-4 h-4" />
 								</button>
 							)}

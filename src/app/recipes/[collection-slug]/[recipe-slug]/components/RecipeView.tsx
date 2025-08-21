@@ -58,7 +58,7 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 
 			{/* Timing */}
 			{totalTime > 0 && (
-				<div className="flex items-center text-muted text-sm">
+				<div className="flex items-center text-muted text-sm py-3">
 					<TimeIcon className="w-5 h-5 mr-2" />
 					{recipe.prepTime && recipe.cookTime ? (
 						<span>
@@ -72,7 +72,7 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 
 			{/* Description */}
 			{recipe.description && (
-				<div>
+				<div className="mb-6">
 					<p className="text-foreground whitespace-pre-wrap">{recipe.description}</p>
 				</div>
 			)}
