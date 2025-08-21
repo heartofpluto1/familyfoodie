@@ -4,6 +4,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { getRecipePdfUrl } from '@/lib/utils/secureFilename';
+import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {
 	filename: string;
@@ -16,22 +17,58 @@ async function postHandler(request: NextRequest) {
 		const recipeId = formData.get('recipeId') as string;
 
 		if (!file || !recipeId) {
-			return NextResponse.json({ error: 'PDF file and recipe ID are required' }, { status: 400 });
+			return NextResponse.json({ error: 'File and recipe ID are required' }, { status: 400 });
 		}
 
 		// Validate file type
-		if (file.type !== 'application/pdf') {
-			return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 });
+		const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
+		if (!validTypes.includes(file.type)) {
+			return NextResponse.json({ error: 'Only PDF and JPG files are allowed' }, { status: 400 });
 		}
 
-		// Validate file size (10MB max for PDFs)
+		// Validate file size (10MB max)
 		const maxSize = 10 * 1024 * 1024; // 10MB
 		if (file.size > maxSize) {
 			return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
 		}
 
-		const bytes = await file.arrayBuffer();
-		const buffer = Buffer.from(bytes);
+		let buffer: Buffer;
+
+		// Convert JPG to PDF if needed
+		if (file.type.startsWith('image/')) {
+			const bytes = await file.arrayBuffer();
+			const originalBuffer = Buffer.from(bytes);
+
+			// Create a new PDF document
+			const doc = new jsPDF({
+				orientation: 'portrait',
+				unit: 'pt',
+				format: 'a4',
+			});
+
+			// Convert buffer to base64 for jsPDF
+			const base64Image = originalBuffer.toString('base64');
+			const imageData = `data:${file.type};base64,${base64Image}`;
+
+			// Get image dimensions and calculate scaling to fit A4
+			const pageWidth = doc.internal.pageSize.getWidth();
+			const pageHeight = doc.internal.pageSize.getHeight();
+			const margin = 40;
+			const maxWidth = pageWidth - margin * 2;
+			const maxHeight = pageHeight - margin * 2;
+
+			// Add image to PDF (centered and scaled to fit)
+			// Note: We'll use the full page size and let jsPDF handle the scaling
+			doc.addImage(imageData, 'JPEG', margin, margin, maxWidth, maxHeight, undefined, 'FAST');
+
+			// Convert PDF to buffer
+			const pdfOutput = doc.output('arraybuffer');
+			buffer = Buffer.from(pdfOutput);
+		} else {
+			// For PDF files, use as-is
+			const bytes = await file.arrayBuffer();
+			buffer = Buffer.from(bytes);
+		}
 
 		// Get the current filename from the database
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);

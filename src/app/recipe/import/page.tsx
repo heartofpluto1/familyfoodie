@@ -4,8 +4,8 @@ import { getCollectionsForDisplay } from '@/lib/queries/collections';
 import withAuth from '@/app/components/withAuth';
 
 export const metadata: Metadata = {
-	title: 'AI Recipe Import from PDF | Family Foodie',
-	description: 'Upload PDF files and let AI automatically extract recipe data',
+	title: 'AI Recipe Import | Family Foodie',
+	description: 'Upload PDF or JPG files and let AI automatically extract recipe data',
 };
 
 async function AIRecipeImportPage() {

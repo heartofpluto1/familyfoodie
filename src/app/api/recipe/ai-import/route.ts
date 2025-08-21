@@ -31,6 +31,7 @@ interface ExtractedRecipe {
 	seasonId?: number; // For form data
 	primaryTypeId?: number; // For form data
 	secondaryTypeId?: number; // For form data
+	collectionId?: number; // For form data
 }
 
 interface IngredientRow extends RowDataPacket {
@@ -173,8 +174,8 @@ async function importHandler(request: NextRequest) {
 
 			// Insert the recipe with temporary filename
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, duplicate, filename, public) 
-				 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)`,
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, duplicate, filename, public) 
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)`,
 				[
 					recipe.title,
 					recipe.description,
@@ -183,6 +184,7 @@ async function importHandler(request: NextRequest) {
 					recipe.seasonId || null,
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
+					recipe.collectionId || null,
 					`temp_${Date.now()}`,
 				]
 			);
@@ -310,9 +312,22 @@ async function importHandler(request: NextRequest) {
 				message += '. Warning: Some file uploads failed.';
 			}
 
+			// Fetch collection information for URL generation
+			let collectionInfo = null;
+			if (recipe.collectionId) {
+				const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, url_slug, title FROM collections WHERE id = ?', [
+					recipe.collectionId,
+				]);
+				if (collectionRows.length > 0) {
+					collectionInfo = collectionRows[0];
+				}
+			}
+
 			return NextResponse.json({
 				success: true,
 				recipeId,
+				recipeSlug: secureFilename,
+				collectionSlug: collectionInfo?.url_slug || null,
 				message,
 				recipe: {
 					title: recipe.title,

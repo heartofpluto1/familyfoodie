@@ -42,7 +42,6 @@ const RecipePreviewSection = ({
 	heroImage,
 	heroImageCrop,
 	pdfImages,
-	recipe,
 	categories,
 	seasonReason,
 	onRecipeFormChange,
@@ -87,18 +86,8 @@ const RecipePreviewSection = ({
 			{/* Recipe Details */}
 			<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden mb-8">
 				{/* Hero Image Cropping Interface - replaces static hero image */}
-				{heroImage &&
-				pdfImages &&
-				recipe?.hasHeroImage &&
-				recipe?.imageLocation &&
-				heroImageCrop &&
-				onHeroImageCropChange &&
-				pdfImages[recipe.imageLocation.pageIndex] ? (
-					<HeroImageCropper
-						pageImageDataUrl={pdfImages[recipe.imageLocation.pageIndex]}
-						initialCrop={heroImageCrop}
-						onCropChange={onHeroImageCropChange}
-					/>
+				{heroImage && pdfImages && heroImageCrop && onHeroImageCropChange && pdfImages[0] ? (
+					<HeroImageCropper pageImageDataUrl={pdfImages[0]} initialCrop={heroImageCrop} onCropChange={onHeroImageCropChange} />
 				) : null}
 
 				<div className="p-6 space-y-4">

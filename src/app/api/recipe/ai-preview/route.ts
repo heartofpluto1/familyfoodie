@@ -386,24 +386,13 @@ Rules:
 			}
 		});
 
-		// Sort ingredients by pantryCategory_id first, then by name
-		const sortedIngredients = processedIngredients.sort((a, b) => {
-			// First sort by pantryCategory_id
-			const categoryA = a.pantryCategory_id || 0;
-			const categoryB = b.pantryCategory_id || 0;
-			if (categoryA !== categoryB) {
-				return categoryA - categoryB;
-			}
-			// Then sort by name
-			return a.name.localeCompare(b.name);
-		});
-
+		// Keep ingredients in original recipe order for easier verification
 		return NextResponse.json({
 			success: true,
 			recipe: {
 				...recipe,
 				serves: recipe.servings,
-				ingredients: sortedIngredients,
+				ingredients: processedIngredients,
 			},
 			categories: {
 				pantryCategories,
