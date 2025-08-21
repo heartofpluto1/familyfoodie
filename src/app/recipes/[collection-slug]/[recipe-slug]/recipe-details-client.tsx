@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RecipeDetail } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
-import HeaderPage from '@/app/components/HeaderPage';
 import RecipeEditor from './components/RecipeEditor';
 import { TrashIcon } from '@/app/components/Icons';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
@@ -155,7 +154,7 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 				title="Delete Recipe"
 				message={`Are you sure you want to delete "${recipe.name}"? This action cannot be undone.`}
 				confirmText="Delete"
-				disabled={isDeleting}
+				isLoading={isDeleting}
 			/>
 		</>
 	);

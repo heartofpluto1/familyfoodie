@@ -26,7 +26,7 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 	return (
 		<>
 			{/* Tags and PDF Link */}
-			<div className="flex items-center justify-between flex-wrap gap-2">
+			<div className="flex items-center justify-between flex-wrap gap-2 py-2">
 				{/* Season and Ingredients Tags */}
 				<div className="flex flex-wrap gap-2">
 					{recipe.seasonName && (
