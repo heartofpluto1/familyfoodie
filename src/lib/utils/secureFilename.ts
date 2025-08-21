@@ -44,9 +44,9 @@ export function getRecipeImageUrl(filename: string | null, bustCache?: boolean):
 	// Default to jpg extension for images - always add cache busting to solve cache issues
 	const baseUrl = getRecipeFileUrl(filename, 'jpg', bustCache);
 
-	// Always add a timestamp for cache busting to solve persistent cache issues
+	// Always add a static version for cache busting to solve persistent cache issues
 	const separator = baseUrl.includes('?') ? '&' : '?';
-	return `${baseUrl}${separator}t=${Date.now()}`;
+	return `${baseUrl}${separator}t=v1`;
 }
 
 /**
@@ -97,9 +97,9 @@ export function getCollectionImageUrl(filename: string | null, bustCache?: boole
 	// Default to jpg extension for images - always add cache busting to solve cache issues
 	const baseUrl = getCollectionFileUrl(filename, 'jpg', bustCache);
 
-	// Always add a timestamp for cache busting to solve persistent cache issues
+	// Always add a static version for cache busting to solve persistent cache issues
 	const separator = baseUrl.includes('?') ? '&' : '?';
-	return `${baseUrl}${separator}t=${Date.now()}`;
+	return `${baseUrl}${separator}t=v1`;
 }
 
 /**
@@ -114,9 +114,9 @@ export function getCollectionDarkImageUrl(filename_dark: string | null, bustCach
 	// Default to jpg extension for images - always add cache busting to solve cache issues
 	const baseUrl = getCollectionFileUrl(filename_dark, 'jpg', bustCache);
 
-	// Always add a timestamp for cache busting to solve persistent cache issues
+	// Always add a static version for cache busting to solve persistent cache issues
 	const separator = baseUrl.includes('?') ? '&' : '?';
-	return `${baseUrl}${separator}t=${Date.now()}`;
+	return `${baseUrl}${separator}t=v1`;
 }
 
 // Legacy function for backwards compatibility
