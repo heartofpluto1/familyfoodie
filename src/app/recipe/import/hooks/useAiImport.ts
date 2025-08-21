@@ -258,11 +258,23 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 			setProcessingStep('Extracting hero image');
 			try {
 				const heroImageDataUrl = await extractHeroImageFromPdf(selectedFile, heroImageLocation);
-				setHeroImage(heroImageDataUrl);
-				setHeroImageCrop(heroImageLocation);
+				if (heroImageDataUrl) {
+					setHeroImage(heroImageDataUrl);
+					setHeroImageCrop(heroImageLocation);
+				} else {
+					// If extraction failed, use the first page image directly as fallback
+					if (images.length > 0) {
+						setHeroImage(images[0]);
+						setHeroImageCrop(heroImageLocation);
+					}
+				}
 			} catch (error) {
 				console.warn('Failed to extract hero image:', error);
-				// Continue without hero image
+				// Use the first page image directly as fallback
+				if (images.length > 0) {
+					setHeroImage(images[0]);
+					setHeroImageCrop(heroImageLocation);
+				}
 			}
 
 			setShowPreview(true);
