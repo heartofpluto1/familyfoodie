@@ -203,20 +203,22 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 	const handleImageUploadComplete = async (uploadResponse?: FileUploadResponse) => {
 		showToast('success', 'Success', 'Image uploaded successfully');
 
-		// Preload cache-busted image URL to warm the cache before page reload
+		// Preload the new image to ensure it's cached, then switch to view mode
 		if (uploadResponse?.cacheBustedUrl) {
 			const img = new Image();
 			img.onload = () => {
-				// Once cache-busted image is loaded, reload the page
-				window.location.reload();
+				// Once cache-busted image is loaded, switch to view mode to show fresh image
+				setIsEditing(false);
 			};
 			img.onerror = () => {
-				// If preload fails, still reload the page
-				window.location.reload();
+				// If preload fails, still switch to view mode
+				setIsEditing(false);
 			};
 			img.src = uploadResponse.cacheBustedUrl;
+		} else {
+			// Fallback: switch to view mode immediately
+			setIsEditing(false);
 		}
-		window.location.reload();
 	};
 
 	const handlePdfUploadComplete = async (uploadResponse?: FileUploadResponse) => {
@@ -320,7 +322,7 @@ const RecipeEditor = ({ recipe, collections, isEditing: externalIsEditing, onSta
 					{/* Recipe Image */}
 					<ImageUploadWithCrop
 						isEditing={isEditing}
-						currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename) : undefined}
+						currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename, isEditing) : undefined}
 						recipeId={recipe?.id}
 						onImageUploaded={handleImageUploadComplete}
 					/>
