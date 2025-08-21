@@ -11,7 +11,6 @@ interface CollectionCardSmallProps {
 
 const CollectionCardSmall = ({ coverImage, subscribed, title, subtitle }: CollectionCardSmallProps) => {
 	const [darkImageFailed, setDarkImageFailed] = useState(false);
-	const [cacheBuster] = useState(() => Date.now());
 
 	// Peek card configurations (scaled down by half)
 	const peekCards = [
@@ -58,9 +57,9 @@ const CollectionCardSmall = ({ coverImage, subscribed, title, subtitle }: Collec
 					}}
 				>
 					{/* Image with dark mode support - fallback to light mode if dark doesn't exist */}
-					<img src={`${coverImage}?t=${cacheBuster}`} alt="Collection cover" className="absolute inset-0 w-full h-full object-cover dark:hidden" />
+					<img src={coverImage} alt="Collection cover" className="absolute inset-0 w-full h-full object-cover dark:hidden" />
 					<img
-						src={`${darkImageFailed ? coverImage : coverImage.replace(/(\.[^.]+)$/, '_dark$1')}?t=${cacheBuster}`}
+						src={darkImageFailed ? coverImage : coverImage.replace(/(\.[^.]+)$/, '_dark$1')}
 						alt="Collection cover"
 						className="absolute inset-0 w-full h-full object-cover hidden dark:block"
 						onError={() => {

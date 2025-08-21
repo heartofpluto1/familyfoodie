@@ -34,16 +34,19 @@ export function getRecipeFileUrl(filename: string | null, extension: 'jpg' | 'pd
 
 /**
  * Get image URL for a recipe
- * Client-safe version that defaults to .jpg extension
+ * Client-safe version that defaults to .jpg extension with automatic cache busting
  */
 export function getRecipeImageUrl(filename: string | null, bustCache?: boolean): string {
 	if (!filename) {
 		return '/images/default-recipe.jpg'; // You should add a default image
 	}
 
-	// Default to jpg extension for images
-	// Server-side code handles checking for actual file extensions
-	return getRecipeFileUrl(filename, 'jpg', bustCache);
+	// Default to jpg extension for images - always add cache busting to solve cache issues
+	const baseUrl = getRecipeFileUrl(filename, 'jpg', bustCache);
+
+	// Always add a timestamp for cache busting to solve persistent cache issues
+	const separator = baseUrl.includes('?') ? '&' : '?';
+	return `${baseUrl}${separator}t=${Date.now()}`;
 }
 
 /**
@@ -84,15 +87,19 @@ export function getCollectionFileUrl(filename: string | null, extension: 'jpg' |
 
 /**
  * Get image URL for a collection
- * Client-safe version that defaults to .jpg extension
+ * Client-safe version that defaults to .jpg extension with automatic cache busting
  */
 export function getCollectionImageUrl(filename: string | null, bustCache?: boolean): string {
 	if (!filename) {
 		return '/collections/custom_collection_004.jpg'; // Default fallback
 	}
 
-	// Default to jpg extension for images
-	return getCollectionFileUrl(filename, 'jpg', bustCache);
+	// Default to jpg extension for images - always add cache busting to solve cache issues
+	const baseUrl = getCollectionFileUrl(filename, 'jpg', bustCache);
+
+	// Always add a timestamp for cache busting to solve persistent cache issues
+	const separator = baseUrl.includes('?') ? '&' : '?';
+	return `${baseUrl}${separator}t=${Date.now()}`;
 }
 
 // Legacy function for backwards compatibility

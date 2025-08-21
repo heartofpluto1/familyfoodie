@@ -341,12 +341,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					<div className="bg-white border border-custom shadow rounded-sm pb-4 space-y-4">
 						{/* Recipe Image Section with contextual edit buttons */}
 						<div className="relative">
-							<img
-								key={refreshKey}
-								src={`${getRecipeImageUrl(recipe.filename, editMode !== 'none')}?t=${Date.now()}`}
-								alt={recipe.name}
-								className="w-full rounded-t-sm"
-							/>
+							<img key={refreshKey} src={getRecipeImageUrl(recipe.filename, editMode !== 'none')} alt={recipe.name} className="w-full rounded-t-sm" />
 							{/* Edit buttons */}
 							<div className="absolute bottom-4 right-4 flex gap-2">
 								{editMode === 'details' ? (

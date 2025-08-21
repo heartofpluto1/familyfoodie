@@ -100,7 +100,7 @@ export function RecipeSearch({ recipes, onAddRecipe, excludeIds }: RecipeSearchP
 							}}
 						>
 							<div className="flex items-center space-x-3">
-								<img src={`${getRecipeImageUrl(recipe.filename)}?t=${Date.now()}`} alt={recipe.name} className="w-12 h-12 rounded object-cover" />
+								<img src={getRecipeImageUrl(recipe.filename)} alt={recipe.name} className="w-12 h-12 rounded object-cover" />
 								<div>
 									<div className="font-medium text-gray-900 dark:text-gray-100">{recipe.name}</div>
 									{recipe.description && <div className="text-sm text-gray-600 dark:text-gray-400">{recipe.description.substring(0, 60)}...</div>}
