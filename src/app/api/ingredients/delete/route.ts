@@ -42,7 +42,6 @@ async function deleteIngredientHandler(request: NextRequest) {
 
 		return NextResponse.json({ success: true, message: 'Ingredient deleted successfully' });
 	} catch (error) {
-		console.error('Error deleting ingredient:', error);
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete ingredient' }, { status: 500 });
 	}
 }
