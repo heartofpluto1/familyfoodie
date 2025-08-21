@@ -53,12 +53,18 @@ const CollectionCard = ({ coverImage, subscribed, title, subtitle, recipeCount }
 						boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.22)',
 					}}
 				>
-					{/* Native HTML picture element for dark mode support */}
-					<picture className="absolute inset-0 w-full h-full">
-						<source srcSet={coverImage.replace(/(\.[^.]+)$/, '_dark$1')} media="(prefers-color-scheme: dark)" />
-						<source srcSet={coverImage} media="(prefers-color-scheme: light)" />
-						<img src={coverImage} alt="Collection cover" className="w-full h-full object-cover" />
-					</picture>
+					{/* Image with dark mode support - fallback to light mode if dark doesn't exist */}
+					<img src={coverImage} alt="Collection cover" className="absolute inset-0 w-full h-full object-cover dark:hidden" />
+					<img
+						src={coverImage.replace(/(\.[^.]+)$/, '_dark$1')}
+						alt="Collection cover"
+						className="absolute inset-0 w-full h-full object-cover hidden dark:block"
+						onError={e => {
+							// If dark mode image fails to load, use the light mode image instead
+							const img = e.target as HTMLImageElement;
+							img.src = coverImage;
+						}}
+					/>
 
 					<div
 						className="w-full h-full flex flex-col relative z-10"
