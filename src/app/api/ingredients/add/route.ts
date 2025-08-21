@@ -45,7 +45,6 @@ async function addIngredientHandler(request: NextRequest) {
 			id: insertResult.insertId,
 		});
 	} catch (error) {
-		console.error('Error adding ingredient:', error);
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to add ingredient' }, { status: 500 });
 	}
 }

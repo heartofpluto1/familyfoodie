@@ -29,8 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 		}
 
 		return NextResponse.json({ user: userData });
-	} catch (error) {
-		console.error('Error fetching user:', error);
+	} catch {
 		return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
 	}
 }
@@ -65,8 +64,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 			message: 'User updated successfully',
 			user: updatedUser,
 		});
-	} catch (error) {
-		console.error('Error updating user:', error);
+	} catch {
 		return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
 	}
 }
@@ -96,8 +94,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 		return NextResponse.json({
 			message: 'User deleted successfully',
 		});
-	} catch (error) {
-		console.error('Error deleting user:', error);
+	} catch {
 		return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
 	}
 }

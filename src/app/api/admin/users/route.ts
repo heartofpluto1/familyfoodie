@@ -24,8 +24,7 @@ async function handler(request: NextRequest) {
 		}
 
 		return NextResponse.json(response);
-	} catch (error) {
-		console.error('Error fetching users:', error);
+	} catch {
 		return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
 	}
 }
