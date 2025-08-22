@@ -11,45 +11,64 @@ import { getStorageMode } from '@/lib/storage';
  *
  * @param baseHash - The base hash to search for (32 char hex string)
  * @param fileType - Either 'image' or 'pdf' to determine search directory
+ * @param storageCleanup - Optional custom storage cleanup function for cloud storage
  * @returns Array of deleted filenames
  */
-export async function findAndDeleteHashFiles(baseHash: string, fileType: 'image' | 'pdf'): Promise<string[]> {
+export async function findAndDeleteHashFiles(
+	baseHash: string,
+	fileType: 'image' | 'pdf',
+	storageCleanup?: (pattern: string) => Promise<string[]>
+): Promise<string[]> {
 	if (!baseHash || baseHash.length < 8) {
-		console.log('Invalid base hash provided for cleanup');
-		return [];
+		return []; // Safety check - don't delete with short/invalid hashes
 	}
 
-	const storageMode = getStorageMode();
-	if (storageMode !== 'local') {
-		// For cloud storage, we'd need to implement cloud-specific deletion
-		console.log('Cloud storage cleanup not implemented yet');
-		return [];
-	}
-
-	// For local storage, clean up files in the public directory
-	const searchDir = path.join(process.cwd(), 'public', 'static');
 	const deletedFiles: string[] = [];
+	const extensions = fileType === 'image' ? ['jpg', 'jpeg', 'png', 'webp'] : ['pdf'];
 
 	try {
-		const files = await fs.readdir(searchDir);
+		// If custom storage cleanup function provided (for GCS, etc.)
+		if (storageCleanup) {
+			for (const ext of extensions) {
+				const pattern = `${baseHash}*.${ext}`; // Matches hash.ext and hash_v*.ext
+				const deleted = await storageCleanup(pattern);
+				deletedFiles.push(...deleted);
+			}
+			return deletedFiles;
+		}
 
-		// Create pattern to match: baseHash, baseHash_v2, baseHash_v3, etc.
-		const pattern = new RegExp(`^${baseHash}(?:_v\\d+)?\\.(${fileType === 'image' ? 'jpg|png|webp' : 'pdf'})$`);
+		// Local filesystem cleanup
+		const { existsSync } = await import('fs');
+		const staticDir = path.join(process.cwd(), 'public', 'static');
 
-		const matchingFiles = files.filter(file => pattern.test(file));
+		if (!existsSync(staticDir)) {
+			return []; // Directory doesn't exist, nothing to clean
+		}
 
-		for (const file of matchingFiles) {
-			try {
-				const filePath = path.join(searchDir, file);
-				await fs.unlink(filePath);
-				deletedFiles.push(file);
-				console.log(`Deleted old ${fileType} file: ${file}`);
-			} catch (error) {
-				console.warn(`Failed to delete ${file}:`, error);
+		// Read directory and find matching files
+		const files = await fs.readdir(staticDir);
+
+		for (const file of files) {
+			for (const ext of extensions) {
+				// Match patterns: baseHash.ext, baseHash_v2.ext, baseHash_v3.ext, etc.
+				const regex = new RegExp(`^${baseHash}(?:_v\\d+)?\\.${ext}$`);
+
+				if (regex.test(file)) {
+					const filePath = path.join(staticDir, file);
+					try {
+						await fs.unlink(filePath);
+						deletedFiles.push(file);
+						console.log(`Deleted old file: ${file}`);
+					} catch (error) {
+						console.warn(`Could not delete file: ${file}`, error);
+						// Continue with other files, don't fail the entire operation
+					}
+				}
 			}
 		}
 	} catch (error) {
-		console.warn('Directory read failed during cleanup:', error);
+		console.error('Error during file cleanup:', error);
+		// Return partial results, don't throw - cleanup is defensive
 	}
 
 	return deletedFiles;
