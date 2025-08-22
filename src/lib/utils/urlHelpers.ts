@@ -3,8 +3,6 @@
  * Format: {id}-{slug} where ID is used for lookups and slug is for readability
  */
 
-import type { Recipe } from '@/types/menus';
-
 /**
  * Generates a URL-safe slug path from an ID and url_slug
  * @param id - The numeric ID of the resource
@@ -64,16 +62,12 @@ export function parseSlugPath(path: string): { id: number; slug: string } | null
 
 /**
  * Generates a recipe URL with collection context
- * @param recipe - The recipe object with collection data (must include url_slug fields)
+ * @param recipe - The recipe object with collection data (requires collection_url_slug and url_slug)
  * @returns A string in format "/recipes/{collection-slug}/{recipe-slug}"
- * @example generateRecipeUrl(recipe) => "/recipes/42-italian-classics/123-pasta-marinara"
+ * @example generateRecipeUrl(recipe) => "/recipes/italian-classics/pasta-marinara"
  */
-export function generateRecipeUrl(recipe: Recipe): string {
-	const collectionSlug = recipe.collection_url_slug
-		? generateSlugPath(recipe.collection_id, recipe.collection_url_slug)
-		: generateSlugFromTitle(recipe.collection_id, recipe.collection_title);
-	const recipeSlug = recipe.url_slug ? generateSlugPath(recipe.id, recipe.url_slug) : generateSlugFromTitle(recipe.id, recipe.name);
-	return `/recipes/${collectionSlug}/${recipeSlug}`;
+export function generateRecipeUrl(recipe: { collection_url_slug: string; url_slug: string }): string {
+	return `/recipes/${recipe.collection_url_slug}/${recipe.url_slug}`;
 }
 
 /**
