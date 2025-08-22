@@ -1,8 +1,8 @@
 -- MySQL dump 10.13  Distrib 9.3.0, for macos14.7 (x86_64)
 --
--- Host: 127.0.0.1    Database: familyfoodie
+-- Host: localhost    Database: [DATABASE_NAME]
 -- ------------------------------------------------------
--- Server version	8.0.43
+-- Server version	8.0.x
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -343,4 +343,4 @@ INSERT INTO `schema_migrations` (`version`, `executed_at`, `execution_time_ms`) 
 ('013_add_url_slug_fields.sql', '2025-08-22 10:00:12', 150),
 ('014_add_filename_dark_to_collections.sql', '2025-08-22 10:00:13', 100);
 
--- Dump completed on 2025-08-22 10:48:41
+-- Dump completed on [DATE]
