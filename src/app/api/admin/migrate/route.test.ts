@@ -1,7 +1,6 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import { NextRequest } from 'next/server';
 import * as appHandler from './route';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
@@ -13,7 +12,7 @@ jest.mock('@/lib/auth-helpers', () => ({
 
 // Mock the auth middleware to pass through for testing
 jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: (handler: Function) => handler,
+	withAuth: (handler: (...args: unknown[]) => unknown) => handler,
 }));
 
 // Mock the migration system
@@ -45,14 +44,6 @@ const mockAdminUser = {
 	username: 'admin',
 	email: 'admin@example.com',
 	is_admin: true,
-	is_active: true,
-};
-
-const mockRegularUser = {
-	id: 2,
-	username: 'user',
-	email: 'user@example.com',
-	is_admin: false,
 	is_active: true,
 };
 

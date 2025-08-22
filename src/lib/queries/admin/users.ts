@@ -81,12 +81,12 @@ export async function updateUser(userId: number, updates: UserUpdate): Promise<b
 	values.push(userId);
 
 	const [result] = await pool.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
-	return (result as any).affectedRows > 0;
+	return (result as { affectedRows: number }).affectedRows > 0;
 }
 
 export async function deleteUser(userId: number): Promise<boolean> {
 	const [result] = await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
-	return (result as any).affectedRows > 0;
+	return (result as { affectedRows: number }).affectedRows > 0;
 }
 
 export async function getUserStats(): Promise<{
