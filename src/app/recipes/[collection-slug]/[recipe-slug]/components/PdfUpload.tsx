@@ -7,14 +7,15 @@ import { FileUploadResponse } from '@/types/fileUpload';
 interface PdfUploadProps {
 	onPdfUploaded?: (uploadResponse?: FileUploadResponse) => void;
 	recipeId?: number;
+	isEditing?: boolean;
 }
 
-const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
+const PdfUpload = ({ onPdfUploaded, recipeId, isEditing = false }: PdfUploadProps) => {
 	const [isDragOver, setIsDragOver] = useState(false);
 	const pdfUpload = useFileUpload({
 		allowedTypes: ['application/pdf'],
 		maxSize: 10 * 1024 * 1024, // 10MB
-		uploadEndpoint: '/api/recipe/upload-pdf',
+		uploadEndpoint: isEditing ? '/api/recipe/update-pdf' : '/api/recipe/upload-pdf',
 	});
 
 	const handlePdfUpload = async () => {
@@ -56,8 +57,8 @@ const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
 		<div className="space-y-4">
 			{/* Header */}
 			<div className="text-center">
-				<h3 className="text-lg font-semibold text-gray-900">Upload Recipe PDF</h3>
-				<p className="text-sm text-gray-600 mt-1">{recipeId ? 'Replace the current recipe PDF' : 'Add a PDF version of this recipe'}</p>
+				<h3 className="text-lg font-semibold text-foreground">Upload Recipe PDF</h3>
+				<p className="text-sm text-secondary mt-1">{recipeId ? 'Replace the current recipe PDF' : 'Add a PDF version of this recipe'}</p>
 			</div>
 
 			{/* Drop Zone */}
@@ -67,12 +68,12 @@ const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
 					onDragLeave={handleDragLeave}
 					onDrop={handleDrop}
 					className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-						isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+						isDragOver ? 'border-accent bg-accent' : 'border-custom hover:border-accent hover:bg-accent'
 					}`}
 				>
 					{/* PDF Icon */}
 					<div className="flex justify-center mb-4">
-						<svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg className="w-12 h-12 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								strokeLinecap="round"
 								strokeLinejoin="round"
@@ -84,8 +85,8 @@ const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
 
 					{/* Drop Zone Content */}
 					<div className="space-y-2">
-						<p className="text-lg font-medium text-gray-700">{isDragOver ? 'Drop PDF here' : 'Drag & drop a PDF file'}</p>
-						<p className="text-sm text-gray-500">or</p>
+						<p className="text-lg font-medium text-foreground">{isDragOver ? 'Drop PDF here' : 'Drag & drop a PDF file'}</p>
+						<p className="text-sm text-muted">or</p>
 						<label className="inline-block">
 							<span className="btn-default px-4 py-2 rounded-full cursor-pointer hover:shadow transition-all">Choose PDF File</span>
 							<input type="file" accept="application/pdf" onChange={pdfUpload.handleFileSelect} className="hidden" />
@@ -93,27 +94,27 @@ const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
 					</div>
 
 					{/* File Requirements */}
-					<p className="text-xs text-gray-500 mt-4 border-t border-gray-200 pt-3">PDF files only • Maximum 10MB</p>
+					<p className="text-xs text-muted mt-4 border-t border-custom pt-3">PDF files only • Maximum 10MB</p>
 				</div>
 			) : (
 				/* Selected File Display */
-				<div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+				<div className="border border-custom rounded-lg p-6 bg-surface">
 					{/* File Info */}
 					<div className="flex items-start space-x-4">
 						<div className="flex-shrink-0">
-							<svg className="w-10 h-10 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+							<svg className="w-10 h-10 text-muted" fill="currentColor" viewBox="0 0 24 24">
 								<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
 								<path d="M11,19V17H8V19H11M16,19V15H13V19H16M16,13V11H8V13H16Z" fill="white" />
 							</svg>
 						</div>
 						<div className="flex-1 min-w-0">
-							<p className="font-medium text-gray-900 truncate">{pdfUpload.selectedFile.name}</p>
-							<p className="text-sm text-gray-500">{(pdfUpload.selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+							<p className="font-medium text-foreground truncate">{pdfUpload.selectedFile.name}</p>
+							<p className="text-sm text-muted">{(pdfUpload.selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
 						</div>
 					</div>
 
 					{/* Action Buttons */}
-					<div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+					<div className="flex items-center justify-between mt-4 pt-4 border-t border-custom">
 						<button
 							type="button"
 							onClick={pdfUpload.clearFile}

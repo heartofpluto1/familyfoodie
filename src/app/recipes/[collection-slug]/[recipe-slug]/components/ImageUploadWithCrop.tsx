@@ -26,9 +26,9 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 	const [scale, setScale] = useState(1);
 
 	const imageUpload = useFileUpload({
-		allowedTypes: ['image/jpeg', 'image/jpg', 'image/png'],
+		allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
 		maxSize: 5 * 1024 * 1024, // 5MB
-		uploadEndpoint: '/api/recipe/upload-image',
+		uploadEndpoint: isEditing ? '/api/recipe/update-image' : '/api/recipe/upload-image',
 	});
 
 	const dragAndDrop = useDragAndDrop(imageUpload.validateAndSetFile);

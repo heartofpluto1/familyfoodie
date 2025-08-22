@@ -11,7 +11,7 @@ interface RecipeRow extends RowDataPacket {
 	pdf_filename: string;
 }
 
-async function postHandler(request: NextRequest) {
+async function updatePdfHandler(request: NextRequest) {
 	try {
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
@@ -122,21 +122,13 @@ async function postHandler(request: NextRequest) {
 
 		const currentPdfFilename = recipeRows[0].pdf_filename;
 
-		// Generate filename - if updating existing, create versioned filename for cache busting
-		let uploadFilename;
-		if (currentPdfFilename) {
-			// This is an update - generate versioned filename
-			uploadFilename = generateVersionedFilename(currentPdfFilename, 'pdf');
-			console.log(`Updating PDF from ${currentPdfFilename} to ${uploadFilename}`);
-		} else {
-			// This is initial upload - generate new filename
-			uploadFilename = `recipe_${recipeId}_${Date.now()}.pdf`;
-		}
+		// Generate versioned filename for update (this will increment the version)
+		const uploadFilename = generateVersionedFilename(currentPdfFilename, 'pdf');
 
 		console.log(`Storage mode: ${getStorageMode()}`);
-		console.log(`Uploading PDF with filename: ${uploadFilename}`);
+		console.log(`Updating PDF from ${currentPdfFilename} to ${uploadFilename}`);
 
-		// Upload the PDF using the complete filename
+		// Upload the versioned PDF
 		const baseFilename = uploadFilename.includes('.') ? uploadFilename.split('.')[0] : uploadFilename;
 		const uploadResult = await uploadFile(buffer, baseFilename, 'pdf', 'application/pdf');
 
@@ -149,31 +141,30 @@ async function postHandler(request: NextRequest) {
 			);
 		}
 
-		// Update the database with complete filename including extension
+		// Update the database with the new versioned filename
 		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET pdf_filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
 
 		if (updateResult.affectedRows === 0) {
 			return NextResponse.json({ error: 'Failed to update recipe PDF filename' }, { status: 500 });
 		}
 
-		const action = currentPdfFilename ? 'Updated' : 'Set';
-		console.log(`${action} database pdf_filename to ${uploadFilename} for recipe ${recipeId}`);
+		console.log(`Updated database pdf_filename to ${uploadFilename} for recipe ${recipeId}`);
 
 		// Generate URL for immediate display
 		const pdfUrl = getRecipePdfUrl(uploadFilename);
 
 		return NextResponse.json({
 			success: true,
-			message: 'PDF uploaded successfully',
+			message: 'Recipe PDF updated successfully',
 			filename: uploadFilename,
 			url: uploadResult.url,
 			pdfUrl,
 			storageMode: getStorageMode(),
 		});
 	} catch (error) {
-		console.error('Error uploading PDF:', error);
-		return NextResponse.json({ error: 'Failed to upload PDF' }, { status: 500 });
+		console.error('Error updating recipe PDF:', error);
+		return NextResponse.json({ error: 'Failed to update recipe PDF' }, { status: 500 });
 	}
 }
 
-export const POST = withAuth(postHandler);
+export const POST = withAuth(updatePdfHandler);

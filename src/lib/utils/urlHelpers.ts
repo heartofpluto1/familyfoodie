@@ -38,6 +38,11 @@ export function generateSlugFromTitle(id: number, title: string): string {
 		.replace(/--+/g, '-') // Replace multiple hyphens with single
 		.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 
+	// Handle edge case where slug becomes empty after processing
+	if (!slug) {
+		return `${id}-untitled`;
+	}
+
 	return `${id}-${slug}`;
 }
 

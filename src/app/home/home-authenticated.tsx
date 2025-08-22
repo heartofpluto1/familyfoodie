@@ -66,13 +66,21 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 		<div className={`${!isLast ? 'border-b border-light' : ''}`}>
 			<p className="font-sm text-foreground text-sm leading-snug flex items-center gap-3 pr-3">
 				<span className="w-12 h-12 bg-gray-200 overflow-hidden flex-shrink-0">
-					<Image src={getRecipeImageUrl(meal.filename)} alt="thumb" width="48" height="48" className="w-full h-full object-cover" unoptimized={true} />
+					<Image
+						src={getRecipeImageUrl(meal.image_filename)}
+						alt="thumb"
+						width="48"
+						height="48"
+						className="w-full h-full object-cover"
+						unoptimized={true}
+					/>
 				</span>
 				<Link
 					href={generateRecipeUrl({
 						id: meal.id,
 						name: meal.name,
-						filename: meal.filename,
+						image_filename: meal.image_filename,
+						pdf_filename: meal.pdf_filename,
 						collection_id: meal.collection_id,
 						collection_title: meal.collection_title,
 					} as Parameters<typeof generateRecipeUrl>[0])}

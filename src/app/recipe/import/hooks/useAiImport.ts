@@ -197,7 +197,8 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 			const convertedRecipeDetail: RecipeDetail = {
 				id: 0, // Temporary ID for preview
 				name: importedRecipe.title,
-				filename: 'preview', // Temporary filename
+				image_filename: 'preview.jpg', // Temporary filename
+				pdf_filename: 'preview.pdf', // Temporary filename
 				description: importedRecipe.description,
 				prepTime: importedRecipe.prepTime,
 				cookTime: importedRecipe.cookTime,
