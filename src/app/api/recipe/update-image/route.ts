@@ -3,7 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
-import { getRecipeImageUrl, generateVersionedFilename } from '@/lib/utils/secureFilename';
+import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash, findAndDeleteHashFiles } from '@/lib/utils/secureFilename';
 
 interface RecipeRow extends RowDataPacket {
 	image_filename: string;
@@ -57,6 +57,22 @@ async function updateImageHandler(request: NextRequest) {
 		const currentImageFilename = recipeRows[0].image_filename;
 		const extension = getExtension(file.type);
 
+		// Defensive cleanup: remove all old files with the same base hash
+		const baseHash = extractBaseHash(currentImageFilename);
+		let cleanupSummary = '';
+
+		if (baseHash) {
+			try {
+				const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
+				if (deletedFiles.length > 0) {
+					cleanupSummary = `Cleaned up ${deletedFiles.length} old file(s): ${deletedFiles.join(', ')}`;
+					console.log(cleanupSummary);
+				}
+			} catch (error) {
+				console.warn('File cleanup failed but continuing with upload:', error);
+			}
+		}
+
 		// Generate versioned filename for update (this will increment the version)
 		const uploadFilename = generateVersionedFilename(currentImageFilename, extension);
 
@@ -94,6 +110,7 @@ async function updateImageHandler(request: NextRequest) {
 			url: uploadResult.url,
 			imageUrl,
 			storageMode: getStorageMode(),
+			cleanup: cleanupSummary || 'No old files to clean up',
 		});
 	} catch (error) {
 		console.error('Error updating recipe image:', error);
