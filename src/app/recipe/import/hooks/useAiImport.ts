@@ -37,7 +37,7 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 		seasonId: undefined,
 		primaryTypeId: undefined,
 		secondaryTypeId: undefined,
-		collectionId: collections.length > 0 ? collections[0].id : undefined,
+		collectionId: collections.length > 0 ? collections[0].id : 1, // Default to collection ID 1 if none available
 	});
 	const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
 
@@ -61,7 +61,7 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 			seasonId: undefined,
 			primaryTypeId: undefined,
 			secondaryTypeId: undefined,
-			collectionId: collections.length > 0 ? collections[0].id : undefined,
+			collectionId: collections.length > 0 ? collections[0].id : 1, // Default to collection ID 1 if none available
 		});
 		setIngredients([]);
 	};
@@ -207,6 +207,8 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 				secondaryTypeName: undefined,
 				collection_id: importedRecipe.selectedCollection?.id || collections[0]?.id || 0,
 				collection_title: importedRecipe.selectedCollection?.title || collections[0]?.title || 'Default',
+				url_slug: 'preview-recipe',
+				collection_url_slug: 'default-collection',
 				ingredients: convertedIngredients,
 			};
 
@@ -293,6 +295,11 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 	const confirmImport = async () => {
 		if (!selectedFile || !recipe) {
 			showToast('error', 'Error', 'No preview data available');
+			return;
+		}
+
+		if (!recipeForm.collectionId) {
+			showToast('error', 'Error', 'Please select a collection for this recipe');
 			return;
 		}
 

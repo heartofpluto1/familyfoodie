@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
+import { cleanupRecipeFiles } from '@/lib/utils/secureFilename.server';
 
 interface RecipeRow extends RowDataPacket {
 	id: number;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 }
 
 interface PlanRow extends RowDataPacket {
@@ -23,8 +22,8 @@ async function deleteHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Recipe ID is required' }, { status: 400 });
 		}
 
-		// First, check if the recipe exists and get its filename
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+		// First, check if the recipe exists and get its filenames
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
@@ -134,24 +133,9 @@ async function deleteHandler(request: NextRequest) {
 				// Commit the database transaction
 				await connection.commit();
 
-				// Delete associated files after successful database deletion
-				if (recipe.filename) {
-					const staticDir = path.join(process.cwd(), 'public', 'static');
-					const possibleExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
-
-					for (const ext of possibleExtensions) {
-						const filePath = path.join(staticDir, `${recipe.filename}.${ext}`);
-						if (existsSync(filePath)) {
-							try {
-								await unlink(filePath);
-								console.log(`Deleted file: ${recipe.filename}.${ext}`);
-							} catch (fileError) {
-								console.warn(`Could not delete file: ${recipe.filename}.${ext}`, fileError);
-								// Don't fail the entire operation for file deletion errors
-							}
-						}
-					}
-				}
+				// Delete associated files after successful database deletion (with defensive cleanup)
+				const cleanupResult = await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
+				console.log(`File cleanup: ${cleanupResult}`);
 
 				let message = 'Recipe deleted successfully';
 				if (deletedIngredientsCount > 0) {

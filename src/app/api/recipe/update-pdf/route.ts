@@ -3,7 +3,8 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
-import { getRecipePdfUrl, generateVersionedFilename } from '@/lib/utils/secureFilename';
+import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
+import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {
@@ -122,6 +123,22 @@ async function updatePdfHandler(request: NextRequest) {
 
 		const currentPdfFilename = recipeRows[0].pdf_filename;
 
+		// Defensive cleanup: remove all old files with the same base hash
+		const baseHash = extractBaseHash(currentPdfFilename);
+		let cleanupSummary = '';
+
+		if (baseHash) {
+			try {
+				const deletedFiles = await findAndDeleteHashFiles(baseHash, 'pdf');
+				if (deletedFiles.length > 0) {
+					cleanupSummary = `Cleaned up ${deletedFiles.length} old file(s): ${deletedFiles.join(', ')}`;
+					console.log(cleanupSummary);
+				}
+			} catch (error) {
+				console.warn('File cleanup failed but continuing with upload:', error);
+			}
+		}
+
 		// Generate versioned filename for update (this will increment the version)
 		const uploadFilename = generateVersionedFilename(currentPdfFilename, 'pdf');
 
@@ -160,6 +177,7 @@ async function updatePdfHandler(request: NextRequest) {
 			url: uploadResult.url,
 			pdfUrl,
 			storageMode: getStorageMode(),
+			cleanup: cleanupSummary || 'No old files to clean up',
 		});
 	} catch (error) {
 		console.error('Error updating recipe PDF:', error);

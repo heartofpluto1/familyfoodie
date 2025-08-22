@@ -3,8 +3,9 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import OpenAI from 'openai';
-import { generateSecureFilename } from '@/lib/utils/secureFilename.server';
+import { generateVersionedFilename } from '@/lib/utils/secureFilename';
 import { uploadFile, getStorageMode } from '@/lib/storage';
+import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 interface Ingredients {
 	name: string;
@@ -172,10 +173,13 @@ async function importHandler(request: NextRequest) {
 		try {
 			await connection.beginTransaction();
 
-			// Insert the recipe without filename (will be set later)
+			// First, we need to insert with a placeholder URL slug to get the ID, then update with the real slug
+			// This is necessary because the slug generation requires the recipe ID
+			const placeholderSlug = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, duplicate, public) 
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, url_slug, duplicate, public) 
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
 				[
 					recipe.title,
 					recipe.description,
@@ -185,21 +189,23 @@ async function importHandler(request: NextRequest) {
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
 					recipe.collectionId || null,
+					placeholderSlug,
 				]
 			);
 
 			const recipeId = recipeResult.insertId;
 
-			// Generate secure filename using recipe ID and name
-			const secureFilename = generateSecureFilename(recipeId, recipe.title);
+			// Generate URL slug in {id}-{slug} format for URL parsing
+			const urlSlug = generateSlugFromTitle(recipeId, recipe.title);
 
-			// Set both image and PDF filenames with extensions
-			const imageFilename = `${secureFilename}.jpg`;
-			const pdfFilename = `${secureFilename}.pdf`;
+			// Generate secure filenames (this will create new hash-based filenames)
+			const imageFilename = generateVersionedFilename(null, 'jpg');
+			const pdfFilename = generateVersionedFilename(null, 'pdf');
 
-			await connection.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ?, pdf_filename = ? WHERE id = ?', [
+			await connection.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ?, pdf_filename = ?, url_slug = ? WHERE id = ?', [
 				imageFilename,
 				pdfFilename,
+				urlSlug,
 				recipeId,
 			]);
 
@@ -252,7 +258,8 @@ async function importHandler(request: NextRequest) {
 			await connection.commit();
 
 			// After successful database commit, handle file operations
-			const filename = secureFilename;
+			// Extract base filename (without extension) for file upload
+			const filename = imageFilename.includes('.') ? imageFilename.split('.')[0] : imageFilename;
 			let pdfSaved = false;
 			let heroImageSaved = false;
 			const fileErrors: string[] = [];
@@ -318,22 +325,27 @@ async function importHandler(request: NextRequest) {
 				message += '. Warning: Some file uploads failed.';
 			}
 
-			// Fetch collection information for URL generation
-			let collectionInfo = null;
-			if (recipe.collectionId) {
-				const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, url_slug, title FROM collections WHERE id = ?', [
-					recipe.collectionId,
-				]);
-				if (collectionRows.length > 0) {
-					collectionInfo = collectionRows[0];
-				}
+			// Enforce collection exists - AI import requires valid collection
+			if (!recipe.collectionId) {
+				throw new Error('Collection ID is required for recipe import');
+			}
+
+			const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, url_slug, title FROM collections WHERE id = ?', [recipe.collectionId]);
+
+			if (collectionRows.length === 0) {
+				throw new Error(`Collection with ID ${recipe.collectionId} not found`);
+			}
+
+			const collectionInfo = collectionRows[0];
+			if (!collectionInfo.url_slug) {
+				throw new Error(`Collection ${recipe.collectionId} is missing URL slug`);
 			}
 
 			return NextResponse.json({
 				success: true,
 				recipeId,
-				recipeSlug: secureFilename,
-				collectionSlug: collectionInfo?.url_slug || null,
+				recipeSlug: urlSlug,
+				collectionSlug: collectionInfo.url_slug,
 				message,
 				recipe: {
 					title: recipe.title,

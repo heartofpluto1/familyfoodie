@@ -77,12 +77,8 @@ function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
 				</span>
 				<Link
 					href={generateRecipeUrl({
-						id: meal.id,
-						name: meal.name,
-						image_filename: meal.image_filename,
-						pdf_filename: meal.pdf_filename,
-						collection_id: meal.collection_id,
-						collection_title: meal.collection_title,
+						url_slug: meal.url_slug,
+						collection_url_slug: meal.collection_url_slug,
 					} as Parameters<typeof generateRecipeUrl>[0])}
 					className="text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors hover:underline"
 				>

@@ -158,6 +158,21 @@ export function getBaseHash(filename: string): string {
 }
 
 /**
+ * Extract base hash for defensive file cleanup (more robust version)
+ * Handles various filename formats that might exist in storage
+ */
+export function extractBaseHash(filename: string | null): string {
+	if (!filename) return '';
+
+	// Remove extension first
+	const nameWithoutExt = filename.includes('.') ? filename.split('.')[0] : filename;
+
+	// Match hash pattern with optional version suffix: hash or hash_v2, hash_v3, etc.
+	const hashMatch = nameWithoutExt.match(/^([a-f0-9]{8,32})(?:_v\d+)?$/);
+	return hashMatch ? hashMatch[1] : '';
+}
+
+/**
  * Get the version number from a filename (returns 1 if no version suffix)
  */
 export function getVersionFromFilename(filename: string): number {

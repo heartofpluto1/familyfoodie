@@ -17,8 +17,8 @@ interface TopRecipe extends RowDataPacket {
 	name: string;
 	image_filename: string;
 	pdf_filename: string;
-	collection_id: number;
-	collection_title: string;
+	url_slug: string;
+	collection_url_slug: string;
 	times_planned: number;
 }
 
@@ -133,15 +133,15 @@ export async function getTopRecipes() {
 			r.name,
 			r.image_filename,
 			r.pdf_filename,
-			r.collection_id,
-			c.title as collection_title,
+			r.url_slug,
+			c.url_slug as collection_url_slug,
 			COUNT(DISTINCT CONCAT(rw.year, '-', rw.week)) as times_planned
 		FROM plans rw
 		INNER JOIN recipes r ON rw.recipe_id = r.id
 		INNER JOIN collections c ON r.collection_id = c.id
 		WHERE 1=1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
-		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.collection_id, c.title
+		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.url_slug, c.url_slug
 		ORDER BY times_planned DESC
 		LIMIT 10`,
 		[cutoffYear, cutoffYear, cutoffWeek]
@@ -214,14 +214,14 @@ interface RecipePairing extends RowDataPacket {
 	recipe1_name: string;
 	recipe1_image_filename: string;
 	recipe1_pdf_filename: string;
-	recipe1_collection_id: number;
-	recipe1_collection_title: string;
+	recipe1_url_slug: string;
+	recipe1_collection_url_slug: string;
 	recipe2_id: number;
 	recipe2_name: string;
 	recipe2_image_filename: string;
 	recipe2_pdf_filename: string;
-	recipe2_collection_id: number;
-	recipe2_collection_title: string;
+	recipe2_url_slug: string;
+	recipe2_collection_url_slug: string;
 	shared_ingredient: string;
 	recipe1_quantity: string;
 	recipe2_quantity: string;
@@ -238,14 +238,14 @@ export async function getRecipePairingSuggestions() {
 			recipe1_name,
 			recipe1_image_filename,
 			recipe1_pdf_filename,
-			recipe1_collection_id,
-			recipe1_collection_title,
+			recipe1_url_slug,
+			recipe1_collection_url_slug,
 			recipe2_id,
 			recipe2_name,
 			recipe2_image_filename,
 			recipe2_pdf_filename,
-			recipe2_collection_id,
-			recipe2_collection_title,
+			recipe2_url_slug,
+			recipe2_collection_url_slug,
 			shared_ingredient,
 			recipe1_quantity,
 			recipe2_quantity,
@@ -258,14 +258,14 @@ export async function getRecipePairingSuggestions() {
 				r1.name as recipe1_name,
 				r1.image_filename as recipe1_image_filename,
 				r1.pdf_filename as recipe1_pdf_filename,
-				r1.collection_id as recipe1_collection_id,
-				c1.title as recipe1_collection_title,
+				r1.url_slug as recipe1_url_slug,
+				c1.url_slug as recipe1_collection_url_slug,
 				r2.id as recipe2_id,
 				r2.name as recipe2_name,
 				r2.image_filename as recipe2_image_filename,
 				r2.pdf_filename as recipe2_pdf_filename,
-				r2.collection_id as recipe2_collection_id,
-				c2.title as recipe2_collection_title,
+				r2.url_slug as recipe2_url_slug,
+				c2.url_slug as recipe2_collection_url_slug,
 				i.name as shared_ingredient,
 				ri1.quantity as recipe1_quantity,
 				ri2.quantity as recipe2_quantity,
