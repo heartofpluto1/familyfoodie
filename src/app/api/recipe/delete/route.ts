@@ -8,7 +8,8 @@ import { withAuth } from '@/lib/auth-middleware';
 
 interface RecipeRow extends RowDataPacket {
 	id: number;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 }
 
 interface PlanRow extends RowDataPacket {
@@ -23,8 +24,8 @@ async function deleteHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Recipe ID is required' }, { status: 400 });
 		}
 
-		// First, check if the recipe exists and get its filename
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+		// First, check if the recipe exists and get its filenames
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
@@ -135,20 +136,18 @@ async function deleteHandler(request: NextRequest) {
 				await connection.commit();
 
 				// Delete associated files after successful database deletion
-				if (recipe.filename) {
-					const staticDir = path.join(process.cwd(), 'public', 'static');
-					const possibleExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
+				const staticDir = path.join(process.cwd(), 'public', 'static');
+				const filesToDelete = [recipe.image_filename, recipe.pdf_filename].filter(Boolean);
 
-					for (const ext of possibleExtensions) {
-						const filePath = path.join(staticDir, `${recipe.filename}.${ext}`);
-						if (existsSync(filePath)) {
-							try {
-								await unlink(filePath);
-								console.log(`Deleted file: ${recipe.filename}.${ext}`);
-							} catch (fileError) {
-								console.warn(`Could not delete file: ${recipe.filename}.${ext}`, fileError);
-								// Don't fail the entire operation for file deletion errors
-							}
+				for (const filename of filesToDelete) {
+					const filePath = path.join(staticDir, filename);
+					if (existsSync(filePath)) {
+						try {
+							await unlink(filePath);
+							console.log(`Deleted file: ${filename}`);
+						} catch (fileError) {
+							console.warn(`Could not delete file: ${filename}`, fileError);
+							// Don't fail the entire operation for file deletion errors
 						}
 					}
 				}

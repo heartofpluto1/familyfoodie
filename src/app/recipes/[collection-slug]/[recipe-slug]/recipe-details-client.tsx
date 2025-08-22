@@ -106,7 +106,6 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 			} else {
 				const errorData = await response.text();
 				console.error('Failed to delete recipe:', response.status, errorData);
-				alert(`Failed to delete recipe: ${response.status}`);
 			}
 		} catch (error) {
 			console.error('Error deleting recipe:', error);
