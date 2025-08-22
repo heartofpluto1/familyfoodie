@@ -15,7 +15,7 @@ const port = process.env.PORT || 3000;
 
 console.log(`Starting Next.js development server on port ${port}...`);
 
-const nextDev = spawn('next', ['dev', '-p', port], {
+const nextDev = spawn('next', ['dev', '--turbopack', '-p', port], {
 	stdio: 'inherit',
 	shell: true,
 	env: {
