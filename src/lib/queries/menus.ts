@@ -663,9 +663,13 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 					r.prepTime,
 					r.cookTime,
 					r.description,
-					r.url_slug
+					r.url_slug,
+					r.collection_id,
+					c.title as collection_title,
+					c.url_slug as collection_url_slug
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id
+				INNER JOIN collections c ON r.collection_id = c.id
 				WHERE rw.week = ? AND rw.year = ?
 				ORDER BY rw.id ASC
 			`;
