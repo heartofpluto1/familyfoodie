@@ -6,7 +6,8 @@ import { uploadFile, getStorageMode } from '@/lib/storage';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeRow extends RowDataPacket {
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 	name: string;
 }
 
@@ -20,10 +21,10 @@ async function postHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Image file and recipe ID are required' }, { status: 400 });
 		}
 
-		// Validate file type
-		const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+		// Validate file type - now supporting JPG, PNG, and WebP
+		const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 		if (!allowedTypes.includes(file.type)) {
-			return NextResponse.json({ error: 'Only JPEG, JPG, and PNG images are allowed' }, { status: 400 });
+			return NextResponse.json({ error: 'Only JPEG, PNG, and WebP images are allowed' }, { status: 400 });
 		}
 
 		// Validate file size (5MB max)
@@ -43,29 +44,32 @@ async function postHandler(request: NextRequest) {
 					return 'jpg';
 				case 'image/png':
 					return 'png';
+				case 'image/webp':
+					return 'webp';
 				default:
 					return 'jpg';
 			}
 		};
 
-		// Get the current filename from the database
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+		// Get the current image filename from the database
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
 		}
 
-		const currentFilename = recipeRows[0].filename;
+		const currentImageFilename = recipeRows[0].image_filename;
 		const extension = getExtension(file.type);
 
-		// Use existing filename or generate a temporary one for new recipes
-		const uploadFilename = currentFilename || `temp_${Date.now()}`;
+		// Generate filename with extension for initial upload
+		const uploadFilename = currentImageFilename || `recipe_${recipeId}_${Date.now()}.${extension}`;
 
 		console.log(`Storage mode: ${getStorageMode()}`);
 		console.log(`Uploading image with filename: ${uploadFilename}`);
 
-		// Upload the file using the current filename
-		const uploadResult = await uploadFile(buffer, uploadFilename, extension, file.type);
+		// Upload the file using the complete filename (no separate extension parameter needed)
+		const baseFilename = uploadFilename.includes('.') ? uploadFilename.split('.')[0] : uploadFilename;
+		const uploadResult = await uploadFile(buffer, baseFilename, extension, file.type);
 
 		if (!uploadResult.success) {
 			return NextResponse.json(
@@ -76,15 +80,15 @@ async function postHandler(request: NextRequest) {
 			);
 		}
 
-		// Update the database with filename if it was newly generated
-		if (!currentFilename) {
-			const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
+		// Update the database with complete filename including extension
+		if (!currentImageFilename) {
+			const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
 
 			if (updateResult.affectedRows === 0) {
-				return NextResponse.json({ error: 'Failed to update recipe filename' }, { status: 500 });
+				return NextResponse.json({ error: 'Failed to update recipe image filename' }, { status: 500 });
 			}
 
-			console.log(`Set database filename to ${uploadFilename} for new recipe`);
+			console.log(`Set database image_filename to ${uploadFilename} for new recipe`);
 		}
 
 		// Generate URL for immediate display
@@ -93,7 +97,7 @@ async function postHandler(request: NextRequest) {
 		return NextResponse.json({
 			success: true,
 			message: 'Image uploaded successfully',
-			filename: `${uploadFilename}.${extension}`,
+			filename: uploadFilename,
 			url: uploadResult.url,
 			imageUrl,
 			storageMode: getStorageMode(),

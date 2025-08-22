@@ -7,14 +7,15 @@ import { FileUploadResponse } from '@/types/fileUpload';
 interface PdfUploadProps {
 	onPdfUploaded?: (uploadResponse?: FileUploadResponse) => void;
 	recipeId?: number;
+	isEditing?: boolean;
 }
 
-const PdfUpload = ({ onPdfUploaded, recipeId }: PdfUploadProps) => {
+const PdfUpload = ({ onPdfUploaded, recipeId, isEditing = false }: PdfUploadProps) => {
 	const [isDragOver, setIsDragOver] = useState(false);
 	const pdfUpload = useFileUpload({
 		allowedTypes: ['application/pdf'],
 		maxSize: 10 * 1024 * 1024, // 10MB
-		uploadEndpoint: '/api/recipe/upload-pdf',
+		uploadEndpoint: isEditing ? '/api/recipe/update-pdf' : '/api/recipe/upload-pdf',
 	});
 
 	const handlePdfUpload = async () => {

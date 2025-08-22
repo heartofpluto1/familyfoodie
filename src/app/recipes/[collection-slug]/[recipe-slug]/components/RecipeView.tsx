@@ -46,7 +46,7 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 
 				{/* PDF Link */}
 				<a
-					href={getRecipePdfUrl(recipe.filename)}
+					href={getRecipePdfUrl(recipe.pdf_filename)}
 					target="_blank"
 					rel="noopener noreferrer"
 					className="inline-flex items-center px-2 py-1 bg-accent text-background rounded-sm hover:bg-accent/90 transition-colors text-xs"
