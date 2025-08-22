@@ -7,6 +7,7 @@ import { Collection } from '@/lib/queries/collections';
 import RecipeEditor from './components/RecipeEditor';
 import { TrashIcon } from '@/app/components/Icons';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import { useToast } from '@/app/components/ToastProvider';
 
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;
@@ -15,6 +16,7 @@ interface RecipeDetailsClientProps {
 
 const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) => {
 	const router = useRouter();
+	const { showToast } = useToast();
 	const [backLink, setBackLink] = useState<{ href: string; label: string } | null>(null);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -102,13 +104,16 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 			});
 
 			if (response.ok) {
+				showToast('success', 'Recipe Deleted', `"${recipe.name}" has been deleted successfully`);
 				router.push(`/recipes/${recipe.collection_url_slug || ''}`);
 			} else {
 				const errorData = await response.text();
 				console.error('Failed to delete recipe:', response.status, errorData);
+				showToast('error', 'Delete Failed', 'Failed to delete recipe. Please try again.');
 			}
 		} catch (error) {
 			console.error('Error deleting recipe:', error);
+			showToast('error', 'Delete Failed', 'An error occurred while deleting the recipe');
 		} finally {
 			setIsDeleting(false);
 			setShowDeleteConfirm(false);
