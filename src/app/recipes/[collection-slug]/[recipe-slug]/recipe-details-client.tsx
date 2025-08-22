@@ -98,13 +98,15 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ id: recipe.id }),
+				body: JSON.stringify({ recipeId: recipe.id }),
 			});
 
 			if (response.ok) {
 				router.push(`/recipes/${recipe.collection_url_slug || ''}`);
 			} else {
-				console.error('Failed to delete recipe');
+				const errorData = await response.text();
+				console.error('Failed to delete recipe:', response.status, errorData);
+				alert(`Failed to delete recipe: ${response.status}`);
 			}
 		} catch (error) {
 			console.error('Error deleting recipe:', error);
