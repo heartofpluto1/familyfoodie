@@ -5,6 +5,7 @@ import { withAuth } from '@/lib/auth-middleware';
 import OpenAI from 'openai';
 import { generateSecureFilename } from '@/lib/utils/secureFilename.server';
 import { uploadFile, getStorageMode } from '@/lib/storage';
+import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 interface Ingredients {
 	name: string;
@@ -172,7 +173,7 @@ async function importHandler(request: NextRequest) {
 		try {
 			await connection.beginTransaction();
 
-			// Insert the recipe without filename (will be set later)
+			// Insert the recipe without filename and url_slug (will be set later)
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
 				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, duplicate, public) 
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
@@ -193,13 +194,17 @@ async function importHandler(request: NextRequest) {
 			// Generate secure filename using recipe ID and name
 			const secureFilename = generateSecureFilename(recipeId, recipe.title);
 
-			// Set both image and PDF filenames with extensions
+			// Generate URL slug in {id}-{slug} format for URL parsing
+			const urlSlug = generateSlugFromTitle(recipeId, recipe.title);
+
+			// Set filenames and URL slug
 			const imageFilename = `${secureFilename}.jpg`;
 			const pdfFilename = `${secureFilename}.pdf`;
 
-			await connection.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ?, pdf_filename = ? WHERE id = ?', [
+			await connection.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ?, pdf_filename = ?, url_slug = ? WHERE id = ?', [
 				imageFilename,
 				pdfFilename,
+				urlSlug,
 				recipeId,
 			]);
 
@@ -329,10 +334,13 @@ async function importHandler(request: NextRequest) {
 				}
 			}
 
+			// Generate the final URL slug for response
+			const finalUrlSlug = generateSlugFromTitle(recipeId, recipe.title);
+
 			return NextResponse.json({
 				success: true,
 				recipeId,
-				recipeSlug: secureFilename,
+				recipeSlug: finalUrlSlug,
 				collectionSlug: collectionInfo?.url_slug || null,
 				message,
 				recipe: {
