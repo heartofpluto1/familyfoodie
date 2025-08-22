@@ -3,7 +3,8 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
-import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash, findAndDeleteHashFiles } from '@/lib/utils/secureFilename';
+import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
+import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {

@@ -3,7 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import OpenAI from 'openai';
-import { generateSecureFilename } from '@/lib/utils/secureFilename.server';
+import { generateVersionedFilename } from '@/lib/utils/secureFilename';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
@@ -195,15 +195,12 @@ async function importHandler(request: NextRequest) {
 
 			const recipeId = recipeResult.insertId;
 
-			// Generate secure filename using recipe ID and name
-			const secureFilename = generateSecureFilename(recipeId, recipe.title);
-
 			// Generate URL slug in {id}-{slug} format for URL parsing
 			const urlSlug = generateSlugFromTitle(recipeId, recipe.title);
 
-			// Set filenames and final URL slug
-			const imageFilename = `${secureFilename}.jpg`;
-			const pdfFilename = `${secureFilename}.pdf`;
+			// Generate secure filenames (this will create new hash-based filenames)
+			const imageFilename = generateVersionedFilename(null, 'jpg');
+			const pdfFilename = generateVersionedFilename(null, 'pdf');
 
 			await connection.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ?, pdf_filename = ?, url_slug = ? WHERE id = ?', [
 				imageFilename,
@@ -261,7 +258,8 @@ async function importHandler(request: NextRequest) {
 			await connection.commit();
 
 			// After successful database commit, handle file operations
-			const filename = secureFilename;
+			// Extract base filename (without extension) for file upload
+			const filename = imageFilename.includes('.') ? imageFilename.split('.')[0] : imageFilename;
 			let pdfSaved = false;
 			let heroImageSaved = false;
 			const fileErrors: string[] = [];

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
+import { cleanupRecipeFiles } from '@/lib/utils/secureFilename.server';
 
 interface RecipeRow extends RowDataPacket {
 	id: number;
@@ -135,22 +133,9 @@ async function deleteHandler(request: NextRequest) {
 				// Commit the database transaction
 				await connection.commit();
 
-				// Delete associated files after successful database deletion
-				const staticDir = path.join(process.cwd(), 'public', 'static');
-				const filesToDelete = [recipe.image_filename, recipe.pdf_filename].filter(Boolean);
-
-				for (const filename of filesToDelete) {
-					const filePath = path.join(staticDir, filename);
-					if (existsSync(filePath)) {
-						try {
-							await unlink(filePath);
-							console.log(`Deleted file: ${filename}`);
-						} catch (fileError) {
-							console.warn(`Could not delete file: ${filename}`, fileError);
-							// Don't fail the entire operation for file deletion errors
-						}
-					}
-				}
+				// Delete associated files after successful database deletion (with defensive cleanup)
+				const cleanupResult = await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
+				console.log(`File cleanup: ${cleanupResult}`);
 
 				let message = 'Recipe deleted successfully';
 				if (deletedIngredientsCount > 0) {
