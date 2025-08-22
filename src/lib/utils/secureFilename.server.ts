@@ -4,14 +4,16 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getStorageMode } from '@/lib/storage';
+import { Storage } from '@google-cloud/storage';
 
 /**
  * Find and delete all files matching a base hash pattern for defensive cleanup
  * This prevents storage bloat by removing old versioned files when updating
+ * Automatically detects storage mode (GCS vs local) and uses appropriate cleanup method
  *
  * @param baseHash - The base hash to search for (32 char hex string)
  * @param fileType - Either 'image' or 'pdf' to determine search directory
- * @param storageCleanup - Optional custom storage cleanup function for cloud storage
+ * @param storageCleanup - Optional custom storage cleanup function (for backward compatibility)
  * @returns Array of deleted filenames
  */
 export async function findAndDeleteHashFiles(
@@ -25,9 +27,10 @@ export async function findAndDeleteHashFiles(
 
 	const deletedFiles: string[] = [];
 	const extensions = fileType === 'image' ? ['jpg', 'jpeg', 'png', 'webp'] : ['pdf'];
+	const storageMode = getStorageMode();
 
 	try {
-		// If custom storage cleanup function provided (for GCS, etc.)
+		// If custom storage cleanup function provided (for backward compatibility)
 		if (storageCleanup) {
 			for (const ext of extensions) {
 				const pattern = `${baseHash}*.${ext}`; // Matches hash.ext and hash_v*.ext
@@ -37,40 +40,91 @@ export async function findAndDeleteHashFiles(
 			return deletedFiles;
 		}
 
-		// Local filesystem cleanup
-		const { existsSync } = await import('fs');
-		const staticDir = path.join(process.cwd(), 'public', 'static');
+		// Auto-detect storage mode and use appropriate cleanup
+		if (storageMode === 'Google Cloud Storage') {
+			// Production: Clean up files in GCS bucket
+			const useGCS = process.env.NODE_ENV === 'production' && !!process.env.GCS_BUCKET_NAME;
 
-		if (!existsSync(staticDir)) {
-			return []; // Directory doesn't exist, nothing to clean
-		}
+			if (!useGCS) {
+				console.warn('Storage mode indicates GCS but environment not configured for GCS');
+				return [];
+			}
 
-		// Read directory and find matching files
-		const files = await fs.readdir(staticDir);
+			const storage = new Storage({
+				projectId: process.env.GOOGLE_CLOUD_PROJECT,
+			});
 
-		for (const file of files) {
-			for (const ext of extensions) {
-				// Match patterns: baseHash.ext, baseHash_v2.ext, baseHash_v3.ext, etc.
-				const regex = new RegExp(`^${baseHash}(?:_v\\d+)?\\.${ext}$`);
+			const bucketName = process.env.GCS_BUCKET_NAME;
+			if (!bucketName) {
+				console.warn('GCS bucket name not configured');
+				return [];
+			}
 
-				if (regex.test(file)) {
-					const filePath = path.join(staticDir, file);
-					try {
-						await fs.unlink(filePath);
-						deletedFiles.push(file);
-						console.log(`Deleted old file: ${file}`);
-					} catch (error) {
-						console.warn(`Could not delete file: ${file}`, error);
-						// Continue with other files, don't fail the entire operation
+			const bucket = storage.bucket(bucketName);
+
+			// List files with prefix matching the base hash
+			const [files] = await bucket.getFiles({
+				prefix: baseHash,
+			});
+
+			for (const file of files) {
+				const filename = file.name;
+
+				// Check if this file matches our pattern for any of the extensions
+				for (const ext of extensions) {
+					const regex = new RegExp(`^${baseHash}(?:_v\\d+)?\\.${ext}$`);
+
+					if (regex.test(filename)) {
+						try {
+							await file.delete();
+							deletedFiles.push(filename);
+							console.log(`Deleted old GCS file: ${filename}`);
+						} catch (error) {
+							console.warn(`Could not delete GCS file: ${filename}`, error);
+							// Continue with other files, don't fail the entire operation
+						}
+						break; // Found a match for this file, no need to check other extensions
+					}
+				}
+			}
+		} else {
+			// Development: Clean up files in local filesystem
+			const { existsSync } = await import('fs');
+			const staticDir = path.join(process.cwd(), 'public', 'static');
+
+			if (!existsSync(staticDir)) {
+				return []; // Directory doesn't exist, nothing to clean
+			}
+
+			// Read directory and find matching files
+			const files = await fs.readdir(staticDir);
+
+			for (const file of files) {
+				for (const ext of extensions) {
+					// Match patterns: baseHash.ext, baseHash_v2.ext, baseHash_v3.ext, etc.
+					const regex = new RegExp(`^${baseHash}(?:_v\\d+)?\\.${ext}$`);
+
+					if (regex.test(file)) {
+						const filePath = path.join(staticDir, file);
+						try {
+							await fs.unlink(filePath);
+							deletedFiles.push(file);
+							console.log(`Deleted old local file: ${file}`);
+						} catch (error) {
+							console.warn(`Could not delete local file: ${file}`, error);
+							// Continue with other files, don't fail the entire operation
+						}
+						break; // Found a match for this file, no need to check other extensions
 					}
 				}
 			}
 		}
 	} catch (error) {
-		console.error('Error during file cleanup:', error);
+		console.error(`Error during ${storageMode} file cleanup:`, error);
 		// Return partial results, don't throw - cleanup is defensive
 	}
 
+	console.log(`${storageMode} cleanup completed: ${deletedFiles.length} files deleted`);
 	return deletedFiles;
 }
 
