@@ -318,7 +318,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 							<div className="space-y-4">
 								<ImageUploadWithCrop
 									recipeId={recipe.id}
-									currentImageSrc={recipe ? getRecipeImageUrl(recipe.filename) : undefined}
+									currentImageSrc={recipe ? getRecipeImageUrl(recipe.image_filename) : undefined}
 									onImageUploaded={handleImageUploadComplete}
 								/>
 								<div className="flex gap-2">
@@ -332,7 +332,7 @@ const RecipeEditorNew = ({ recipe, collections }: RecipeEditorProps) => {
 							</div>
 						) : (
 							<div className="relative">
-								<img key={refreshKey} src={getRecipeImageUrl(recipe.filename)} alt={recipe.name} className="w-full rounded-lg shadow-md" />
+								<img key={refreshKey} src={getRecipeImageUrl(recipe.image_filename)} alt={recipe.name} className="w-full rounded-lg shadow-md" />
 								{/* Camera edit button */}
 								<button
 									onClick={() => startEdit('image')}

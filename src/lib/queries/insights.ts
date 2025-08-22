@@ -15,7 +15,8 @@ interface TopIngredient extends RowDataPacket {
 interface TopRecipe extends RowDataPacket {
 	id: number;
 	name: string;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 	collection_id: number;
 	collection_title: string;
 	times_planned: number;
@@ -130,7 +131,8 @@ export async function getTopRecipes() {
 		`SELECT 
 			r.id,
 			r.name,
-			r.filename,
+			r.image_filename,
+			r.pdf_filename,
 			r.collection_id,
 			c.title as collection_title,
 			COUNT(DISTINCT CONCAT(rw.year, '-', rw.week)) as times_planned
@@ -139,7 +141,7 @@ export async function getTopRecipes() {
 		INNER JOIN collections c ON r.collection_id = c.id
 		WHERE 1=1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
-		GROUP BY r.id, r.name, r.filename, r.collection_id, c.title
+		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.collection_id, c.title
 		ORDER BY times_planned DESC
 		LIMIT 10`,
 		[cutoffYear, cutoffYear, cutoffWeek]
@@ -210,12 +212,14 @@ export async function getGardenSavings(topItems: TopIngredient[]) {
 interface RecipePairing extends RowDataPacket {
 	recipe1_id: number;
 	recipe1_name: string;
-	recipe1_filename: string;
+	recipe1_image_filename: string;
+	recipe1_pdf_filename: string;
 	recipe1_collection_id: number;
 	recipe1_collection_title: string;
 	recipe2_id: number;
 	recipe2_name: string;
-	recipe2_filename: string;
+	recipe2_image_filename: string;
+	recipe2_pdf_filename: string;
 	recipe2_collection_id: number;
 	recipe2_collection_title: string;
 	shared_ingredient: string;
@@ -232,12 +236,14 @@ export async function getRecipePairingSuggestions() {
 		`SELECT 
 			recipe1_id,
 			recipe1_name,
-			recipe1_filename,
+			recipe1_image_filename,
+			recipe1_pdf_filename,
 			recipe1_collection_id,
 			recipe1_collection_title,
 			recipe2_id,
 			recipe2_name,
-			recipe2_filename,
+			recipe2_image_filename,
+			recipe2_pdf_filename,
 			recipe2_collection_id,
 			recipe2_collection_title,
 			shared_ingredient,
@@ -250,12 +256,14 @@ export async function getRecipePairingSuggestions() {
 			SELECT DISTINCT
 				r1.id as recipe1_id,
 				r1.name as recipe1_name,
-				r1.filename as recipe1_filename,
+				r1.image_filename as recipe1_image_filename,
+				r1.pdf_filename as recipe1_pdf_filename,
 				r1.collection_id as recipe1_collection_id,
 				c1.title as recipe1_collection_title,
 				r2.id as recipe2_id,
 				r2.name as recipe2_name,
-				r2.filename as recipe2_filename,
+				r2.image_filename as recipe2_image_filename,
+				r2.pdf_filename as recipe2_pdf_filename,
 				r2.collection_id as recipe2_collection_id,
 				c2.title as recipe2_collection_title,
 				i.name as shared_ingredient,

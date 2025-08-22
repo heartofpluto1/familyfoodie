@@ -3,10 +3,11 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
-import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { getRecipeImageUrl, generateVersionedFilename } from '@/lib/utils/secureFilename';
 
 interface RecipeRow extends RowDataPacket {
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 }
 
 async function updateImageHandler(request: NextRequest) {
@@ -19,10 +20,10 @@ async function updateImageHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Image file and recipe ID are required' }, { status: 400 });
 		}
 
-		// Validate file type
+		// Validate file type - now supporting JPG, PNG, and WebP
 		const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 		if (!validTypes.includes(file.type)) {
-			return NextResponse.json({ error: 'Only JPG, PNG, and WebP images are allowed' }, { status: 400 });
+			return NextResponse.json({ error: 'Only JPEG, PNG, and WebP images are allowed' }, { status: 400 });
 		}
 
 		// Validate file size (5MB max)
@@ -31,42 +32,57 @@ async function updateImageHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Image size must be less than 5MB' }, { status: 400 });
 		}
 
-		// Get the current filename from the database
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+		// Get file extension from MIME type
+		const getExtension = (mimeType: string) => {
+			switch (mimeType) {
+				case 'image/jpeg':
+				case 'image/jpg':
+					return 'jpg';
+				case 'image/png':
+					return 'png';
+				case 'image/webp':
+					return 'webp';
+				default:
+					return 'jpg';
+			}
+		};
+
+		// Get the current image filename from the database
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
 		}
 
-		const currentFilename = recipeRows[0].filename;
+		const currentImageFilename = recipeRows[0].image_filename;
+		const extension = getExtension(file.type);
 
-		// Use existing filename or generate a temporary one for new recipes
-		const uploadFilename = currentFilename || `recipe_${recipeId}_${Date.now()}`;
+		// Generate versioned filename for update (this will increment the version)
+		const uploadFilename = generateVersionedFilename(currentImageFilename, extension);
 
 		// Convert file to buffer
 		const bytes = await file.arrayBuffer();
 		const buffer = Buffer.from(bytes);
 
 		console.log(`Storage mode: ${getStorageMode()}`);
-		console.log(`Uploading image with filename: ${uploadFilename}`);
+		console.log(`Updating image from ${currentImageFilename} to ${uploadFilename}`);
 
-		// Upload the image
-		const uploadResult = await uploadFile(buffer, uploadFilename, 'image', file.type);
+		// Upload the versioned image
+		const baseFilename = uploadFilename.includes('.') ? uploadFilename.split('.')[0] : uploadFilename;
+		const uploadResult = await uploadFile(buffer, baseFilename, extension, file.type);
 
 		if (!uploadResult.success) {
 			return NextResponse.json({ error: uploadResult.error || 'Image upload failed' }, { status: 500 });
 		}
 
-		// Update the database with filename if it was newly generated
-		if (!currentFilename) {
-			const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
+		// Update the database with the new versioned filename
+		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
 
-			if (updateResult.affectedRows === 0) {
-				return NextResponse.json({ error: 'Failed to update recipe filename' }, { status: 500 });
-			}
-
-			console.log(`Set database filename to ${uploadFilename} for recipe ${recipeId}`);
+		if (updateResult.affectedRows === 0) {
+			return NextResponse.json({ error: 'Failed to update recipe image filename' }, { status: 500 });
 		}
+
+		console.log(`Updated database image_filename to ${uploadFilename} for recipe ${recipeId}`);
 
 		// Generate URL for immediate display
 		const imageUrl = getRecipeImageUrl(uploadFilename);

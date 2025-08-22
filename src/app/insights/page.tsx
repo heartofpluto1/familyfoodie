@@ -283,7 +283,7 @@ async function InsightsPage() {
 												<div className="flex items-center gap-3">
 													<div className="w-12 h-12 bg-gray-200 overflow-hidden rounded flex-shrink-0">
 														<Image
-															src={getRecipeImageUrl(pairing.recipe1_filename)}
+															src={getRecipeImageUrl(pairing.recipe1_image_filename)}
 															alt={pairing.recipe1_name}
 															width={48}
 															height={48}
@@ -296,7 +296,8 @@ async function InsightsPage() {
 															href={generateRecipeUrl({
 																id: pairing.recipe1_id,
 																name: pairing.recipe1_name,
-																filename: pairing.recipe1_filename,
+																image_filename: pairing.recipe1_image_filename,
+																pdf_filename: pairing.recipe1_pdf_filename,
 																collection_id: pairing.recipe1_collection_id,
 																collection_title: pairing.recipe1_collection_title,
 															})}
@@ -313,7 +314,7 @@ async function InsightsPage() {
 												<div className="flex items-center gap-3">
 													<div className="w-12 h-12 bg-gray-200 overflow-hidden rounded flex-shrink-0">
 														<Image
-															src={getRecipeImageUrl(pairing.recipe2_filename)}
+															src={getRecipeImageUrl(pairing.recipe2_image_filename)}
 															alt={pairing.recipe2_name}
 															width={48}
 															height={48}
@@ -326,7 +327,8 @@ async function InsightsPage() {
 															href={generateRecipeUrl({
 																id: pairing.recipe2_id,
 																name: pairing.recipe2_name,
-																filename: pairing.recipe2_filename,
+																image_filename: pairing.recipe2_image_filename,
+																pdf_filename: pairing.recipe2_pdf_filename,
 																collection_id: pairing.recipe2_collection_id,
 																collection_title: pairing.recipe2_collection_title,
 															})}

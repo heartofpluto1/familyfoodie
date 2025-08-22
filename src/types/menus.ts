@@ -22,7 +22,8 @@ export interface PlannedMeal {
 	year: number;
 	recipe_id: number;
 	recipe_name: string;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 	collection_id: number;
 	collection_title: string;
 	url_slug?: string;
@@ -32,7 +33,8 @@ export interface PlannedMeal {
 export interface Meal {
 	id: number;
 	name: string;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 	collection_id: number;
 	collection_title: string;
 	url_slug?: string;
@@ -42,7 +44,8 @@ export interface Meal {
 export interface Recipe {
 	id: number;
 	name: string;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 	prepTime?: number;
 	cookTime?: number;
 	cost?: number;
@@ -58,7 +61,8 @@ export interface Recipe {
 export interface RecipeDetail {
 	id: number;
 	name: string;
-	filename: string;
+	image_filename: string;
+	pdf_filename: string;
 	description: string;
 	prepTime?: number;
 	cookTime?: number;

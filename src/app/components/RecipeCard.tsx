@@ -59,7 +59,7 @@ const RecipeCard = ({
 		}
 	}, [triggerAnimation, newRecipe, displayRecipe.id, onAnimationComplete]);
 
-	const { name, filename, prepTime, cookTime, cost } = displayRecipe;
+	const { name, image_filename, prepTime, cookTime, cost } = displayRecipe;
 	const totalTime = (prepTime || 0) + (cookTime || 0);
 
 	const handleSwapRecipe = async () => {
@@ -72,7 +72,7 @@ const RecipeCard = ({
 		if (newRecipe) {
 			// Preload the new recipe image before starting animation
 			const img = new Image();
-			img.src = getRecipeImageUrl(newRecipe.filename);
+			img.src = getRecipeImageUrl(newRecipe.image_filename);
 
 			// Start animation when image is loaded (or immediately if already cached)
 			img.onload = () => {
@@ -144,7 +144,7 @@ const RecipeCard = ({
 					}}
 				>
 					<Link href={generateRecipeUrl(displayRecipe)} className="block">
-						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(filename)} />
+						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(image_filename)} />
 					</Link>
 
 					<div className="p-4 flex flex-col flex-grow">
