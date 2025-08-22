@@ -327,25 +327,27 @@ async function importHandler(request: NextRequest) {
 				message += '. Warning: Some file uploads failed.';
 			}
 
-			// Fetch collection information for URL generation
-			let collectionInfo = null;
-			if (recipe.collectionId) {
-				const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, url_slug, title FROM collections WHERE id = ?', [
-					recipe.collectionId,
-				]);
-				if (collectionRows.length > 0) {
-					collectionInfo = collectionRows[0];
-				}
+			// Enforce collection exists - AI import requires valid collection
+			if (!recipe.collectionId) {
+				throw new Error('Collection ID is required for recipe import');
 			}
 
-			// Generate the final URL slug for response
-			const finalUrlSlug = generateSlugFromTitle(recipeId, recipe.title);
+			const [collectionRows] = await connection.execute<RowDataPacket[]>('SELECT id, url_slug, title FROM collections WHERE id = ?', [recipe.collectionId]);
+
+			if (collectionRows.length === 0) {
+				throw new Error(`Collection with ID ${recipe.collectionId} not found`);
+			}
+
+			const collectionInfo = collectionRows[0];
+			if (!collectionInfo.url_slug) {
+				throw new Error(`Collection ${recipe.collectionId} is missing URL slug`);
+			}
 
 			return NextResponse.json({
 				success: true,
 				recipeId,
-				recipeSlug: finalUrlSlug,
-				collectionSlug: collectionInfo?.url_slug || null,
+				recipeSlug: urlSlug,
+				collectionSlug: collectionInfo.url_slug,
 				message,
 				recipe: {
 					title: recipe.title,
