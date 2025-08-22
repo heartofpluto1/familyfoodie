@@ -1,13 +1,15 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { getAuthenticatedUserFromSession } from '@/lib/auth-helpers';
-import { JSX } from 'react';
+import { ReactNode } from 'react';
 
-// Simple, extensible type for Next.js page components
-type NextPageComponent = (props: never) => Promise<JSX.Element> | JSX.Element;
+// Generic page component type that works with Next.js 15.5
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PageComponent<P = any> = (props: P) => Promise<ReactNode> | ReactNode;
 
-export function withAdminAuth(WrappedComponent: NextPageComponent): NextPageComponent {
-	return async function AdminAuthenticatedComponent(props: never): Promise<JSX.Element> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withAdminAuth<P = any>(WrappedComponent: PageComponent<P>): PageComponent<P> {
+	return async function AdminAuthenticatedComponent(props: P): Promise<ReactNode> {
 		const session = await getSession();
 		if (!session) {
 			redirect('login');

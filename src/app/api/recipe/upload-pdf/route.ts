@@ -150,15 +150,15 @@ async function postHandler(request: NextRequest) {
 			console.log(`Set database filename to ${uploadFilename} for new recipe`);
 		}
 
-		// Generate cache-busted URL for immediate display
-		const cacheBustedUrl = getRecipePdfUrl(uploadFilename, true);
+		// Generate URL for immediate display
+		const pdfUrl = getRecipePdfUrl(uploadFilename);
 
 		return NextResponse.json({
 			success: true,
 			message: 'PDF uploaded successfully',
 			filename: `${uploadFilename}.pdf`,
 			url: uploadResult.url,
-			cacheBustedUrl,
+			pdfUrl,
 			storageMode: getStorageMode(),
 		});
 	} catch (error) {

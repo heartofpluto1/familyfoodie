@@ -1,12 +1,14 @@
 import { redirect } from 'next/navigation';
 import { getEncryptedSession } from '@/lib/session';
-import { JSX } from 'react';
+import { ReactNode } from 'react';
 
-// Simple, extensible type for Next.js page components
-type NextPageComponent = (props: never) => Promise<JSX.Element> | JSX.Element;
+// Generic page component type that works with Next.js 15.5
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PageComponent<P = any> = (props: P) => Promise<ReactNode> | ReactNode;
 
-export function withAuth(WrappedComponent: NextPageComponent): NextPageComponent {
-	return async function AuthenticatedComponent(props: never): Promise<JSX.Element> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withAuth<P = any>(WrappedComponent: PageComponent<P>): PageComponent<P> {
+	return async function AuthenticatedComponent(props: P): Promise<ReactNode> {
 		const session = await getEncryptedSession();
 		if (!session) {
 			redirect('login');
