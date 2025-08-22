@@ -45,10 +45,14 @@ export async function getUserById(userId: number): Promise<User | null> {
 	return users[0] || null;
 }
 
-export async function updateUser(userId: number, updates: UserUpdate): Promise<void> {
+export async function updateUser(userId: number, updates: UserUpdate): Promise<boolean> {
 	const fields: string[] = [];
 	const values: (string | number)[] = [];
 
+	if (updates.username !== undefined) {
+		fields.push('username = ?');
+		values.push(updates.username);
+	}
 	if (updates.first_name !== undefined) {
 		fields.push('first_name = ?');
 		values.push(updates.first_name);
@@ -71,16 +75,18 @@ export async function updateUser(userId: number, updates: UserUpdate): Promise<v
 	}
 
 	if (fields.length === 0) {
-		return;
+		return false;
 	}
 
 	values.push(userId);
 
-	await pool.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
+	const [result] = await pool.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
+	return (result as any).affectedRows > 0;
 }
 
-export async function deleteUser(userId: number): Promise<void> {
-	await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
+export async function deleteUser(userId: number): Promise<boolean> {
+	const [result] = await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
+	return (result as any).affectedRows > 0;
 }
 
 export async function getUserStats(): Promise<{
