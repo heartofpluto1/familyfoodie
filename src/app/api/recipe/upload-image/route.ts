@@ -87,15 +87,15 @@ async function postHandler(request: NextRequest) {
 			console.log(`Set database filename to ${uploadFilename} for new recipe`);
 		}
 
-		// Generate cache-busted URL for immediate display
-		const cacheBustedUrl = getRecipeImageUrl(uploadFilename, true);
+		// Generate URL for immediate display
+		const imageUrl = getRecipeImageUrl(uploadFilename);
 
 		return NextResponse.json({
 			success: true,
 			message: 'Image uploaded successfully',
 			filename: `${uploadFilename}.${extension}`,
 			url: uploadResult.url,
-			cacheBustedUrl,
+			imageUrl,
 			storageMode: getStorageMode(),
 		});
 	} catch (error) {
