@@ -173,10 +173,13 @@ async function importHandler(request: NextRequest) {
 		try {
 			await connection.beginTransaction();
 
-			// Insert the recipe without filename and url_slug (will be set later)
+			// First, we need to insert with a placeholder URL slug to get the ID, then update with the real slug
+			// This is necessary because the slug generation requires the recipe ID
+			const placeholderSlug = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, duplicate, public) 
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, url_slug, duplicate, public) 
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
 				[
 					recipe.title,
 					recipe.description,
@@ -186,6 +189,7 @@ async function importHandler(request: NextRequest) {
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
 					recipe.collectionId || null,
+					placeholderSlug,
 				]
 			);
 
@@ -197,7 +201,7 @@ async function importHandler(request: NextRequest) {
 			// Generate URL slug in {id}-{slug} format for URL parsing
 			const urlSlug = generateSlugFromTitle(recipeId, recipe.title);
 
-			// Set filenames and URL slug
+			// Set filenames and final URL slug
 			const imageFilename = `${secureFilename}.jpg`;
 			const pdfFilename = `${secureFilename}.pdf`;
 
