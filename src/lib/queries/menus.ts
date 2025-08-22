@@ -144,7 +144,7 @@ export async function getAllRecipes(collectionId?: number): Promise<Recipe[]> {
 
 interface RecipeRow {
 	id: number;
-	name: string;
+	name: string; // NOT NULL in database
 	image_filename: string;
 	pdf_filename: string;
 	prepTime?: number;
@@ -152,7 +152,7 @@ interface RecipeRow {
 	description?: string;
 	url_slug?: string;
 	collection_id: number;
-	collection_title: string;
+	collection_title: string; // NOT NULL in database
 	collection_url_slug?: string;
 	seasonName?: string;
 	ingredients?: string;
