@@ -36,8 +36,6 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
         recipes.pdf_filename,
         recipes.name as recipe_name,
         recipes.url_slug,
-        recipes.collection_id,
-        c.title as collection_title,
         c.url_slug as collection_url_slug
       FROM plans
       JOIN recipes ON plans.recipe_id = recipes.id
@@ -78,10 +76,8 @@ export function groupRecipesByWeek(recipeWeeks: PlannedMeal[]): Menu[] {
 				name: recipeWeek.recipe_name,
 				image_filename: recipeWeek.image_filename,
 				pdf_filename: recipeWeek.pdf_filename,
-				collection_id: recipeWeek.collection_id,
-				collection_title: recipeWeek.collection_title,
-				url_slug: recipeWeek.url_slug,
-				collection_url_slug: recipeWeek.collection_url_slug,
+				url_slug: recipeWeek.url_slug || `${recipeWeek.recipe_id}-fallback`,
+				collection_url_slug: recipeWeek.collection_url_slug || `${recipeWeek.collection_id}-fallback`,
 			});
 
 			return acc;
@@ -201,6 +197,8 @@ export async function getAllRecipesWithDetails(collectionId?: number): Promise<R
 
 	return recipes.map(row => ({
 		...row,
+		url_slug: row.url_slug || `${row.id}-fallback`,
+		collection_url_slug: row.collection_url_slug || `${row.collection_id}-fallback`,
 		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
 	}));
 }
@@ -272,8 +270,6 @@ export async function getCurrentWeekRecipes(): Promise<Recipe[]> {
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			r.collection_id,
-			c.title as collection_title,
 			c.url_slug as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
@@ -302,8 +298,6 @@ export async function getNextWeekRecipes(): Promise<Recipe[]> {
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			r.collection_id,
-			c.title as collection_title,
 			c.url_slug as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
@@ -375,8 +369,6 @@ export async function getRecipesForRandomization(): Promise<Recipe[]> {
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			r.collection_id,
-			c.title as collection_title,
 			c.url_slug as collection_url_slug,
 			GROUP_CONCAT(DISTINCT i.name ORDER BY ri.id ASC SEPARATOR ', ') as ingredients
 		FROM recipes r
@@ -388,7 +380,7 @@ export async function getRecipesForRandomization(): Promise<Recipe[]> {
 			SELECT DISTINCT recipe_id 
 			FROM plans 
 			WHERE ((year = ? AND week >= ?) OR (year > ? AND year <= ?))		  )
-		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.collection_id, c.title, c.url_slug
+		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, c.url_slug
 		ORDER BY r.name ASC
 	`;
 
@@ -627,10 +619,10 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		description: recipe.description || '',
 		prepTime: recipe.prepTime,
 		cookTime: recipe.cookTime,
-		url_slug: recipe.url_slug,
+		url_slug: recipe.url_slug || `${recipe.id}-fallback`,
 		collection_id: recipe.collection_id,
 		collection_title: recipe.collection_title,
-		collection_url_slug: recipe.collection_url_slug,
+		collection_url_slug: recipe.collection_url_slug || `${recipe.collection_id}-fallback`,
 		seasonName: recipe.seasonName,
 		primaryTypeName: recipe.primaryTypeName,
 		secondaryTypeName: recipe.secondaryTypeName,
@@ -672,8 +664,6 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 					r.cookTime,
 					r.description,
 					r.url_slug,
-					r.collection_id,
-					c.title as collection_title,
 					c.url_slug as collection_url_slug
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id

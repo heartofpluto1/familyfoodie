@@ -294,12 +294,8 @@ async function InsightsPage() {
 													<div className="flex-1 min-w-0">
 														<Link
 															href={generateRecipeUrl({
-																id: pairing.recipe1_id,
-																name: pairing.recipe1_name,
-																image_filename: pairing.recipe1_image_filename,
-																pdf_filename: pairing.recipe1_pdf_filename,
-																collection_id: pairing.recipe1_collection_id,
-																collection_title: pairing.recipe1_collection_title,
+																url_slug: pairing.recipe1_url_slug,
+																collection_url_slug: pairing.recipe1_collection_url_slug,
 															})}
 															target="_blank"
 															rel="noopener noreferrer"
@@ -325,12 +321,8 @@ async function InsightsPage() {
 													<div className="flex-1 min-w-0">
 														<Link
 															href={generateRecipeUrl({
-																id: pairing.recipe2_id,
-																name: pairing.recipe2_name,
-																image_filename: pairing.recipe2_image_filename,
-																pdf_filename: pairing.recipe2_pdf_filename,
-																collection_id: pairing.recipe2_collection_id,
-																collection_title: pairing.recipe2_collection_title,
+																url_slug: pairing.recipe2_url_slug,
+																collection_url_slug: pairing.recipe2_collection_url_slug,
 															})}
 															target="_blank"
 															rel="noopener noreferrer"

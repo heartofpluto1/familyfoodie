@@ -207,6 +207,8 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 				secondaryTypeName: undefined,
 				collection_id: importedRecipe.selectedCollection?.id || collections[0]?.id || 0,
 				collection_title: importedRecipe.selectedCollection?.title || collections[0]?.title || 'Default',
+				url_slug: 'preview-recipe',
+				collection_url_slug: 'default-collection',
 				ingredients: convertedIngredients,
 			};
 
