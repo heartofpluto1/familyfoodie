@@ -5,9 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
-import RecipeCard from './RecipeCard';
-import RecipeSearch from './RecipeSearch';
-import { SparklesIcon } from './Icons';
+import RecipeCard from '@/app/components/RecipeCard';
+import RecipeSearch from '@/app/components/RecipeSearch';
+import { SparklesIcon } from '@/app/components/Icons';
 
 interface RecipeListProps {
 	recipes: Recipe[];

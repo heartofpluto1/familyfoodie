@@ -8,7 +8,7 @@ import CollectionCardSmall from '@/app/components/CollectionCardSmall';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useToast } from '@/app/components/ToastProvider';
 import { EditIcon, TrashIcon } from '@/app/components/Icons';
-import RecipeList from './components/RecipeList';
+import RecipeList from '../components/RecipeList';
 import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
 import { generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
