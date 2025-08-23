@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getRecipeDetails } from '@/lib/queries/menus';
-import { getCollectionById } from '@/lib/queries/collections';
+import { getCollectionById, getCollectionsForDisplay } from '@/lib/queries/collections';
 import { parseRecipeUrl, generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import withAuth from '@/app/components/withAuth';
 import RecipeDetailsClient from './recipe-details-client';
@@ -38,7 +38,11 @@ async function RecipeDetailsPage({ params }: PageProps) {
 		notFound();
 	}
 
-	const [recipe, collection] = await Promise.all([getRecipeDetails(parsed.recipeId.toString()), getCollectionById(parsed.collectionId)]);
+	const [recipe, collection, collections] = await Promise.all([
+		getRecipeDetails(parsed.recipeId.toString()),
+		getCollectionById(parsed.collectionId),
+		getCollectionsForDisplay(),
+	]);
 
 	if (!recipe || !collection) {
 		notFound();
@@ -63,7 +67,7 @@ async function RecipeDetailsPage({ params }: PageProps) {
 		redirect(`/recipes/${currentCollectionSlug}/${currentRecipeSlug}`);
 	}
 
-	return <RecipeDetailsClient recipe={recipe} collection={collection} />;
+	return <RecipeDetailsClient recipe={recipe} collection={collection} collections={collections} />;
 }
 
 // Force dynamic rendering for authenticated pages
