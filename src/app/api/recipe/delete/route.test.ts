@@ -113,7 +113,12 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID is required');
+					// Consistent error response format
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID is required',
+						code: 'MISSING_RECIPE_ID',
+					});
 				},
 			});
 
@@ -138,7 +143,12 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(404);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe not found');
+					// Consistent error response format
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe not found',
+						code: 'RECIPE_NOT_FOUND',
+					});
 				},
 			});
 		});
@@ -163,7 +173,13 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Cannot delete recipe: it is used in planned weeks. Remove it from all planned weeks first.');
+					// Consistent error response with count in message
+					expect(data).toEqual({
+						success: false,
+						error: 'Cannot delete recipe: it is used in 3 planned weeks. Remove it from all planned weeks first.',
+						code: 'PLANNED_WEEKS_EXIST',
+						count: 3,
+					});
 				},
 			});
 
@@ -192,10 +208,11 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
+					// Consistent error response format
 					expect(data).toEqual({
 						success: false,
-						message: 'Cannot delete recipe with existing shopping list history',
-						archived: false,
+						error: 'Cannot delete recipe with existing shopping list history',
+						code: 'SHOPPING_HISTORY_EXISTS',
 					});
 
 					// Verify transaction was rolled back
@@ -233,7 +250,12 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(500);
 					const data = await response.json();
-					expect(data.error).toBe('Database constraint violation');
+					// Consistent error response format
+					expect(data).toEqual({
+						success: false,
+						error: 'Database constraint violation',
+						code: 'DATABASE_ERROR',
+					});
 
 					// Verify transaction was rolled back
 					expect(mockConnection.rollback).toHaveBeenCalled();
@@ -269,7 +291,12 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(500);
 					const data = await response.json();
-					expect(data.error).toBe('Failed to delete recipe from database');
+					// Consistent error response format
+					expect(data).toEqual({
+						success: false,
+						error: 'Failed to delete recipe from database',
+						code: 'DELETE_FAILED',
+					});
 
 					// Verify transaction was rolled back
 					expect(mockConnection.rollback).toHaveBeenCalled();
@@ -464,10 +491,17 @@ describe('/api/recipe/delete', () => {
 						body: JSON.stringify({ recipeId: 1 }),
 					});
 
-					// File cleanup failure causes route to fail (expected behavior)
-					expect(response.status).toBe(500);
+					// File cleanup failure should NOT cause the entire operation to fail
+					// Recipe deletion succeeded, so return 200 with a warning
+					expect(response.status).toBe(200);
 					const data = await response.json();
-					expect(data.error).toContain('File system error');
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe deleted successfully',
+						warning: 'File cleanup failed: File system error',
+						deletedIngredientsCount: 0,
+						deletedIngredientNames: [],
+					});
 				},
 			});
 		});
@@ -485,9 +519,14 @@ describe('/api/recipe/delete', () => {
 						body: 'invalid-json',
 					});
 
-					expect(response.status).toBe(500);
+					expect(response.status).toBe(400); // Should be 400, not 500
 					const data = await response.json();
-					expect(data.error).toBe('Unexpected token \'i\', "invalid-json" is not valid JSON');
+					// User-friendly error message instead of raw parser error
+					expect(data).toEqual({
+						success: false,
+						error: 'Invalid JSON in request body',
+						code: 'INVALID_JSON',
+					});
 				},
 			});
 		});
@@ -563,13 +602,18 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(500);
 					const data = await response.json();
-					expect(data.error).toBe('Pool exhausted');
+					// Consistent error response format
+					expect(data).toEqual({
+						success: false,
+						error: 'Pool exhausted',
+						code: 'DATABASE_ERROR',
+					});
 				},
 			});
 		});
 
 		it('should handle zero recipeId', async () => {
-			// Zero recipeId is treated as missing, so no database calls are made
+			// Zero recipeId should be validated as invalid
 
 			await testApiHandler({
 				appHandler,
@@ -585,14 +629,21 @@ describe('/api/recipe/delete', () => {
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID is required');
+					// Specific validation error
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID must be a positive integer',
+						code: 'INVALID_RECIPE_ID',
+					});
 				},
 			});
+
+			// Ensure no database calls were made
+			expect(mockExecute).not.toHaveBeenCalled();
 		});
 
 		it('should handle negative recipeId', async () => {
-			// Mock recipe not found
-			mockExecute.mockResolvedValueOnce([[], []]);
+			// Negative IDs should be rejected immediately without database lookup
 
 			await testApiHandler({
 				appHandler,
@@ -606,11 +657,73 @@ describe('/api/recipe/delete', () => {
 						body: JSON.stringify({ recipeId: -1 }),
 					});
 
-					expect(response.status).toBe(404);
+					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe not found');
+					// Validation error, not "not found"
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID must be a positive integer',
+						code: 'INVALID_RECIPE_ID',
+					});
 				},
 			});
+
+			// Ensure no database calls were made
+			expect(mockExecute).not.toHaveBeenCalled();
+		});
+
+		it('should handle string recipeId that is not a number', async () => {
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 'not-a-number' }),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID must be a number',
+						code: 'INVALID_RECIPE_ID',
+					});
+				},
+			});
+
+			// Ensure no database calls were made
+			expect(mockExecute).not.toHaveBeenCalled();
+		});
+
+		it('should handle float recipeId', async () => {
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1.5 }),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID must be an integer',
+						code: 'INVALID_RECIPE_ID',
+					});
+				},
+			});
+
+			// Ensure no database calls were made
+			expect(mockExecute).not.toHaveBeenCalled();
 		});
 	});
 });

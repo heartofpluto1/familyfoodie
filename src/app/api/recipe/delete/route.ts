@@ -14,19 +14,58 @@ interface PlanRow extends RowDataPacket {
 	count: number;
 }
 
-async function deleteHandler(request: NextRequest) {
-	try {
-		const { recipeId } = await request.json();
+function validateRecipeId(recipeId: any): { isValid: boolean; error?: any } {
+	if (recipeId === undefined || recipeId === null || recipeId === '') {
+		return { isValid: false, error: { success: false, error: 'Recipe ID is required', code: 'MISSING_RECIPE_ID' } };
+	}
+	
+	if (typeof recipeId === 'string' && isNaN(Number(recipeId))) {
+		return { isValid: false, error: { success: false, error: 'Recipe ID must be a number', code: 'INVALID_RECIPE_ID' } };
+	}
+	
+	const numericId = Number(recipeId);
+	if (!Number.isInteger(numericId)) {
+		return { isValid: false, error: { success: false, error: 'Recipe ID must be an integer', code: 'INVALID_RECIPE_ID' } };
+	}
+	
+	if (numericId <= 0) {
+		return { isValid: false, error: { success: false, error: 'Recipe ID must be a positive integer', code: 'INVALID_RECIPE_ID' } };
+	}
+	
+	return { isValid: true };
+}
 
-		if (!recipeId) {
-			return NextResponse.json({ error: 'Recipe ID is required' }, { status: 400 });
-		}
+async function deleteHandler(request: NextRequest) {
+	let recipeId: any;
+	
+	// Handle JSON parsing with proper error handling
+	try {
+		const body = await request.json();
+		recipeId = body.recipeId;
+	} catch (jsonError) {
+		return NextResponse.json(
+			{ success: false, error: 'Invalid JSON in request body', code: 'INVALID_JSON' },
+			{ status: 400 }
+		);
+	}
+
+	// Validate recipe ID
+	const validation = validateRecipeId(recipeId);
+	if (!validation.isValid) {
+		return NextResponse.json(validation.error, { status: 400 });
+	}
+
+	try {
 
 		// First, check if the recipe exists and get its filenames
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
-			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+			return NextResponse.json({ 
+				success: false, 
+				error: 'Recipe not found', 
+				code: 'RECIPE_NOT_FOUND' 
+			}, { status: 404 });
 		}
 
 		const recipe = recipeRows[0];
@@ -37,7 +76,10 @@ async function deleteHandler(request: NextRequest) {
 		if (planRows[0].count > 0) {
 			return NextResponse.json(
 				{
-					error: 'Cannot delete recipe: it is used in planned weeks. Remove it from all planned weeks first.',
+					success: false,
+					error: `Cannot delete recipe: it is used in ${planRows[0].count} planned weeks. Remove it from all planned weeks first.`,
+					code: 'PLANNED_WEEKS_EXIST',
+					count: planRows[0].count,
 				},
 				{ status: 400 }
 			);
@@ -67,8 +109,8 @@ async function deleteHandler(request: NextRequest) {
 				return NextResponse.json(
 					{
 						success: false,
-						message: 'Cannot delete recipe with existing shopping list history',
-						archived: false,
+						error: 'Cannot delete recipe with existing shopping list history',
+						code: 'SHOPPING_HISTORY_EXISTS',
 					},
 					{ status: 400 }
 				);
@@ -90,7 +132,9 @@ async function deleteHandler(request: NextRequest) {
 				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 				if (deleteResult.affectedRows === 0) {
-					throw new Error('Failed to delete recipe from database');
+					const error = new Error('Failed to delete recipe from database');
+					(error as any).code = 'DELETE_FAILED';
+					throw error;
 				}
 
 				// Now check for unused ingredients and delete them
@@ -134,8 +178,14 @@ async function deleteHandler(request: NextRequest) {
 				await connection.commit();
 
 				// Delete associated files after successful database deletion (with defensive cleanup)
-				const cleanupResult = await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
-				console.log(`File cleanup: ${cleanupResult}`);
+				let warning: string | undefined;
+				try {
+					const cleanupResult = await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
+					console.log(`File cleanup: ${cleanupResult}`);
+				} catch (cleanupError) {
+					warning = `File cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}`;
+					console.warn('File cleanup failed:', cleanupError);
+				}
 
 				let message = 'Recipe deleted successfully';
 				if (deletedIngredientsCount > 0) {
@@ -145,12 +195,15 @@ async function deleteHandler(request: NextRequest) {
 					}
 				}
 
-				return NextResponse.json({
+				const response = {
 					success: true,
 					message,
 					deletedIngredientsCount,
 					deletedIngredientNames,
-				});
+					...(warning && { warning })
+				};
+
+				return NextResponse.json(response);
 			}
 		} catch (dbError) {
 			// Rollback transaction on database error
@@ -161,9 +214,25 @@ async function deleteHandler(request: NextRequest) {
 			connection.release();
 		}
 	} catch (error) {
+		const errorCode = (error as any)?.code;
+		const errorMessage = error instanceof Error ? error.message : 'Failed to delete recipe';
+		let responseCode = 'SERVER_ERROR';
+		
+		if (errorCode === 'DELETE_FAILED') {
+			responseCode = 'DELETE_FAILED';
+		} else if (errorCode === 'DATABASE_ERROR' || 
+		           errorMessage.includes('Pool exhausted') || 
+		           errorMessage.includes('Database constraint violation') ||
+		           errorMessage.includes('Connection') ||
+		           errorMessage.includes('ECONNREFUSED')) {
+			responseCode = 'DATABASE_ERROR';
+		}
+		
 		return NextResponse.json(
 			{
-				error: error instanceof Error ? error.message : 'Failed to delete recipe',
+				success: false,
+				error: errorMessage,
+				code: responseCode,
 			},
 			{ status: 500 }
 		);
