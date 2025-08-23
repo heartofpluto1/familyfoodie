@@ -12,29 +12,35 @@ const originalPool = mysql.createPool({
 	socketPath: process.env.DB_INSTANCE_UNIX_SOCKET ? process.env.DB_INSTANCE_UNIX_SOCKET : undefined,
 });
 
-// Wrap pool to throw clearer database connection errors
-const pool = {
-	async execute(query, params) {
-		try {
-			return await originalPool.execute(query, params);
-		} catch (error) {
-			if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
-				throw new Error('DATABASE_CONNECTION_FAILED: Unable to connect to the database');
-			}
-			throw error;
+// Create a proxy to preserve all original pool methods and properties
+const pool = new Proxy(originalPool, {
+	get(target, prop) {
+		if (prop === 'execute') {
+			return async function (query, params) {
+				try {
+					return await target.execute(query, params);
+				} catch (error) {
+					if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+						throw new Error('DATABASE_CONNECTION_FAILED: Unable to connect to the database');
+					}
+					throw error;
+				}
+			};
 		}
+		if (prop === 'getConnection') {
+			return async function () {
+				try {
+					return await target.getConnection();
+				} catch (error) {
+					if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+						throw new Error('DATABASE_CONNECTION_FAILED: Unable to connect to the database');
+					}
+					throw error;
+				}
+			};
+		}
+		return target[prop];
 	},
-
-	async getConnection() {
-		try {
-			return await originalPool.getConnection();
-		} catch (error) {
-			if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
-				throw new Error('DATABASE_CONNECTION_FAILED: Unable to connect to the database');
-			}
-			throw error;
-		}
-	}
-};
+});
 
 export default pool;
