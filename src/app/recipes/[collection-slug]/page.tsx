@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import RecipesPageClient from '@/app/recipe/recipes-client';
+import CollectionRecipesClient from './collection-recipes-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
-import { getCollectionsForDisplay, getCollectionById } from '@/lib/queries/collections';
+import { getCollectionById } from '@/lib/queries/collections';
 import { parseSlugPath, generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import withAuth from '@/app/components/withAuth';
 
@@ -41,31 +41,25 @@ async function RecipesPage({ params }: RecipesPageProps) {
 
 	// If URL format is invalid, redirect to main recipes page
 	if (!parsed) {
-		redirect('/recipe');
+		redirect('/recipes');
 	}
 
-	const [recipes, collections, selectedCollection] = await Promise.all([
-		getAllRecipesWithDetails(parsed.id),
-		getCollectionsForDisplay(),
-		getCollectionById(parsed.id),
-	]);
+	const [recipes, collection] = await Promise.all([getAllRecipesWithDetails(parsed.id), getCollectionById(parsed.id)]);
 
 	// If collection not found, show 404
-	if (!selectedCollection) {
+	if (!collection) {
 		notFound();
 	}
 
 	// Optional: Redirect if slug doesn't match current url_slug (for SEO consistency)
-	const currentSlug = selectedCollection.url_slug
-		? generateSlugPath(selectedCollection.id, selectedCollection.url_slug)
-		: generateSlugFromTitle(selectedCollection.id, selectedCollection.title);
+	const currentSlug = collection.url_slug ? generateSlugPath(collection.id, collection.url_slug) : generateSlugFromTitle(collection.id, collection.title);
 	if (slug !== currentSlug) {
 		redirect(`/recipes/${currentSlug}`);
 	}
 
 	return (
 		<main className="container mx-auto px-4 py-8">
-			<RecipesPageClient recipes={recipes} collections={collections} selectedCollection={selectedCollection} />
+			<CollectionRecipesClient recipes={recipes} collection={collection} />
 		</main>
 	);
 }

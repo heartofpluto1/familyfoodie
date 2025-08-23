@@ -1,11 +1,11 @@
 'use client';
 
 import { RefreshIcon, DownloadIcon } from '@/app/components/Icons';
-import RecipeForm from '@/app/recipe/components/RecipeForm';
+import RecipeForm from '@/app/recipes/components/RecipeForm';
 import IngredientsPreviewTable from './IngredientsPreviewTable';
 import HeroImageCropper from './HeroImageCropper';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
-import { RecipeFormData } from '@/app/recipe/types';
+import { RecipeFormData } from '@/app/recipes/types';
 import { Collection } from '@/lib/queries/collections';
 import { RecipeOptions } from '../utils/recipeUtils';
 import { ImportedRecipe, Category, PreviewResponse } from '../types/importTypes';
@@ -15,7 +15,7 @@ interface RecipePreviewSectionProps {
 	recipeForm: RecipeFormData;
 	ingredients: RecipeIngredient[];
 	options: RecipeOptions | null;
-	collections: Collection[];
+	collection: Collection;
 	isProcessing: boolean;
 	processingStep: string;
 	rawApiResponse?: PreviewResponse | null; // Add raw API response for debugging
@@ -36,7 +36,7 @@ const RecipePreviewSection = ({
 	recipeForm,
 	ingredients,
 	options,
-	collections,
+	collection,
 	isProcessing,
 	processingStep,
 	heroImage,
@@ -95,7 +95,7 @@ const RecipePreviewSection = ({
 						formData={recipeForm}
 						onChange={onRecipeFormChange}
 						options={options}
-						collections={collections}
+						collection={collection}
 						isNewRecipe={true}
 						seasonReason={seasonReason}
 					/>

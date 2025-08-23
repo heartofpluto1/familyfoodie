@@ -8,22 +8,22 @@ import { useToast } from '@/app/components/ToastProvider';
 import Modal from '@/app/components/Modal';
 import ImageUploadWithCrop from './ImageUploadWithCrop';
 import PdfUpload from './PdfUpload';
-import RecipeForm from '@/app/recipe/components/RecipeForm';
+import RecipeForm from '@/app/recipes/components/RecipeForm';
 import RecipeView from './RecipeView';
 import IngredientsTable from './IngredientsTable';
-import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
+import { useRecipeOptions } from '@/app/recipes/hooks/useRecipeOptions';
 import { useIngredientApi } from '../hooks/useIngredientApi';
-import { RecipeFormData, NewIngredient } from '@/app/recipe/types';
+import { RecipeFormData, NewIngredient } from '@/app/recipes/types';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
-	collections?: Collection[];
+	collection?: Collection;
 }
 
 type EditMode = 'none' | 'details' | 'ingredients';
 
-const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
+const RecipeEditor = ({ recipe, collection }: RecipeEditorProps) => {
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
 	const ingredientApi = useIngredientApi();
@@ -414,7 +414,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 						<div className="px-4">
 							{editMode === 'details' ? (
 								<div className="pb-4">
-									<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
+									<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collection={collection} />
 								</div>
 							) : (
 								<RecipeView recipe={recipe} />
