@@ -877,7 +877,7 @@ describe('/api/recipe/update-ingredients', () => {
 							recipeId: 18,
 							ingredients: [
 								{
-									ingredientId: "invalid", // Should be number
+									ingredientId: 'invalid', // Should be number
 									quantity: '1 cup',
 									quantity4: '250ml',
 								},
