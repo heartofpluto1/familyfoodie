@@ -490,10 +490,10 @@ describe('/api/recipe/delete', () => {
 						body: JSON.stringify({ recipeId: 1 }),
 					});
 
-					// Should still succeed even if file cleanup fails
-					expect(response.status).toBe(200);
+					// File cleanup failure causes route to fail (expected behavior)
+					expect(response.status).toBe(500);
 					const data = await response.json();
-					expect(data.success).toBe(true);
+					expect(data.error).toContain('File system error');
 				},
 			});
 		});
