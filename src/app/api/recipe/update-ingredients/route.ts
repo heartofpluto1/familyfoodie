@@ -117,7 +117,6 @@ async function updateIngredientsHandler(request: NextRequest) {
 	} catch (error) {
 		// Rollback transaction on error
 		await connection.rollback();
-		console.error('Error updating recipe ingredients:', error);
 
 		// Check for foreign key constraint errors
 		if (error instanceof Error && error.message.includes('foreign key constraint fails')) {
