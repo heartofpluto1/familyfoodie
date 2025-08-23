@@ -4,6 +4,7 @@ import { ResultSetHeader } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 import { uploadFile, getStorageMode } from '@/lib/storage';
+import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 async function createCollectionHandler(request: NextRequest) {
 	try {
@@ -98,6 +99,11 @@ async function createCollectionHandler(request: NextRequest) {
 
 			collectionId = result.insertId;
 		}
+
+		// Generate and update the url_slug with full slug including ID prefix
+		// Database stores the complete slug like "42-italian-classics"  
+		const fullSlug = generateSlugFromTitle(collectionId, title);
+		await pool.execute(`UPDATE collections SET url_slug = ? WHERE id = ?`, [fullSlug, collectionId]);
 
 		return NextResponse.json({
 			success: true,

@@ -10,7 +10,6 @@ import { useToast } from '@/app/components/ToastProvider';
 import { EditIcon, TrashIcon } from '@/app/components/Icons';
 import RecipeList from '../components/RecipeList';
 import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
-import { generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 interface CollectionClientProps {
 	recipes: Recipe[];
@@ -21,10 +20,8 @@ interface CollectionClientProps {
 const CollectionClient = ({ recipes, collections, selectedCollection }: CollectionClientProps) => {
 	const { showToast } = useToast();
 
-	// Generate collection slug for import URL
-	const collectionSlug = selectedCollection.url_slug
-		? generateSlugPath(selectedCollection.id, selectedCollection.url_slug)
-		: generateSlugFromTitle(selectedCollection.id, selectedCollection.title);
+	// Use collection slug for import URL
+	const collectionSlug = selectedCollection.url_slug;
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);

@@ -3,21 +3,6 @@
  * Format: {id}-{slug} where ID is used for lookups and slug is for readability
  */
 
-/**
- * Generates a URL-safe slug path from an ID and url_slug
- * @param id - The numeric ID of the resource
- * @param urlSlug - The pre-generated URL slug from database
- * @returns A string in format "{id}-{slug}"
- * @example generateSlugPath(42, "italian-classics") => "42-italian-classics"
- */
-export function generateSlugPath(id: number, urlSlug: string): string {
-	// Use the pre-generated url_slug from database
-	// If urlSlug is empty or undefined, fallback to basic slug
-	if (!urlSlug || urlSlug.trim() === '') {
-		return `${id}-untitled`;
-	}
-	return `${id}-${urlSlug}`;
-}
 
 /**
  * Legacy function for generating slugs from titles (used for migration/fallback)
