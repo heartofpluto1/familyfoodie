@@ -33,6 +33,7 @@ jest.mock('@/lib/db.js', () => ({
 jest.mock('@/lib/storage', () => ({
 	uploadFile: jest.fn(),
 	getStorageMode: jest.fn(),
+	deleteFile: jest.fn(),
 }));
 
 // Mock the utils module
@@ -43,12 +44,13 @@ jest.mock('@/lib/utils/secureFilename', () => ({
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
-import { uploadFile, getStorageMode } from '@/lib/storage';
+import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 // Type assertions for mocked modules
 const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStorageMode>;
+const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
 const mockGetRecipeImageUrl = getRecipeImageUrl as jest.MockedFunction<typeof getRecipeImageUrl>;
 
 // Mock console methods
@@ -61,7 +63,15 @@ describe('/api/recipe/upload-image', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+
+		// Reset all storage mocks to default states
 		mockGetStorageMode.mockReturnValue('local');
+		mockUploadFile.mockReset();
+		mockDeleteFile.mockReset();
+		mockGetRecipeImageUrl.mockReset();
+
+		// Reset database mock
+		mockExecute.mockReset();
 	});
 
 	afterAll(() => {
@@ -199,6 +209,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
+						success: false,
 						error: 'Image file and recipe ID are required',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -224,6 +235,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
+						success: false,
 						error: 'Image file and recipe ID are required',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -250,6 +262,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
+						success: false,
 						error: 'Only JPEG, PNG, and WebP images are allowed',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -276,6 +289,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
+						success: false,
 						error: 'File size must be less than 5MB',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -306,6 +320,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(404);
 					expect(json).toEqual({
+						success: false,
 						error: 'Recipe not found',
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -338,6 +353,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
+						success: false,
 						error: 'Storage service unavailable',
 					});
 				},
@@ -373,6 +389,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
+						success: false,
 						error: 'Failed to update recipe image filename',
 					});
 				},
@@ -466,6 +483,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
+						success: false,
 						error: 'Failed to upload image',
 					});
 					expect(mockConsoleError).toHaveBeenCalledWith('Error uploading image:', expect.any(Error));
@@ -493,6 +511,7 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
+						success: false,
 						error: 'Failed to upload image',
 					});
 				},
@@ -533,14 +552,141 @@ describe('/api/recipe/upload-image', () => {
 			});
 		});
 
-		it('handles non-numeric recipe IDs', async () => {
+		it('returns 400 for non-numeric recipe IDs', async () => {
 			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', 'abc');
 
-			// When parseInt returns NaN, it causes an error in the route
-			mockExecute.mockRejectedValueOnce(new Error('Invalid recipe ID'));
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						success: false,
+						error: 'Recipe ID must be a valid number',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+					expect(mockUploadFile).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 for negative recipe IDs', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '-1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						success: false,
+						error: 'Recipe ID must be a positive number',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+					expect(mockUploadFile).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('accepts exactly 5MB file size', async () => {
+			const exactlyFiveMB = createMockFile('test.jpg', 'image/jpeg', 5 * 1024 * 1024); // Exactly 5MB
+			const formData = new FormData();
+			formData.append('image', exactlyFiveMB);
+			formData.append('recipeId', '1');
+
+			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+			mockUploadFile.mockResolvedValue({
+				success: true,
+				url: '/uploads/recipe_1_123456.jpg',
+			});
+
+			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_1_123456.jpg');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+					expect(json.success).toBe(true);
+					expect(mockUploadFile).toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('indicates when replacing existing image vs new upload', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			mockExecute.mockResolvedValueOnce([[{ image_filename: 'existing.jpg', pdf_filename: null }]]);
+
+			mockUploadFile.mockResolvedValue({
+				success: true,
+				url: '/uploads/existing.jpg',
+			});
+
+			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/existing.jpg');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+					expect(json.success).toBe(true);
+					expect(json.message).toBe('Image replaced successfully');
+					expect(json.previousImage).toBe('existing.jpg');
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('cleans up uploaded file when database update fails', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Database update fails
+
+			mockUploadFile.mockResolvedValue({
+				success: true,
+				url: '/uploads/recipe_1_123456.jpg',
+				filename: 'recipe_1_123456.jpg',
+			});
+
+			// Setup deleteFile mock for this test
+			mockDeleteFile.mockResolvedValue(true);
 
 			await testApiHandler({
 				appHandler,
@@ -553,8 +699,41 @@ describe('/api/recipe/upload-image', () => {
 
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
-						error: 'Failed to upload image',
+						success: false,
+						error: 'Failed to update recipe image filename',
 					});
+					// Should attempt to cleanup the uploaded file
+					expect(mockDeleteFile).toHaveBeenCalledWith(expect.stringMatching(/^recipe_1_\d+$/), 'jpg');
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('validates file content matches MIME type', async () => {
+			// Create a file with PDF content but claiming to be JPEG
+			const pdfContent = '%PDF-1.4\n1 0 obj'; // PDF magic bytes
+			const mockFile = createMockFile('fake.jpg', 'image/jpeg', 1024, pdfContent);
+
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						success: false,
+						error: 'File content does not match declared MIME type',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});

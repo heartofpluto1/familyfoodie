@@ -169,9 +169,53 @@ export const createMockFormData = (data: Record<string, string | File>) => {
  * Create a mock File object for upload testing
  */
 export const createMockFile = (name = 'test.jpg', type = 'image/jpeg', size = 1024, content?: string): File => {
-	// Use provided content or generate content of the specified size
-	const fileContent = content ?? new Array(size).fill('x').join('');
-	const blob = new Blob([fileContent], { type });
+	let buffer: ArrayBuffer;
+
+	if (content !== undefined) {
+		// Convert string content to ArrayBuffer
+		const encoder = new TextEncoder();
+		buffer = encoder.encode(content).buffer;
+	} else {
+		// Generate content with proper magic bytes based on type
+		const uint8Array = new Uint8Array(size);
+
+		switch (type) {
+			case 'image/jpeg':
+			case 'image/jpg':
+				// JPEG magic bytes: FF D8
+				uint8Array[0] = 0xff;
+				uint8Array[1] = 0xd8;
+				break;
+			case 'image/png':
+				// PNG magic bytes: 89 50 4E 47
+				uint8Array[0] = 0x89;
+				uint8Array[1] = 0x50; // P
+				uint8Array[2] = 0x4e; // N
+				uint8Array[3] = 0x47; // G
+				break;
+			case 'image/webp':
+				// WebP magic bytes: RIFF + 4 byte size + WEBP
+				const riff = new TextEncoder().encode('RIFF');
+				const webp = new TextEncoder().encode('WEBP');
+				uint8Array.set(riff, 0);
+				uint8Array.set(webp, 8);
+				// Size bytes (4-7) can remain 0 for testing
+				break;
+			default:
+				// Default to JPEG for other types
+				uint8Array[0] = 0xff;
+				uint8Array[1] = 0xd8;
+		}
+
+		// Fill the rest with filler data if needed
+		for (let i = Math.max(8, type === 'image/webp' ? 12 : 2); i < size; i++) {
+			uint8Array[i] = 0x78; // 'x' character
+		}
+
+		buffer = uint8Array.buffer;
+	}
+
+	const blob = new Blob([buffer], { type });
 	return new File([blob], name, { type, lastModified: Date.now() });
 };
 
