@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getRecipeDetails } from '@/lib/queries/menus';
-import { getAllCollections } from '@/lib/queries/collections';
+import { getCollectionsForDisplay } from '@/lib/queries/collections';
 import { parseRecipeUrl, generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import withAuth from '@/app/components/withAuth';
 import RecipeDetailsClient from './recipe-details-client';
@@ -38,7 +38,7 @@ async function RecipeDetailsPage({ params }: PageProps) {
 		notFound();
 	}
 
-	const [recipe, collections] = await Promise.all([getRecipeDetails(parsed.recipeId.toString()), getAllCollections()]);
+	const [recipe, collections] = await Promise.all([getRecipeDetails(parsed.recipeId.toString()), getCollectionsForDisplay()]);
 
 	if (!recipe) {
 		notFound();

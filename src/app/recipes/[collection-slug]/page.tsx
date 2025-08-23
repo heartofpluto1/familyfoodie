@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import RecipesPageClient from '@/app/recipe/recipes-client';
+import CollectionClient from './collection-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
 import { getCollectionsForDisplay, getCollectionById } from '@/lib/queries/collections';
 import { parseSlugPath, generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
@@ -41,7 +41,7 @@ async function RecipesPage({ params }: RecipesPageProps) {
 
 	// If URL format is invalid, redirect to main recipes page
 	if (!parsed) {
-		redirect('/recipe');
+		redirect('/recipes');
 	}
 
 	const [recipes, collections, selectedCollection] = await Promise.all([
@@ -65,7 +65,7 @@ async function RecipesPage({ params }: RecipesPageProps) {
 
 	return (
 		<main className="container mx-auto px-4 py-8">
-			<RecipesPageClient recipes={recipes} collections={collections} selectedCollection={selectedCollection} />
+			<CollectionClient recipes={recipes} collections={collections} selectedCollection={selectedCollection} />
 		</main>
 	);
 }
