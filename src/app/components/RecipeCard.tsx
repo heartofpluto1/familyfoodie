@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import { SwapIcon, RemoveIcon, TimeIcon } from './Icons';
