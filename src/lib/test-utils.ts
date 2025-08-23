@@ -27,80 +27,41 @@ export const mockRegularUser: User = {
 	last_login: '2024-08-01T00:00:00Z',
 };
 
-// Standard mock inactive user
-export const mockInactiveUser: User = {
-	id: 3,
-	username: 'inactive',
-	first_name: 'Inactive',
-	last_name: 'User',
-	email: 'inactive@example.com',
-	is_admin: false,
-	is_active: false,
-	date_joined: '2024-01-01T00:00:00Z',
-	last_login: null,
-};
-
-/**
- * Helper to mock environment variables
- * Usage: const restoreEnv = mockEnv({ NODE_ENV: 'production' });
- */
-export const mockEnv = (env: Record<string, string | undefined>) => {
-	const originalEnv = process.env;
-	process.env = { ...originalEnv, ...env };
-	return () => {
-		process.env = originalEnv;
-	};
-};
-
-/**
- * Standard mock setup for authentication helpers
- * Used in beforeEach to reset all auth mocks
- */
-export const setupAuthMocks = () => {
-	const { requireAdminUser, getAuthenticatedUser } = jest.requireMock('@/lib/auth-helpers');
-	return {
-		mockRequireAdminUser: requireAdminUser as jest.MockedFunction<typeof requireAdminUser>,
-		mockGetAuthenticatedUser: getAuthenticatedUser as jest.MockedFunction<typeof getAuthenticatedUser>,
-	};
-};
-
-/**
- * Standard mock setup for database operations
- */
-export const setupDatabaseMocks = () => {
-	const mockPool = {
-		execute: jest.fn(),
-		end: jest.fn(),
-	};
-	return { mockPool };
-};
-
-/**
- * Mock database object with execute method for direct usage
- */
-export const mockDatabase = {
-	execute: jest.fn(),
-	end: jest.fn(),
-};
-
 /**
  * Clear all mocks - call this in beforeEach
  */
 export const clearAllMocks = () => {
 	jest.clearAllMocks();
-	mockDatabase.execute.mockClear();
 };
 
 /**
- * Standard mock setup for storage operations
+ * Standard auth middleware mock configuration
+ * Use this directly in jest.mock() calls via require
  */
-export const setupStorageMocks = () => {
-	const { uploadFile, deleteFile, getStorageMode } = jest.requireMock('@/lib/storage');
-	return {
-		mockUploadFile: uploadFile as jest.MockedFunction<typeof uploadFile>,
-		mockDeleteFile: deleteFile as jest.MockedFunction<typeof deleteFile>,
-		mockGetStorageMode: getStorageMode as jest.MockedFunction<typeof getStorageMode>,
-	};
+export const authMiddlewareMock = {
+	withAuth: (handler: (request: NextRequest, session: unknown) => Promise<Response>) => {
+		return async (request: NextRequest & { user?: unknown }) => {
+			// Check if user is set by requestPatcher
+			if (!request.user) {
+				return new Response(
+					JSON.stringify({
+						success: false,
+						error: 'Authentication required!!',
+					}),
+					{ status: 401, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			return handler(request, request.user);
+		};
+	},
+};
+
+/**
+ * Passthrough auth middleware mock configuration
+ * Used for admin routes that handle auth differently
+ */
+export const passthroughAuthMock = {
+	withAuth: (handler: (...args: unknown[]) => unknown) => handler,
 };
 
 /**
@@ -119,50 +80,6 @@ export const setupConsoleMocks = () => {
 			mockConsoleError.mockRestore();
 		},
 	};
-};
-
-/**
- * Standard Jest mock configuration for common modules
- * Use this at the top of test files
- */
-export const getStandardMocks = () => {
-	return {
-		authHelpers: () => ({
-			'@/lib/auth-helpers': {
-				requireAdminUser: jest.fn(),
-				getAuthenticatedUser: jest.fn(),
-			},
-		}),
-		authMiddleware: () => ({
-			'@/lib/auth-middleware': {
-				withAuth: (handler: (...args: unknown[]) => unknown) => handler,
-			},
-		}),
-		database: () => ({
-			'@/lib/db.js': {
-				execute: jest.fn(),
-				end: jest.fn(),
-			},
-		}),
-		storage: () => ({
-			'@/lib/storage': {
-				uploadFile: jest.fn(),
-				deleteFile: jest.fn(),
-				getStorageMode: jest.fn(),
-			},
-		}),
-	};
-};
-
-/**
- * Mock FormData for file upload testing
- */
-export const createMockFormData = (data: Record<string, string | File>) => {
-	const formData = new FormData();
-	Object.entries(data).forEach(([key, value]) => {
-		formData.append(key, value);
-	});
-	return formData;
 };
 
 /**
@@ -231,48 +148,6 @@ export const standardErrorScenarios = {
 };
 
 /**
- * Common HTTP status codes and their expected error responses
- */
-export const httpStatusTests = {
-	unauthorized: { status: 401, error: 'Authentication required!!' },
-	forbidden: { status: 403, error: 'Admin access required' },
-	badRequest: { status: 400 },
-	notFound: { status: 404 },
-	serverError: { status: 500 },
-};
-
-/**
- * Standard test data for different entity types
- */
-export const testData = {
-	recipe: {
-		id: 1,
-		name: 'Test Recipe',
-		collection_id: 1,
-		image_filename: 'recipe_1.jpg',
-		pdf_filename: 'recipe_1.pdf',
-	},
-	ingredient: {
-		id: 1,
-		name: 'Test Ingredient',
-		primaryType_id: 1,
-		secondaryType_id: 1,
-	},
-	collection: {
-		id: 1,
-		title: 'Test Collection',
-		subtitle: 'Test Subtitle',
-		filename: 'test_collection',
-	},
-	shoppingItem: {
-		id: 1,
-		ingredient_id: 1,
-		quantity: '2',
-		purchased: false,
-	},
-};
-
-/**
  * Request patcher for authenticated user requests
  * Use this with testApiHandler to simulate authenticated requests
  */
@@ -282,17 +157,72 @@ export const mockAuthenticatedUser = (req: NextRequest & { user?: User }) => {
 };
 
 /**
- * Request patcher for admin user requests
- */
-export const mockAdminUserPatcher = (req: NextRequest & { user?: User }) => {
-	req.user = mockAdminUser;
-	return req;
-};
-
-/**
  * Request patcher for non-authenticated requests
  */
 export const mockNonAuthenticatedUser = (req: NextRequest & { user?: User }) => {
 	req.user = undefined;
 	return req;
+};
+
+/**
+ * Standard database connection mock interface
+ * Use this type for consistent connection mocking across tests
+ */
+export interface MockConnection {
+	beginTransaction: jest.MockedFunction<() => Promise<void>>;
+	commit: jest.MockedFunction<() => Promise<void>>;
+	rollback: jest.MockedFunction<() => Promise<void>>;
+	release: jest.MockedFunction<() => void>;
+	execute: jest.MockedFunction<(sql: string, values?: unknown[]) => Promise<unknown>>;
+}
+
+/**
+ * Enhanced test data with more comprehensive scenarios
+ */
+export const enhancedTestData = {
+	recipes: {
+		valid: {
+			id: 1,
+			name: 'Test Recipe',
+			collection_id: 1,
+			image_filename: 'recipe_1.jpg',
+			pdf_filename: 'recipe_1.pdf',
+		},
+		withLongName: {
+			id: 2,
+			name: 'A'.repeat(255),
+			collection_id: 1,
+		},
+		withSpecialChars: {
+			id: 3,
+			name: 'Recipe with "quotes" & <tags>',
+			collection_id: 1,
+		},
+	},
+	ingredients: {
+		valid: {
+			id: 1,
+			ingredientId: 5,
+			quantity: '2 cups',
+			quantity4: '500ml',
+			measureId: 3,
+			preparationId: 2,
+		},
+		minimal: {
+			ingredientId: 20,
+			quantity: '1 pinch',
+			quantity4: '1g',
+		},
+		withSpecialChars: {
+			ingredientId: 35,
+			quantity: '1½ cups "chopped"',
+			quantity4: '375ml & <measured>',
+		},
+	},
+	databaseResults: {
+		successfulUpdate: [{ affectedRows: 1 }, []],
+		successfulInsert: [{ insertId: 123, affectedRows: 1 }, []],
+		successfulDelete: [{ affectedRows: 2 }, []],
+		noRowsAffected: [{ affectedRows: 0 }, []],
+	},
 };

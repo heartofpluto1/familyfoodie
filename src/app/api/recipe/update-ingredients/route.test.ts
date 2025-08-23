@@ -2,16 +2,7 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser } from '@/lib/test-utils';
-
-// Mock database connection
-interface MockConnection {
-	beginTransaction: jest.MockedFunction<() => Promise<void>>;
-	commit: jest.MockedFunction<() => Promise<void>>;
-	rollback: jest.MockedFunction<() => Promise<void>>;
-	release: jest.MockedFunction<() => void>;
-	execute: jest.MockedFunction<(sql: string, values?: unknown[]) => Promise<unknown>>;
-}
+import { mockAuthenticatedUser, mockNonAuthenticatedUser, MockConnection } from '@/lib/test-utils';
 
 // Mock the database
 jest.mock('@/lib/db.js', () => ({
@@ -19,23 +10,8 @@ jest.mock('@/lib/db.js', () => ({
 	getConnection: jest.fn(),
 }));
 // Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: (handler: (request: unknown, session: unknown) => Promise<unknown>) => {
-		return async (request: { user?: unknown }) => {
-			// Check if user is set by requestPatcher
-			if (!request.user) {
-				return new Response(
-					JSON.stringify({
-						success: false,
-						error: 'Authentication required!!',
-					}),
-					{ status: 401, headers: { 'Content-Type': 'application/json' } }
-				);
-			}
-			return handler(request, request.user);
-		};
-	},
-}));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
 
 // Get the mocked functions
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);

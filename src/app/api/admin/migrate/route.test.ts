@@ -4,6 +4,7 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
+import { setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
 
 // Mock the authentication modules
 jest.mock('@/lib/auth-helpers', () => ({
@@ -11,9 +12,8 @@ jest.mock('@/lib/auth-helpers', () => ({
 }));
 
 // Mock the auth middleware to pass through for testing
-jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: (handler: (...args: unknown[]) => unknown) => handler,
-}));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').passthroughAuthMock);
 
 // Mock the migration system
 jest.mock('../../../../../migrations/run-migrations.mjs', () => ({
@@ -21,9 +21,7 @@ jest.mock('../../../../../migrations/run-migrations.mjs', () => ({
 	default: jest.fn(),
 }));
 
-// Mock console methods to verify logging
-const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation();
+// Console mocking will be handled by setupConsoleMocks
 
 // Type assertions for mocked modules
 const mockRequireAdminUser = requireAdminUser as jest.MockedFunction<typeof requireAdminUser>;
@@ -48,15 +46,15 @@ const mockAdminUser = {
 };
 
 describe('/api/admin/migrate', () => {
+	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
+
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockConsoleLog.mockClear();
-		mockConsoleError.mockClear();
+		consoleMocks = setupConsoleMocks();
 	});
 
 	afterAll(() => {
-		mockConsoleLog.mockRestore();
-		mockConsoleError.mockRestore();
+		consoleMocks.cleanup();
 	});
 
 	describe('GET /api/admin/migrate', () => {
@@ -97,7 +95,7 @@ describe('/api/admin/migrate', () => {
 		});
 
 		it('handles authentication errors gracefully', async () => {
-			mockRequireAdminUser.mockRejectedValue(new Error('Database connection failed'));
+			mockRequireAdminUser.mockRejectedValue(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
 				appHandler,
@@ -133,7 +131,7 @@ describe('/api/admin/migrate', () => {
 							message: 'Successfully ran 3 migration(s)',
 							migrationsRun: 3,
 						});
-						expect(mockConsoleLog).toHaveBeenCalledWith('Starting migrations via API...');
+						expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Starting migrations via API...');
 					},
 				});
 			} finally {
@@ -283,7 +281,7 @@ describe('/api/admin/migrate', () => {
 		it('handles migration execution failures', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
 			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
-			mockRunMigrations.mockRejectedValue(new Error('Migration table creation failed'));
+			mockRunMigrations.mockRejectedValue(standardErrorScenarios.databaseError);
 
 			try {
 				await testApiHandler({
@@ -295,9 +293,9 @@ describe('/api/admin/migrate', () => {
 						expect(response.status).toBe(500);
 						expect(json).toEqual({
 							error: 'Migration failed',
-							details: 'Migration table creation failed',
+							details: 'Database connection failed',
 						});
-						expect(mockConsoleError).toHaveBeenCalledWith('Migration API error:', expect.any(Error));
+						expect(consoleMocks.mockConsoleError).toHaveBeenCalledWith('Migration API error:', expect.any(Error));
 					},
 				});
 			} finally {

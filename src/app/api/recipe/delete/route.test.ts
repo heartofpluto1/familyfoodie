@@ -2,47 +2,21 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser } from '@/lib/test-utils';
-import type { NextRequest } from 'next/server';
+import { mockAuthenticatedUser, mockNonAuthenticatedUser, MockConnection } from '@/lib/test-utils';
 
-// Mock database connection
-interface MockConnection {
-	beginTransaction: jest.MockedFunction<() => Promise<void>>;
-	commit: jest.MockedFunction<() => Promise<void>>;
-	rollback: jest.MockedFunction<() => Promise<void>>;
-	release: jest.MockedFunction<() => void>;
-	execute: jest.MockedFunction<(sql: string, values?: unknown[]) => Promise<unknown>>;
-}
-
-let mockConnection: MockConnection;
-
-// Mock the database pool
+// Setup standard mocks
 jest.mock('@/lib/db.js', () => ({
 	execute: jest.fn(),
 	getConnection: jest.fn(),
-}));
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: (handler: (request: NextRequest, session: unknown) => Promise<Response>) => {
-		return async (request: NextRequest & { user?: unknown }) => {
-			// Check if user is set by requestPatcher
-			if (!request.user) {
-				return new Response(
-					JSON.stringify({
-						success: false,
-						error: 'Authentication required!!',
-					}),
-					{ status: 401, headers: { 'Content-Type': 'application/json' } }
-				);
-			}
-			return handler(request, request.user);
-		};
-	},
+	end: jest.fn(),
 }));
 
-// Mock the file cleanup utility
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+
 jest.mock('@/lib/utils/secureFilename.server', () => ({
 	cleanupRecipeFiles: jest.fn(),
+	findAndDeleteHashFiles: jest.fn(),
 }));
 
 // Get the mocked functions
@@ -51,10 +25,10 @@ const mockGetConnection = jest.mocked(jest.requireMock('@/lib/db.js').getConnect
 const mockCleanupRecipeFiles = jest.mocked(jest.requireMock('@/lib/utils/secureFilename.server').cleanupRecipeFiles);
 
 describe('/api/recipe/delete', () => {
+	let mockConnection: MockConnection;
+
 	beforeEach(() => {
-		mockExecute.mockClear();
-		mockGetConnection.mockClear();
-		mockCleanupRecipeFiles.mockClear();
+		jest.clearAllMocks();
 
 		// Setup mock connection object
 		mockConnection = {
@@ -533,7 +507,7 @@ describe('/api/recipe/delete', () => {
 				[{ affectedRows: 1 }, []], // Delete recipe
 			];
 
-			mockConnection.execute = jest.fn().mockImplementation(async (sql, params) => {
+			mockConnection.execute = jest.fn().mockImplementation(async () => {
 				const response = responses[callCount++];
 				return response;
 			});

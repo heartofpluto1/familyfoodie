@@ -2,7 +2,7 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks } from '@/lib/test-utils';
+import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -13,29 +13,21 @@ jest.mock('@/lib/db.js', () => ({
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 // Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: (handler: (request: unknown, session: unknown) => Promise<unknown>) => {
-		return async (request: { user?: unknown }) => {
-			// Check if user is set by requestPatcher
-			if (!request.user) {
-				return new Response(
-					JSON.stringify({
-						success: false,
-						error: 'Authentication required!!',
-					}),
-					{ status: 401, headers: { 'Content-Type': 'application/json' } }
-				);
-			}
-			return handler(request, request.user);
-		};
-	},
-}));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
 
 // Already defined above as mockExecute
 
 describe('/api/recipe/update-details', () => {
+	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
+
 	beforeEach(() => {
 		clearAllMocks();
+		consoleMocks = setupConsoleMocks();
+	});
+
+	afterAll(() => {
+		consoleMocks.cleanup();
 	});
 
 	describe('PUT /api/recipe/update-details', () => {
@@ -272,7 +264,7 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should return 500 on database error', async () => {
-			mockExecute.mockRejectedValueOnce(new Error('Database constraint violation'));
+			mockExecute.mockRejectedValueOnce(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
 				appHandler,

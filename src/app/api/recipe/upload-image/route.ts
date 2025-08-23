@@ -155,7 +155,7 @@ async function postHandler(request: NextRequest) {
 			success: true,
 			message,
 			filename: uploadFilename,
-			url: uploadResult.url,
+			url: uploadResult.url!,
 			imageUrl,
 			storageMode: getStorageMode(),
 			...(isReplacement && { previousImage: currentImageFilename }),
