@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getRecipeDetails } from '@/lib/queries/menus';
 import { getCollectionsForDisplay } from '@/lib/queries/collections';
-import { parseRecipeUrl, generateSlugPath, generateSlugFromTitle } from '@/lib/utils/urlHelpers';
+import { parseRecipeUrl } from '@/lib/utils/urlHelpers';
 import withAuth from '@/app/components/withAuth';
 import RecipeDetailsClient from './recipe-details-client';
 
@@ -47,20 +47,12 @@ async function RecipeDetailsPage({ params }: PageProps) {
 	// Validate that recipe belongs to the specified collection
 	if (recipe.collection_id !== parsed.collectionId) {
 		// Recipe exists but doesn't belong to this collection - redirect to correct collection
-		const correctCollectionSlug = recipe.collection_url_slug
-			? generateSlugPath(recipe.collection_id, recipe.collection_url_slug)
-			: generateSlugFromTitle(recipe.collection_id, recipe.collection_title);
-		const correctRecipeSlug = recipe.url_slug ? generateSlugPath(recipe.id, recipe.url_slug) : generateSlugFromTitle(recipe.id, recipe.name);
-		redirect(`/recipes/${correctCollectionSlug}/${correctRecipeSlug}`);
+		redirect(`/recipes/${recipe.collection_url_slug}/${recipe.url_slug}`);
 	}
 
 	// Optional: Redirect if slugs don't match current url_slugs (for SEO consistency)
-	const currentCollectionSlug = recipe.collection_url_slug
-		? generateSlugPath(recipe.collection_id, recipe.collection_url_slug)
-		: generateSlugFromTitle(recipe.collection_id, recipe.collection_title);
-	const currentRecipeSlug = recipe.url_slug ? generateSlugPath(recipe.id, recipe.url_slug) : generateSlugFromTitle(recipe.id, recipe.name);
-	if (collectionSlug !== currentCollectionSlug || recipeSlug !== currentRecipeSlug) {
-		redirect(`/recipes/${currentCollectionSlug}/${currentRecipeSlug}`);
+	if (collectionSlug !== recipe.collection_url_slug || recipeSlug !== recipe.url_slug) {
+		redirect(`/recipes/${recipe.collection_url_slug}/${recipe.url_slug}`);
 	}
 
 	return <RecipeDetailsClient recipe={recipe} collections={collections} />;
