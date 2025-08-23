@@ -215,11 +215,17 @@ describe('Database Pool Configuration', () => {
 			expect(mysql.createPool).toHaveBeenCalledTimes(1);
 		});
 
-		it('exports default pool instance', async () => {
+		it('exports wrapped pool with original functionality', async () => {
 			const dbModule = await import('./db.js');
 			const mockPool = mysql.createPool.mock.results[0].value;
 
-			expect(dbModule.default).toBe(mockPool);
+			// The exported pool should be a Proxy wrapper, not the original pool
+			expect(dbModule.default).not.toBe(mockPool);
+			
+			// But it should still have the essential pool methods
+			expect(typeof dbModule.default.execute).toBe('function');
+			expect(typeof dbModule.default.getConnection).toBe('function');
+			expect(typeof dbModule.default.end).toBe('function');
 		});
 	});
 });
