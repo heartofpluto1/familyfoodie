@@ -138,7 +138,11 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 			)}
 
 			<Suspense fallback={<div>Loading recipes...</div>}>
-				<RecipeList recipes={recipes} collections={collections} collectionSlug={collectionSlug} />
+				{selectedCollection && collectionSlug ? (
+					<RecipeList recipes={recipes} collections={collections} collectionSlug={collectionSlug} />
+				) : (
+					<div>Loading collection...</div>
+				)}
 			</Suspense>
 
 			{/* Delete Confirmation Dialog */}

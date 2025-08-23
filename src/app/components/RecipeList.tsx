@@ -12,7 +12,7 @@ import { SparklesIcon } from './Icons';
 interface RecipeListProps {
 	recipes: Recipe[];
 	collections: Collection[];
-	collectionSlug?: string | null;
+	collectionSlug: string;
 }
 
 const RecipeList = ({ recipes, collectionSlug }: RecipeListProps) => {
@@ -63,7 +63,7 @@ const RecipeList = ({ recipes, collectionSlug }: RecipeListProps) => {
 			<div className="mb-6 flex items-start justify-between gap-4">
 				<div className="flex gap-3 flex-shrink-0">
 					<Link
-						href={collectionSlug ? `/recipes/${collectionSlug}/import` : '/recipe/import'}
+						href={`/recipes/${collectionSlug}/import`}
 						className="inline-flex items-center bg-blue-600 hover:bg-blue-700 gap-2 px-4 py-2 text-white rounded-sm transition-colors shadow-md hover:shadow-lg"
 					>
 						<SparklesIcon className="w-4 h-4" />
