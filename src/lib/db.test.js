@@ -221,7 +221,7 @@ describe('Database Pool Configuration', () => {
 
 			// The exported pool should be a Proxy wrapper, not the original pool
 			expect(dbModule.default).not.toBe(mockPool);
-			
+
 			// But it should still have the essential pool methods
 			expect(typeof dbModule.default.execute).toBe('function');
 			expect(typeof dbModule.default.getConnection).toBe('function');

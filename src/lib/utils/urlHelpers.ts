@@ -3,7 +3,6 @@
  * Format: {id}-{slug} where ID is used for lookups and slug is for readability
  */
 
-
 /**
  * Legacy function for generating slugs from titles (used for migration/fallback)
  * @param id - The numeric ID of the resource
