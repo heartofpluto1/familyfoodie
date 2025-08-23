@@ -48,10 +48,7 @@ const AIRecipeImportClient = ({ collection }: AIRecipeImportClientProps) => {
 		<>
 			<main className="container mx-auto px-4 py-8">
 				<div className="mb-8">
-					<HeaderPage
-						title={`Import Recipe to ${collection.title}`}
-						subtitle="Upload a recipe PDF or JPG and let AI extract the recipe data automatically"
-					/>
+					<HeaderPage title={`Import Recipe to ${collection.title}`} subtitle="Upload a recipe PDF and let AI extract the recipe data automatically" />
 				</div>
 
 				<div className={showPreview ? 'w-full' : 'max-w-4xl mx-auto'}>
