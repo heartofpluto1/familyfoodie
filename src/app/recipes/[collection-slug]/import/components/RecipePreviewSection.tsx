@@ -36,7 +36,6 @@ const RecipePreviewSection = ({
 	recipeForm,
 	ingredients,
 	options,
-	collection,
 	isProcessing,
 	processingStep,
 	heroImage,
@@ -91,14 +90,7 @@ const RecipePreviewSection = ({
 				) : null}
 
 				<div className="p-6 space-y-4">
-					<RecipeForm
-						formData={recipeForm}
-						onChange={onRecipeFormChange}
-						options={options}
-						collection={collection}
-						isNewRecipe={true}
-						seasonReason={seasonReason}
-					/>
+					<RecipeForm formData={recipeForm} onChange={onRecipeFormChange} options={options} isNewRecipe={true} seasonReason={seasonReason} />
 				</div>
 			</div>
 

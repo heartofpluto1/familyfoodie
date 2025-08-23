@@ -11,11 +11,10 @@ import { useToast } from '@/app/components/ToastProvider';
 
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;
-	collection: Collection;
 	collections: Collection[];
 }
 
-const RecipeDetailsClient = ({ recipe, collection, collections }: RecipeDetailsClientProps) => {
+const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) => {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const [backLink, setBackLink] = useState<{ href: string; label: string } | null>(null);
@@ -150,7 +149,7 @@ const RecipeDetailsClient = ({ recipe, collection, collections }: RecipeDetailsC
 				</div>
 
 				{/* Recipe Editor handles both view and edit modes internally */}
-				<RecipeEditor recipe={recipe} collection={collection} collections={collections} />
+				<RecipeEditor recipe={recipe} collections={collections} />
 			</main>
 
 			{/* Delete Confirmation Dialog */}

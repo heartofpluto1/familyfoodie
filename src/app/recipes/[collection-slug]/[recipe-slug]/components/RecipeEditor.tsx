@@ -18,13 +18,12 @@ import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
-	collection?: Collection;
 	collections: Collection[];
 }
 
 type EditMode = 'none' | 'details' | 'ingredients';
 
-const RecipeEditor = ({ recipe, collection, collections }: RecipeEditorProps) => {
+const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
 	const ingredientApi = useIngredientApi();
@@ -415,7 +414,7 @@ const RecipeEditor = ({ recipe, collection, collections }: RecipeEditorProps) =>
 						<div className="px-4">
 							{editMode === 'details' ? (
 								<div className="pb-4">
-									<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collection={collection} collections={collections} />
+									<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
 								</div>
 							) : (
 								<RecipeView recipe={recipe} />
