@@ -5,16 +5,17 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
-import RecipeCard from './RecipeCard';
-import RecipeSearch from './RecipeSearch';
-import { SparklesIcon } from './Icons';
+import RecipeCard from '@/app/components/RecipeCard';
+import RecipeSearch from '@/app/components/RecipeSearch';
+import { SparklesIcon } from '@/app/components/Icons';
 
 interface RecipeListProps {
 	recipes: Recipe[];
 	collections: Collection[];
+	collectionSlug: string;
 }
 
-const RecipeList = ({ recipes }: RecipeListProps) => {
+const RecipeList = ({ recipes, collectionSlug }: RecipeListProps) => {
 	const searchParams = useSearchParams();
 	const [searchTerm, setSearchTerm] = useState('');
 
@@ -62,7 +63,7 @@ const RecipeList = ({ recipes }: RecipeListProps) => {
 			<div className="mb-6 flex items-start justify-between gap-4">
 				<div className="flex gap-3 flex-shrink-0">
 					<Link
-						href="/recipe/import"
+						href={`/recipes/${collectionSlug}/import`}
 						className="inline-flex items-center bg-blue-600 hover:bg-blue-700 gap-2 px-4 py-2 text-white rounded-sm transition-colors shadow-md hover:shadow-lg"
 					>
 						<SparklesIcon className="w-4 h-4" />

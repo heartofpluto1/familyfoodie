@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
-import { RecipeFormData } from '@/app/recipe/types';
+import { RecipeFormData } from '@/app/recipes/types';
 import { ImportedRecipe, PreviewResponse, Category } from '../types/importTypes';
 import { findMeasureByUnit, RecipeOptions } from '../utils/recipeUtils';
 import { convertPdfToImages } from '../utils/pdfToImages';
@@ -12,7 +12,7 @@ import { extractHeroImageFromPdf } from '../utils/extractHeroImage';
 
 type ToastType = 'error' | 'info' | 'success' | 'warning';
 
-export const useAiImport = (options: RecipeOptions | null, collections: Collection[], showToast: (type: ToastType, title: string, message: string) => void) => {
+export const useAiImport = (options: RecipeOptions | null, collection: Collection, showToast: (type: ToastType, title: string, message: string) => void) => {
 	const router = useRouter();
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -37,7 +37,7 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 		seasonId: undefined,
 		primaryTypeId: undefined,
 		secondaryTypeId: undefined,
-		collectionId: collections.length > 0 ? collections[0].id : 1, // Default to collection ID 1 if none available
+		collectionId: collection.id,
 	});
 	const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
 
@@ -61,7 +61,7 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 			seasonId: undefined,
 			primaryTypeId: undefined,
 			secondaryTypeId: undefined,
-			collectionId: collections.length > 0 ? collections[0].id : 1, // Default to collection ID 1 if none available
+			collectionId: collection.id,
 		});
 		setIngredients([]);
 	};
@@ -205,8 +205,8 @@ export const useAiImport = (options: RecipeOptions | null, collections: Collecti
 				seasonName: importedRecipe.cuisine,
 				primaryTypeName: undefined,
 				secondaryTypeName: undefined,
-				collection_id: importedRecipe.selectedCollection?.id || collections[0]?.id || 0,
-				collection_title: importedRecipe.selectedCollection?.title || collections[0]?.title || 'Default',
+				collection_id: collection.id,
+				collection_title: collection.title,
 				url_slug: 'preview-recipe',
 				collection_url_slug: 'default-collection',
 				ingredients: convertedIngredients,

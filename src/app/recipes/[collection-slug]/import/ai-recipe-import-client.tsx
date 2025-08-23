@@ -2,17 +2,17 @@
 
 import HeaderPage from '@/app/components/HeaderPage';
 import { useToast } from '@/app/components/ToastProvider';
-import { useRecipeOptions } from '@/app/recipe/hooks/useRecipeOptions';
+import { useRecipeOptions } from '@/app/recipes/hooks/useRecipeOptions';
 import { Collection } from '@/lib/queries/collections';
 import PdfUploadSection from './components/PdfUploadSection';
 import RecipePreviewSection from './components/RecipePreviewSection';
 import { useAiImport } from './hooks/useAiImport';
 
 interface AIRecipeImportClientProps {
-	collections: Collection[];
+	collection: Collection;
 }
 
-const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
+const AIRecipeImportClient = ({ collection }: AIRecipeImportClientProps) => {
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
 
@@ -38,7 +38,7 @@ const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 		setRecipeForm,
 		setIngredients,
 		handleHeroImageCropChange,
-	} = useAiImport(options, collections, showToast);
+	} = useAiImport(options, collection, showToast);
 
 	const handleFileValidationError = (title: string, message: string) => {
 		showToast('error', title, message);
@@ -48,7 +48,7 @@ const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 		<>
 			<main className="container mx-auto px-4 py-8">
 				<div className="mb-8">
-					<HeaderPage title="Import Recipe" subtitle="Upload a recipe PDF or JPG and let AI extract the recipe data automatically" />
+					<HeaderPage title={`Import Recipe to ${collection.title}`} subtitle="Upload a recipe PDF and let AI extract the recipe data automatically" />
 				</div>
 
 				<div className={showPreview ? 'w-full' : 'max-w-4xl mx-auto'}>
@@ -72,7 +72,7 @@ const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 							recipeForm={recipeForm}
 							ingredients={ingredients}
 							options={options}
-							collections={collections}
+							collection={collection}
 							isProcessing={isProcessing}
 							processingStep={processingStep}
 							rawApiResponse={rawApiResponse}
@@ -95,7 +95,7 @@ const AIRecipeImportClient = ({ collections }: AIRecipeImportClientProps) => {
 						<div className="text-center py-8">
 							<p className="text-gray-600 dark:text-gray-400">Unable to extract recipe data from this file.</p>
 							<button onClick={resetState} className="btn-default mt-4 px-4 py-2 rounded-sm">
-								Try Another File
+								Try Another PDF
 							</button>
 						</div>
 					)}
