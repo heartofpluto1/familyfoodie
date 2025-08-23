@@ -6,7 +6,7 @@ export interface Collection {
 	subtitle: string | null;
 	filename: string | null;
 	filename_dark: string | null;
-	url_slug: string | null;
+	url_slug: string;
 	created_at: Date;
 	updated_at: Date;
 	recipe_count?: number;
