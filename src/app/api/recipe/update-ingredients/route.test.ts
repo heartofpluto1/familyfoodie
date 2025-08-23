@@ -101,6 +101,12 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 2,
+							added: 0,
+							deleted: 0,
+						},
+						ingredientsCount: 2,
 					});
 
 					// Verify transaction handling
@@ -162,6 +168,12 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 2,
+							deleted: 0,
+						},
+						ingredientsCount: 2,
 					});
 
 					// Verify insert calls
@@ -212,6 +224,12 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 0,
+							deleted: 2,
+						},
+						ingredientsCount: 0,
 					});
 
 					// Verify delete call
@@ -260,6 +278,12 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 1,
+							added: 1,
+							deleted: 1,
+						},
+						ingredientsCount: 2,
 					});
 
 					// Verify all operations
@@ -339,6 +363,12 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 0,
+							deleted: 0,
+						},
+						ingredientsCount: 0,
 					});
 
 					// Verify transaction handling even with no operations
@@ -460,9 +490,9 @@ describe('/api/recipe/update-ingredients', () => {
 						body: 'invalid-json',
 					});
 
-					expect(response.status).toBe(500);
+					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Failed to update recipe ingredients');
+					expect(data.error).toBe('Invalid JSON payload');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -490,6 +520,17 @@ describe('/api/recipe/update-ingredients', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 0,
+							deleted: 50,
+						},
+						ingredientsCount: 0,
+					});
 
 					// Verify correct number of placeholders in delete query
 					const expectedQuery = `DELETE FROM recipe_ingredients WHERE recipe_id = ? AND id IN (${manyDeletedIds.map(() => '?').join(',')})`;
@@ -525,6 +566,17 @@ describe('/api/recipe/update-ingredients', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 1,
+							deleted: 0,
+						},
+						ingredientsCount: 1,
+					});
 
 					// Verify all fields are passed correctly
 					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [
@@ -565,6 +617,17 @@ describe('/api/recipe/update-ingredients', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 1,
+							deleted: 0,
+						},
+						ingredientsCount: 1,
+					});
 
 					// Verify optional fields are null
 					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [
@@ -608,6 +671,17 @@ describe('/api/recipe/update-ingredients', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 1,
+							added: 0,
+							deleted: 0,
+						},
+						ingredientsCount: 1,
+					});
 
 					// Verify zero and negative values are passed through (0 measureId becomes null due to || null logic)
 					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipe_ingredients'), [25, '0', '0ml', null, -1, 50, 12]);
@@ -643,6 +717,17 @@ describe('/api/recipe/update-ingredients', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 1,
+							deleted: 0,
+						},
+						ingredientsCount: 1,
+					});
 
 					// Verify long strings are passed through
 					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [
@@ -686,6 +771,17 @@ describe('/api/recipe/update-ingredients', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe ingredients updated successfully',
+						operations: {
+							updated: 0,
+							added: 1,
+							deleted: 0,
+						},
+						ingredientsCount: 1,
+					});
 
 					// Verify special characters are preserved
 					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [
@@ -697,6 +793,101 @@ describe('/api/recipe/update-ingredients', () => {
 						null,
 						0,
 					]);
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 for invalid ingredientId values', async () => {
+			// Mock foreign key constraint error
+			mockConnection.execute.mockRejectedValueOnce(new Error('Cannot add or update a child row: a foreign key constraint fails'));
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 16,
+							ingredients: [
+								{
+									ingredientId: 999999, // Non-existent ingredient ID
+									quantity: '1 cup',
+									quantity4: '250ml',
+								},
+							],
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Invalid ingredient ID provided');
+
+					// Verify rollback was called
+					expect(mockConnection.beginTransaction).toHaveBeenCalled();
+					expect(mockConnection.rollback).toHaveBeenCalled();
+					expect(mockConnection.release).toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 for missing required ingredient fields', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 17,
+							ingredients: [
+								{
+									// Missing ingredientId
+									quantity: '1 cup',
+									quantity4: '250ml',
+								},
+							],
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Ingredient ID is required for all ingredients');
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 for malformed ingredient data structures', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 18,
+							ingredients: [
+								{
+									ingredientId: "invalid", // Should be number
+									quantity: '1 cup',
+									quantity4: '250ml',
+								},
+							],
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Invalid ingredient data format');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
