@@ -67,8 +67,8 @@ export function getCollectionFileUrl(filename: string | null, extension: 'jpg' |
 		return '';
 	}
 
-	// Check if the file appears to be migrated (32 char hex string)
-	const isMigrated = /^[a-f0-9]{32}$/.test(filename);
+	// Check if the file appears to be migrated (32 char hex string, optionally with _dark suffix)
+	const isMigrated = /^[a-f0-9]{32}(?:_dark)?$/.test(filename);
 
 	if (isGCSProduction && bucketName && isMigrated) {
 		// Production with GCS and migrated file - use GCS URL
