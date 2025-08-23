@@ -38,8 +38,7 @@ async function updateDetailsHandler(request: NextRequest) {
 		}
 
 		return NextResponse.json({ success: true, message: 'Recipe details updated successfully' });
-	} catch (error) {
-		console.error('Error updating recipe details:', error);
+	} catch {
 		return NextResponse.json({ error: 'Failed to update recipe details' }, { status: 500 });
 	}
 }

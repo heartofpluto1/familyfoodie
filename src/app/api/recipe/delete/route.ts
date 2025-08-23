@@ -161,7 +161,6 @@ async function deleteHandler(request: NextRequest) {
 			connection.release();
 		}
 	} catch (error) {
-		console.error('Error deleting recipe:', error);
 		return NextResponse.json(
 			{
 				error: error instanceof Error ? error.message : 'Failed to delete recipe',

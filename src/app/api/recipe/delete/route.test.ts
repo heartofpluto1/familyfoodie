@@ -534,9 +534,7 @@ describe('/api/recipe/delete', () => {
 			];
 
 			mockConnection.execute = jest.fn().mockImplementation(async (sql, params) => {
-				console.log(`Mock call ${callCount}: ${sql} with params:`, params);
 				const response = responses[callCount++];
-				console.log(`Returning:`, response);
 				return response;
 			});
 
