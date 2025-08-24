@@ -2,7 +2,7 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, MockConnection } from '@/lib/test-utils';
+import { mockAuthenticatedUser, mockNonAuthenticatedUser, MockConnection, setupConsoleMocks } from '@/lib/test-utils';
 
 // Mock the database
 jest.mock('@/lib/db.js', () => ({
@@ -19,10 +19,12 @@ const mockGetConnection = jest.mocked(jest.requireMock('@/lib/db.js').getConnect
 
 describe('/api/recipe/update-ingredients', () => {
 	let mockConnection: MockConnection;
+	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
 
 	beforeEach(() => {
 		mockExecute.mockClear();
 		mockGetConnection.mockClear();
+		consoleMocks = setupConsoleMocks();
 
 		// Setup mock connection object
 		mockConnection = {
@@ -34,6 +36,10 @@ describe('/api/recipe/update-ingredients', () => {
 		};
 
 		mockGetConnection.mockResolvedValue(mockConnection);
+	});
+
+	afterAll(() => {
+		consoleMocks.cleanup();
 	});
 
 	describe('PUT /api/recipe/update-ingredients', () => {

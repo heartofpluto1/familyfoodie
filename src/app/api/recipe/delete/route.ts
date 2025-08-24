@@ -179,11 +179,9 @@ async function deleteHandler(request: NextRequest) {
 				// Delete associated files after successful database deletion (with defensive cleanup)
 				let warning: string | undefined;
 				try {
-					const cleanupResult = await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
-					console.log(`File cleanup: ${cleanupResult}`);
+					await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
 				} catch (cleanupError) {
 					warning = `File cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}`;
-					console.warn('File cleanup failed:', cleanupError);
 				}
 
 				let message = 'Recipe deleted successfully';
