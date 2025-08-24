@@ -30,6 +30,8 @@ export default function MigrationsClient() {
 	const [error, setError] = useState<string | null>(null);
 	const [isRunning, setIsRunning] = useState(false);
 	const [showRunConfirm, setShowRunConfirm] = useState(false);
+	const [retryCount, setRetryCount] = useState(0);
+	const [retryTimeout, setRetryTimeout] = useState<NodeJS.Timeout | null>(null);
 
 	const fetchStatus = useCallback(async () => {
 		try {
@@ -56,7 +58,7 @@ export default function MigrationsClient() {
 		setShowRunConfirm(true);
 	};
 
-	const handleRunMigrationsConfirm = async () => {
+	const handleRunMigrationsConfirm = async (retryAttempt = 0) => {
 		setShowRunConfirm(false);
 		try {
 			setIsRunning(true);
@@ -64,13 +66,59 @@ export default function MigrationsClient() {
 				method: 'POST',
 			});
 
+			if (response.status === 409) {
+				// Migration already in progress - handle concurrent request
+				// Future enhancement: could use error.context for lock details
+
+				if (retryAttempt < 3) {
+					// Auto-retry with exponential backoff
+					const retryDelay = Math.pow(2, retryAttempt) * 2000; // 2s, 4s, 8s
+					setRetryCount(retryAttempt + 1);
+
+					showToast('info', 'Migration In Progress', `Another migration is running. Retrying in ${retryDelay / 1000} seconds... (${retryAttempt + 1}/3)`);
+
+					const timeout = setTimeout(() => {
+						handleRunMigrationsConfirm(retryAttempt + 1);
+					}, retryDelay);
+
+					setRetryTimeout(timeout);
+					return;
+				} else {
+					// Max retries exceeded
+					showToast(
+						'warning',
+						'Migration Busy',
+						'Migration is still running after multiple attempts. Please try again later or check with your administrator.'
+					);
+					return;
+				}
+			}
+
 			if (!response.ok) {
 				const error = await response.json();
-				throw new Error(error.error || 'Failed to run migrations');
+
+				// Enhanced error messaging with detailed context
+				const errorMessage = error.error || 'Failed to run migrations';
+				let errorDetails = '';
+
+				if (error.errorCode) {
+					errorDetails = `Error Code: ${error.errorCode}`;
+				}
+
+				if (error.nextSteps) {
+					errorDetails += errorDetails ? `\n${error.nextSteps}` : error.nextSteps;
+				}
+
+				// Show detailed error if available, fallback to generic message
+				const displayMessage = errorDetails ? `${errorMessage}\n\n${errorDetails}` : errorMessage;
+				throw new Error(displayMessage);
 			}
 
 			const result = await response.json();
 			showToast('success', 'Success', result.message);
+
+			// Reset retry count on success
+			setRetryCount(0);
 
 			// Refresh the status
 			await fetchStatus();
@@ -79,6 +127,11 @@ export default function MigrationsClient() {
 			showToast('error', 'Error', errorMessage);
 		} finally {
 			setIsRunning(false);
+			setRetryCount(0);
+			if (retryTimeout) {
+				clearTimeout(retryTimeout);
+				setRetryTimeout(null);
+			}
 		}
 	};
 
@@ -89,6 +142,15 @@ export default function MigrationsClient() {
 	useEffect(() => {
 		fetchStatus();
 	}, [fetchStatus]);
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (retryTimeout) {
+				clearTimeout(retryTimeout);
+			}
+		};
+	}, [retryTimeout]);
 
 	if (loading) {
 		return (
@@ -160,7 +222,11 @@ export default function MigrationsClient() {
 						disabled={isRunning}
 						className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50"
 					>
-						{isRunning ? 'Running Migrations...' : `Run ${status.summary.pending} Pending Migration${status.summary.pending > 1 ? 's' : ''}`}
+						{isRunning
+							? retryCount > 0
+								? `Retrying Migration... (${retryCount}/3)`
+								: 'Running Migrations...'
+							: `Run ${status.summary.pending} Pending Migration${status.summary.pending > 1 ? 's' : ''}`}
 					</button>
 				)}
 			</div>

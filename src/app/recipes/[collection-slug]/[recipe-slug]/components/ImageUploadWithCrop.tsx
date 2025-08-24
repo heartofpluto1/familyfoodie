@@ -3,11 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useDragAndDrop } from '../hooks/useDragAndDrop';
-import { FileUploadResponse } from '@/types/fileUpload';
+import { UpdateImageResponse } from '@/types/fileUpload';
 
 interface ImageUploadWithCropProps {
 	currentImageSrc?: string;
-	onImageUploaded?: (uploadResponse?: FileUploadResponse) => void;
+	onImageUploaded?: (uploadResponse?: UpdateImageResponse) => void;
 	recipeId?: number;
 	isEditing?: boolean;
 }

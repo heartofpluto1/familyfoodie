@@ -27,6 +27,11 @@ curl -X POST http://localhost:3000/api/admin/migrate \
   -H "x-migration-token: YOUR_MIGRATION_TOKEN"
 ```
 
+**Token Format Requirements (Production):**
+- Minimum 10 characters
+- Only alphanumeric characters and hyphens allowed (`a-z`, `A-Z`, `0-9`, `-`)
+- Examples: `migration-2024`, `prod-token-abc123`, `secure-key-xyz789`
+
 ## Creating New Migrations
 
 1. Create a new SQL file with the next number in sequence:

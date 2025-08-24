@@ -45,7 +45,7 @@ export const useIngredientApi = () => {
 			if (response.ok) {
 				const result = await response.json();
 				showToast('success', 'Success', 'Ingredient added');
-				return result.id;
+				return result.data.id;
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || 'Failed to add ingredient');
