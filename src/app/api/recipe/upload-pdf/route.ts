@@ -18,65 +18,83 @@ async function postHandler(request: NextRequest) {
 		const recipeId = formData.get('recipeId') as string;
 
 		if (!file) {
-			return NextResponse.json({
-				error: 'PDF file is required.',
-				field: 'pdf',
-				message: 'Please select a PDF or JPEG file to upload.',
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: 'PDF file is required.',
+					field: 'pdf',
+					message: 'Please select a PDF or JPEG file to upload.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		if (!recipeId || recipeId.trim() === '') {
-			return NextResponse.json({
-				error: 'Recipe ID is required.',
-				field: 'recipeId',
-				message: 'Please specify which recipe to update.',
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: 'Recipe ID is required.',
+					field: 'recipeId',
+					message: 'Please specify which recipe to update.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Add recipe ID format validation
 		const recipeIdNum = parseInt(recipeId, 10);
 		if (isNaN(recipeIdNum)) {
-			return NextResponse.json({
-				error: 'Recipe ID must be a valid number.',
-				field: 'recipeId',
-				receivedValue: recipeId,
-				message: 'Please provide a valid numeric recipe ID.',
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: 'Recipe ID must be a valid number.',
+					field: 'recipeId',
+					receivedValue: recipeId,
+					message: 'Please provide a valid numeric recipe ID.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		if (recipeIdNum <= 0) {
-			return NextResponse.json({
-				error: 'Recipe ID must be a positive number.',
-				field: 'recipeId',
-				receivedValue: recipeId,
-				message: 'Recipe ID must be greater than zero.',
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: 'Recipe ID must be a positive number.',
+					field: 'recipeId',
+					receivedValue: recipeId,
+					message: 'Recipe ID must be greater than zero.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Validate file type
 		const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
 		if (!validTypes.includes(file.type)) {
-			return NextResponse.json({
-				error: 'Invalid file type. Only PDF and JPEG files are supported.',
-				supportedTypes: ['application/pdf', 'image/jpeg'],
-				receivedType: file.type,
-				fileName: file.name,
-				message: 'Please upload a PDF document or JPEG image.',
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: 'Invalid file type. Only PDF and JPEG files are supported.',
+					supportedTypes: ['application/pdf', 'image/jpeg'],
+					receivedType: file.type,
+					fileName: file.name,
+					message: 'Please upload a PDF document or JPEG image.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Validate file size (10MB max)
 		const maxSize = 10 * 1024 * 1024; // 10MB
 		if (file.size > maxSize) {
 			const fileSizeMB = Math.round(file.size / (1024 * 1024));
-			return NextResponse.json({
-				error: 'File size exceeds maximum limit.',
-				maxSizeAllowed: '10MB',
-				receivedSize: `${fileSizeMB}MB`,
-				fileName: file.name,
-				message: 'Please compress your file or use a smaller PDF/image.',
-				suggestion: 'Try reducing image quality or splitting large documents into smaller files.',
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: 'File size exceeds maximum limit.',
+					maxSizeAllowed: '10MB',
+					receivedSize: `${fileSizeMB}MB`,
+					fileName: file.name,
+					message: 'Please compress your file or use a smaller PDF/image.',
+					suggestion: 'Try reducing image quality or splitting large documents into smaller files.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		let buffer: Buffer;
@@ -98,13 +116,16 @@ async function postHandler(request: NextRequest) {
 					img.onerror = () => reject(new Error('Image loading failed'));
 					img.src = imageData;
 				});
-			} catch (error) {
-				return NextResponse.json({
-					error: 'Invalid or corrupted image file.',
-					message: 'The uploaded image could not be processed.',
-					fileName: file.name,
-					suggestion: 'Please try uploading a different image or convert it to PDF first.',
-				}, { status: 400 });
+			} catch {
+				return NextResponse.json(
+					{
+						error: 'Invalid or corrupted image file.',
+						message: 'The uploaded image could not be processed.',
+						fileName: file.name,
+						suggestion: 'Please try uploading a different image or convert it to PDF first.',
+					},
+					{ status: 400 }
+				);
 			}
 
 			// Determine optimal page orientation based on image aspect ratio
@@ -172,12 +193,15 @@ async function postHandler(request: NextRequest) {
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [recipeIdNum]);
 
 		if (recipeRows.length === 0) {
-			return NextResponse.json({
-				error: 'Recipe not found.',
-				recipeId: recipeId,
-				message: 'The specified recipe does not exist or has been deleted.',
-				suggestion: 'Please check the recipe ID and try again.',
-			}, { status: 404 });
+			return NextResponse.json(
+				{
+					error: 'Recipe not found.',
+					recipeId: recipeId,
+					message: 'The specified recipe does not exist or has been deleted.',
+					suggestion: 'Please check the recipe ID and try again.',
+				},
+				{ status: 404 }
+			);
 		}
 
 		const currentPdfFilename = recipeRows[0].pdf_filename;
@@ -202,13 +226,16 @@ async function postHandler(request: NextRequest) {
 
 		if (!uploadResult.success) {
 			console.error('Upload failed:', uploadResult.error);
-			return NextResponse.json({
-				error: 'Unable to save the PDF file. Please try again.',
-				retryable: true,
-				message: 'There was a temporary problem with file storage.',
-				suggestion: 'If this problem persists, please contact support.',
-				supportContact: 'support@familyfoodie.com',
-			}, { status: 500 });
+			return NextResponse.json(
+				{
+					error: 'Unable to save the PDF file. Please try again.',
+					retryable: true,
+					message: 'There was a temporary problem with file storage.',
+					suggestion: 'If this problem persists, please contact support.',
+					supportContact: 'support@familyfoodie.com',
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Update the database with complete filename including extension
@@ -225,7 +252,28 @@ async function postHandler(request: NextRequest) {
 		const pdfUrl = getRecipePdfUrl(uploadFilename);
 
 		// Create organized response structure
-		const response: any = {
+		interface UploadResponse {
+			success: boolean;
+			message: string;
+			recipe: {
+				id: number;
+				pdfUrl: string;
+				filename: string;
+			};
+			upload: {
+				storageUrl: string;
+				storageMode: string;
+				timestamp: string;
+				fileSize: string;
+			};
+			conversion?: {
+				originalFormat: string;
+				convertedTo: string;
+				originalFileName: string;
+			};
+		}
+
+		const response: UploadResponse = {
 			success: true,
 			message: 'PDF uploaded successfully',
 			recipe: {
