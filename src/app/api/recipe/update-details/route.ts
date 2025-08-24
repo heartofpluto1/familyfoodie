@@ -4,33 +4,109 @@ import { ResultSetHeader } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
 
 interface UpdateRecipeDetailsRequest {
-	id: number;
+	id: number | string;
 	name: string;
-	description: string;
-	prepTime?: number;
-	cookTime?: number;
-	seasonId?: number;
-	primaryTypeId?: number;
-	secondaryTypeId?: number;
-	collectionId?: number;
+	description?: string;
+	prepTime?: number | null;
+	cookTime?: number | null;
+	seasonId?: number | null;
+	primaryTypeId?: number | null;
+	secondaryTypeId?: number | null;
+	collectionId?: number | null;
+}
+
+interface DatabaseError extends Error {
+	code?: string;
+	errno?: number;
+	sqlMessage?: string;
 }
 
 async function updateDetailsHandler(request: NextRequest) {
+	let body: UpdateRecipeDetailsRequest;
+
+	// Parse and validate JSON
 	try {
-		const body: UpdateRecipeDetailsRequest = await request.json();
-		const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId, collectionId } = body;
+		body = await request.json();
+	} catch {
+		return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+	}
 
-		// Validate required fields
-		if (!id || !name) {
-			return NextResponse.json({ error: 'Recipe ID and name are required' }, { status: 400 });
+	const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId, collectionId } = body;
+
+	// Validate and parse recipe ID
+	let recipeId: number;
+	if (id === undefined || id === null) {
+		return NextResponse.json({ error: 'Recipe ID and name are required' }, { status: 400 });
+	}
+
+	if (typeof id === 'string') {
+		recipeId = parseInt(id, 10);
+		if (isNaN(recipeId)) {
+			return NextResponse.json({ error: 'Recipe ID must be a valid number' }, { status: 400 });
 		}
+	} else {
+		recipeId = id;
+	}
 
+	// Validate recipe name
+	if (!name || typeof name !== 'string') {
+		return NextResponse.json({ error: 'Recipe ID and name are required' }, { status: 400 });
+	}
+
+	const trimmedName = name.trim();
+	if (trimmedName === '') {
+		return NextResponse.json({ error: 'Recipe name cannot be empty or whitespace only' }, { status: 400 });
+	}
+
+	if (trimmedName.length > 64) {
+		return NextResponse.json({ error: 'Recipe name must not exceed 64 characters' }, { status: 400 });
+	}
+
+	// Validate time fields
+	if (prepTime !== undefined && prepTime !== null) {
+		if (typeof prepTime !== 'number' || prepTime < 0 || !Number.isInteger(prepTime)) {
+			return NextResponse.json({ error: 'Prep and cook times must be positive integers or null' }, { status: 400 });
+		}
+		if (prepTime > 1440) {
+			return NextResponse.json({ error: 'Prep and cook times must not exceed 1440 minutes (24 hours)' }, { status: 400 });
+		}
+	}
+
+	if (cookTime !== undefined && cookTime !== null) {
+		if (typeof cookTime !== 'number' || cookTime < 0 || !Number.isInteger(cookTime)) {
+			return NextResponse.json({ error: 'Prep and cook times must be positive integers or null' }, { status: 400 });
+		}
+		if (cookTime > 1440) {
+			return NextResponse.json({ error: 'Prep and cook times must not exceed 1440 minutes (24 hours)' }, { status: 400 });
+		}
+	}
+
+	// Validate foreign key IDs
+	const foreignKeys = [seasonId, primaryTypeId, secondaryTypeId, collectionId];
+	for (const fkId of foreignKeys) {
+		if (fkId !== undefined && fkId !== null) {
+			if (typeof fkId !== 'number' || fkId <= 0 || !Number.isInteger(fkId)) {
+				return NextResponse.json({ error: 'Foreign key IDs must be positive integers' }, { status: 400 });
+			}
+		}
+	}
+
+	// Convert undefined values to null for database, also convert zero times to null for backward compatibility
+	const safeDescription = description === undefined ? null : description;
+	const safePrepTime = prepTime === undefined || prepTime === 0 ? null : prepTime;
+	const safeCookTime = cookTime === undefined || cookTime === 0 ? null : cookTime;
+	const safeSeasonId = seasonId === undefined ? null : seasonId;
+	const safePrimaryTypeId = primaryTypeId === undefined ? null : primaryTypeId;
+	const safeSecondaryTypeId = secondaryTypeId === undefined ? null : secondaryTypeId;
+	const safeCollectionId = collectionId === undefined ? null : collectionId;
+
+	try {
 		// Update only the recipe details
 		const [result] = await pool.execute<ResultSetHeader>(
 			`UPDATE recipes 
 			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?, collection_id = ?
 			 WHERE id = ?`,
-			[name, description, prepTime || null, cookTime || null, seasonId || null, primaryTypeId || null, secondaryTypeId || null, collectionId || null, id]
+			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, safeCollectionId, recipeId]
 		);
 
 		if (result.affectedRows === 0) {
@@ -38,8 +114,14 @@ async function updateDetailsHandler(request: NextRequest) {
 		}
 
 		return NextResponse.json({ success: true, message: 'Recipe details updated successfully' });
-	} catch (error) {
-		console.error('Error updating recipe details:', error);
+	} catch (error: unknown) {
+		// Handle foreign key constraint errors
+		const dbError = error as DatabaseError;
+		if (dbError.code === 'ER_NO_REFERENCED_ROW_2' || dbError.errno === 1452) {
+			return NextResponse.json({ error: 'Referenced season, type, or collection does not exist' }, { status: 400 });
+		}
+
+		// Handle all other database errors
 		return NextResponse.json({ error: 'Failed to update recipe details' }, { status: 500 });
 	}
 }

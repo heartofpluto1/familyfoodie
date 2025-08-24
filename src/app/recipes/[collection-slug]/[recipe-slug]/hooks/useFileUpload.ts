@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '@/app/components/ToastProvider';
-import { FileUploadResponse } from '@/types/fileUpload';
+import { UpdateImageResponse } from '@/types/fileUpload';
 
 interface UseFileUploadOptions {
 	allowedTypes: string[];
@@ -47,7 +47,7 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 		}
 	};
 
-	const uploadFile = async (recipeId: number, fileParamName: string): Promise<{ success: boolean; data?: FileUploadResponse }> => {
+	const uploadFile = async (recipeId: number, fileParamName: string): Promise<{ success: boolean; data?: UpdateImageResponse }> => {
 		if (!selectedFile) return { success: false };
 
 		setIsUploading(true);
@@ -80,7 +80,7 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 		}
 	};
 
-	const uploadFileBlob = async (recipeId: number, file: File, fileParamName: string): Promise<{ success: boolean; data?: FileUploadResponse }> => {
+	const uploadFileBlob = async (recipeId: number, file: File, fileParamName: string): Promise<{ success: boolean; data?: UpdateImageResponse }> => {
 		setIsUploading(true);
 		try {
 			const formData = new FormData();

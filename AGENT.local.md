@@ -513,3 +513,116 @@ className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-
 - **CSS LOCATION**: Button styles are centralized in `src/app/globals.css`
 - **TESTING**: Always run `npm run lint` after button style changes to ensure formatting compliance
 
+## API Route Testing Standards (Updated 2025-08-24)
+
+### Testing Infrastructure Overview
+The codebase has comprehensive API route testing using Jest with `next-test-api-route-handler` for consistent API testing patterns.
+
+### Testing Quality Standards
+
+#### Test Structure & Organization
+- **ENVIRONMENT**: All tests use `/** @jest-environment node */` for API route testing
+- **NAMING CONVENTION**: Tests follow `route.test.ts` pattern alongside `route.ts` files
+- **DESCRIBE BLOCKS**: Organized by HTTP method (e.g., `describe('PUT /api/recipe/ingredients')`)
+- **TEST CASES**: Comprehensive coverage including success, validation, error, and edge cases
+
+#### Authentication Testing Patterns
+- **STANDARD MOCKS**: Uses `@/lib/test-utils` for consistent auth mocking
+- **AUTH MIDDLEWARE**: Mocked via `authMiddlewareMock` for regular routes, `passthroughAuthMock` for admin routes
+- **USER SCENARIOS**: Tests both authenticated (`mockAuthenticatedUser`) and unauthenticated (`mockNonAuthenticatedUser`) cases
+- **ADMIN TESTING**: Admin routes use `requireAdminUser` with proper privilege validation
+
+#### Database Testing Patterns
+- **DATABASE MOCKING**: Comprehensive mocking of `@/lib/db.js` with `mockExecute` and `mockGetConnection`
+- **TRANSACTION TESTING**: Proper mocking of database transactions with `MockConnection` interface
+- **RESULT FORMATS**: Consistent MySQL2 result format `[rows, fields]` in mock responses
+- **ERROR SCENARIOS**: Uses `standardErrorScenarios` for consistent database error testing
+
+#### Validation Testing Excellence
+- **INPUT VALIDATION**: Thorough testing of missing fields, invalid types, and boundary conditions
+- **HTTP STATUS CODES**: Proper use of 400 (validation), 401 (auth), 404 (not found), 409 (conflict), 500 (server error)
+- **ERROR RESPONSE FORMAT**: Consistent error response structure with descriptive messages and error codes
+- **EDGE CASES**: Tests handle zero values, negative numbers, empty strings, special characters, and oversized inputs
+
+#### File Upload Testing (Outstanding Quality)
+- **MOCK FILE CREATION**: `createMockFile()` utility with proper MIME type magic bytes
+- **FILE TYPE VALIDATION**: Tests for supported formats (JPEG, PNG, WebP, PDF) with detailed error responses
+- **SIZE VALIDATION**: File size limits tested with descriptive error messages
+- **CONVERSION TESTING**: JPG→PDF conversion testing with jsPDF mocking and orientation detection
+- **FILE CLEANUP**: Tests for versioned filename generation and cleanup of old files
+
+### Available Testing Utilities (`@/lib/test-utils`)
+
+#### Mock Users & Authentication
+- **`mockAdminUser`**: Standard admin user for testing admin functionality
+- **`mockRegularUser`**: Standard regular user for testing normal user functionality
+- **`mockAuthenticatedUser(req)`**: Request patcher for authenticated requests
+- **`mockNonAuthenticatedUser(req)`**: Request patcher for unauthenticated requests
+
+#### Database Mocking
+- **`MockConnection`**: TypeScript interface for database connection mocking
+- **`clearAllMocks()`**: Standard cleanup function for `beforeEach` blocks
+- **`enhancedTestData`**: Comprehensive test data scenarios for recipes, ingredients, and database results
+
+#### File Testing Utilities
+- **`createMockFile(name, type, size, content?)`**: Creates mock File objects with proper magic bytes
+- **Supported MIME Types**: Handles JPEG, PNG, WebP with appropriate file signatures
+- **Custom Content**: Allows injection of specific content for corruption testing
+
+#### Console & Error Mocking
+- **`setupConsoleMocks()`**: Standardized console mocking with cleanup function
+- **`standardErrorScenarios`**: Pre-defined error objects for consistent testing
+- **Error Types**: Database, auth, validation, storage, and not found errors
+
+#### Authentication Middleware Mocking
+- **`authMiddlewareMock`**: Standard auth middleware for regular routes
+- **`passthroughAuthMock`**: Passthrough middleware for admin routes with custom auth handling
+
+### Test Execution Commands
+- **`npm test`**: Run all tests
+- **`npm run test:watch`**: Run tests in watch mode
+- **`npm run test:coverage`**: Generate coverage reports (HTML, LCOV, JSON)
+
+### Testing Best Practices Established
+
+#### Test Organization
+1. **Consistent Structure**: All tests follow the same organizational pattern with clear describe blocks
+2. **Comprehensive Coverage**: Each test file covers all HTTP methods, success cases, validation errors, and edge cases
+3. **Mock Management**: Proper setup/teardown in `beforeEach`/`afterAll` with console mock cleanup
+
+#### Error Testing Excellence
+1. **Detailed Error Messages**: Tests verify specific error messages, not just status codes
+2. **Error Response Structure**: Consistent validation of error response format with codes and messages
+3. **User-Friendly Messaging**: Error responses include helpful suggestions and context
+
+#### Database Testing Sophistication
+1. **Transaction Testing**: Proper mocking of database transactions with rollback scenarios
+2. **Concurrent Request Handling**: Advanced testing of race conditions and concurrent operations
+3. **Foreign Key Validation**: Testing of database constraint violations and referential integrity
+
+#### File Handling Excellence
+1. **MIME Type Validation**: Comprehensive testing of file type validation with magic byte verification
+2. **File Versioning**: Testing of versioned filename generation and cleanup of old files
+3. **Conversion Testing**: Complex testing of image-to-PDF conversion with orientation handling
+
+### Recommendations for New Tests
+
+#### When Adding New API Route Tests
+1. **USE EXISTING PATTERNS**: Follow the established patterns from existing test files
+2. **IMPORT STANDARD UTILITIES**: Always use `@/lib/test-utils` for consistent mocking
+3. **COMPREHENSIVE COVERAGE**: Include success, validation, auth, error, and edge case scenarios
+4. **TRANSACTION TESTING**: For routes that modify data, test database transaction rollback scenarios
+5. **CONSOLE MOCKING**: Always use `setupConsoleMocks()` and clean up in `afterAll`
+
+#### Test Quality Checklist
+- [ ] Uses `/** @jest-environment node */`
+- [ ] Imports and uses `@/lib/test-utils` utilities
+- [ ] Tests all HTTP methods supported by the route
+- [ ] Includes authentication testing (both auth and non-auth cases)
+- [ ] Tests input validation with various invalid scenarios
+- [ ] Tests error handling with proper status codes and messages
+- [ ] Includes edge cases and boundary conditions
+- [ ] Uses consistent mock cleanup in `beforeEach` and `afterAll`
+- [ ] Verifies database calls with proper parameters
+- [ ] Tests transaction rollback scenarios where applicable
+
