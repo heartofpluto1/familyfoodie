@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth } from '@/lib/auth-middleware';
-import { uploadFile, getStorageMode } from '@/lib/storage';
+import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import jsPDF from 'jspdf';
@@ -13,25 +13,80 @@ interface RecipeRow extends RowDataPacket {
 }
 
 async function updatePdfHandler(request: NextRequest) {
+	let recipeId: string | undefined;
+
 	try {
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
-		const recipeId = formData.get('recipeId') as string;
+		recipeId = formData.get('recipeId') as string;
 
-		if (!file || !recipeId) {
-			return NextResponse.json({ error: 'File and recipe ID are required' }, { status: 400 });
+		// Validate file presence
+		if (!file) {
+			return NextResponse.json(
+				{
+					error: 'PDF file is required.',
+					field: 'pdf',
+					message: 'Please select a PDF or JPEG file to upload.',
+				},
+				{ status: 400 }
+			);
+		}
+
+		// Validate recipe ID presence
+		if (!recipeId) {
+			return NextResponse.json(
+				{
+					error: 'Recipe ID is required.',
+					field: 'recipeId',
+					message: 'Please specify which recipe to update.',
+				},
+				{ status: 400 }
+			);
+		}
+
+		// Validate recipe ID is numeric
+		if (isNaN(parseInt(recipeId))) {
+			return NextResponse.json(
+				{
+					error: 'Recipe ID must be a valid number.',
+					field: 'recipeId',
+					receivedValue: recipeId,
+					message: 'Please provide a valid numeric recipe ID.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Validate file type
-		const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
-		if (!validTypes.includes(file.type)) {
-			return NextResponse.json({ error: 'Only PDF and JPG files are allowed' }, { status: 400 });
+		const validTypes = ['application/pdf', 'image/jpeg'];
+		if (!validTypes.includes(file.type) && file.type !== 'image/jpg') {
+			return NextResponse.json(
+				{
+					error: 'Invalid file type. Only PDF and JPEG files are supported.',
+					supportedTypes: validTypes,
+					receivedType: file.type,
+					fileName: file.name,
+					message: 'Please upload a PDF document or JPEG image.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Validate file size (10MB max)
 		const maxSize = 10 * 1024 * 1024; // 10MB
 		if (file.size > maxSize) {
-			return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
+			const receivedSizeMB = Math.round(file.size / (1024 * 1024));
+			return NextResponse.json(
+				{
+					error: 'File size exceeds maximum limit.',
+					maxSizeAllowed: '10MB',
+					receivedSize: `${receivedSizeMB}MB`,
+					fileName: file.name,
+					message: 'Please compress your file or use a smaller PDF/image.',
+					suggestion: 'Try reducing image quality or splitting large documents into smaller files.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		let buffer: Buffer;
@@ -47,11 +102,23 @@ async function updatePdfHandler(request: NextRequest) {
 
 			// Create image element to get actual dimensions
 			const img = new Image();
-			await new Promise((resolve, reject) => {
-				img.onload = resolve;
-				img.onerror = reject;
-				img.src = imageData;
-			});
+			try {
+				await new Promise((resolve, reject) => {
+					img.onload = resolve;
+					img.onerror = () => reject(new Error('Image loading failed'));
+					img.src = imageData;
+				});
+			} catch {
+				return NextResponse.json(
+					{
+						error: 'Invalid or corrupted image file.',
+						message: 'The uploaded image could not be processed.',
+						fileName: file.name,
+						suggestion: 'Please try uploading a different image or convert it to PDF first.',
+					},
+					{ status: 400 }
+				);
+			}
 
 			// Determine optimal page orientation based on image aspect ratio
 			const imageAspectRatio = img.width / img.height;
@@ -118,7 +185,15 @@ async function updatePdfHandler(request: NextRequest) {
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
 
 		if (recipeRows.length === 0) {
-			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+			return NextResponse.json(
+				{
+					error: 'Recipe not found.',
+					recipeId: recipeId,
+					message: 'The specified recipe does not exist or has been deleted.',
+					suggestion: 'Please check the recipe ID and try again.',
+				},
+				{ status: 404 }
+			);
 		}
 
 		const currentPdfFilename = recipeRows[0].pdf_filename;
@@ -150,9 +225,14 @@ async function updatePdfHandler(request: NextRequest) {
 		const uploadResult = await uploadFile(buffer, baseFilename, 'pdf', 'application/pdf');
 
 		if (!uploadResult.success) {
+			console.error('Upload failed:', uploadResult.error);
 			return NextResponse.json(
 				{
-					error: uploadResult.error || 'PDF upload failed',
+					error: 'Unable to save the PDF file. Please try again.',
+					retryable: true,
+					message: 'There was a temporary problem with file storage.',
+					suggestion: 'If this problem persists, please contact support.',
+					supportContact: 'support@familyfoodie.com',
 				},
 				{ status: 500 }
 			);
@@ -162,7 +242,24 @@ async function updatePdfHandler(request: NextRequest) {
 		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET pdf_filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
 
 		if (updateResult.affectedRows === 0) {
-			return NextResponse.json({ error: 'Failed to update recipe PDF filename' }, { status: 500 });
+			// Rollback: Delete the uploaded file since database update failed
+			try {
+				const baseFilename = uploadFilename.includes('.') ? uploadFilename.split('.')[0] : uploadFilename;
+				await deleteFile(baseFilename, 'pdf');
+				console.log(`Rolled back uploaded file: ${uploadFilename}`);
+			} catch (rollbackError) {
+				console.error('Failed to rollback uploaded file:', rollbackError);
+			}
+
+			return NextResponse.json(
+				{
+					error: 'Failed to save PDF information. Please try uploading again.',
+					retryable: true,
+					message: 'The file was uploaded but could not be properly saved.',
+					recipeId: recipeId,
+				},
+				{ status: 500 }
+			);
 		}
 
 		console.log(`Updated database pdf_filename to ${uploadFilename} for recipe ${recipeId}`);
@@ -170,17 +267,72 @@ async function updatePdfHandler(request: NextRequest) {
 		// Generate URL for immediate display
 		const pdfUrl = getRecipePdfUrl(uploadFilename);
 
-		return NextResponse.json({
+		// Build response with structured data
+		const response: {
+			success: boolean;
+			message: string;
+			recipe: {
+				id: number;
+				pdfUrl: string;
+				filename: string;
+			};
+			upload: {
+				storageUrl: string;
+				storageMode: string;
+				timestamp: string;
+				fileSize: string;
+			};
+			conversion?: {
+				originalFormat: string;
+				convertedTo: string;
+				originalFileName: string;
+			};
+		} = {
 			success: true,
 			message: 'Recipe PDF updated successfully',
-			filename: uploadFilename,
-			url: uploadResult.url,
-			pdfUrl,
-			storageMode: getStorageMode(),
-			cleanup: cleanupSummary || 'No old files to clean up',
-		});
-	} catch (error) {
+			recipe: {
+				id: parseInt(recipeId),
+				pdfUrl,
+				filename: uploadFilename,
+			},
+			upload: {
+				storageUrl: uploadResult.url || '',
+				storageMode: getStorageMode(),
+				timestamp: new Date().toISOString(),
+				fileSize: `${Math.round(buffer.length / 1024)}KB`,
+			},
+		};
+
+		// Add conversion details if it was an image
+		if (file.type.startsWith('image/')) {
+			response.conversion = {
+				originalFormat: file.type,
+				convertedTo: 'application/pdf',
+				originalFileName: file.name,
+			};
+		}
+
+		return NextResponse.json(response);
+	} catch (error: unknown) {
 		console.error('Error updating recipe PDF:', error);
+
+		// Handle concurrent upload attempts (database lock)
+		if (
+			(error instanceof Error && error.message.includes('ER_LOCK_WAIT_TIMEOUT')) ||
+			(typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_LOCK_WAIT_TIMEOUT')
+		) {
+			return NextResponse.json(
+				{
+					error: 'Another upload is currently in progress for this recipe.',
+					message: 'Please wait for the current upload to complete before trying again.',
+					retryAfter: 5, // seconds to wait
+					recipeId: recipeId || 'unknown',
+				},
+				{ status: 409 }
+			);
+		}
+
+		// Generic error response
 		return NextResponse.json({ error: 'Failed to update recipe PDF' }, { status: 500 });
 	}
 }

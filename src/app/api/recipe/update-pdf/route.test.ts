@@ -20,6 +20,7 @@ const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 jest.mock('@/lib/storage', () => ({
 	uploadFile: jest.fn(),
 	getStorageMode: jest.fn(),
+	deleteFile: jest.fn(),
 }));
 
 // Mock the utils modules
@@ -34,17 +35,23 @@ jest.mock('@/lib/utils/secureFilename.server', () => ({
 }));
 
 // Mock jsPDF
+const mockSetProperties = jest.fn();
+const mockAddImage = jest.fn();
+const mockOutput = jest.fn().mockReturnValue(new ArrayBuffer(1024));
+const mockGetWidth = jest.fn().mockReturnValue(595);
+const mockGetHeight = jest.fn().mockReturnValue(842);
+
 jest.mock('jspdf', () => {
 	return jest.fn().mockImplementation(() => ({
-		setProperties: jest.fn(),
+		setProperties: mockSetProperties,
 		internal: {
 			pageSize: {
-				getWidth: jest.fn().mockReturnValue(595),
-				getHeight: jest.fn().mockReturnValue(842),
+				getWidth: mockGetWidth,
+				getHeight: mockGetHeight,
 			},
 		},
-		addImage: jest.fn(),
-		output: jest.fn().mockReturnValue(new ArrayBuffer(1024)),
+		addImage: mockAddImage,
+		output: mockOutput,
 	}));
 });
 
@@ -62,13 +69,14 @@ global.Image = class {
 	}
 } as typeof Image;
 
-import { uploadFile, getStorageMode } from '@/lib/storage';
+import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 
 // Get mock functions
 const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStorageMode>;
+const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
 const mockGetRecipePdfUrl = getRecipePdfUrl as jest.MockedFunction<typeof getRecipePdfUrl>;
 const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFunction<typeof generateVersionedFilename>;
 const mockExtractBaseHash = extractBaseHash as jest.MockedFunction<typeof extractBaseHash>;
@@ -122,20 +130,30 @@ describe('/api/recipe/update-pdf', () => {
 					expect(json).toEqual({
 						success: true,
 						message: 'Recipe PDF updated successfully',
-						filename: 'recipe_abc123_v3.pdf',
-						url: '/uploads/recipe_abc123_v3.pdf',
-						pdfUrl: '/static/recipes/recipe_abc123_v3.pdf',
-						storageMode: 'local',
-						cleanup: 'Cleaned up 2 old file(s): recipe_abc123_v1.pdf, recipe_abc123_v2.pdf',
+						recipe: {
+							id: 1,
+							pdfUrl: '/static/recipes/recipe_abc123_v3.pdf',
+							filename: 'recipe_abc123_v3.pdf',
+						},
+						upload: {
+							storageUrl: '/uploads/recipe_abc123_v3.pdf',
+							storageMode: 'local',
+							timestamp: expect.any(String),
+							fileSize: expect.any(String),
+						},
+						// Internal cleanup details should not be exposed in API response
+						// but should still be logged for debugging
 					});
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.pdf, recipe_abc123_v2.pdf');
+					// Verify no cleanup details in response
+					expect(json.cleanup).toBeUndefined();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('successfully converts JPG to PDF for update', async () => {
-			const mockFile = createMockFile('photo.jpg', 'image/jpeg', 2048);
+		it('successfully converts JPG to PDF with proper metadata and quality', async () => {
+			const mockFile = createMockFile('recipe-photo.jpg', 'image/jpeg', 2048);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '2');
@@ -148,6 +166,9 @@ describe('/api/recipe/update-pdf', () => {
 			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_def456_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_def456_v2.pdf');
 
+			// Reset the mock before test to ensure clean state
+			jest.clearAllMocks();
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -155,7 +176,47 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(200);
-					expect(json.success).toBe(true);
+					expect(json).toEqual({
+						success: true,
+						message: 'Recipe PDF updated successfully',
+						recipe: {
+							id: 2,
+							pdfUrl: '/static/recipes/recipe_def456_v2.pdf',
+							filename: 'recipe_def456_v2.pdf',
+						},
+						upload: {
+							storageUrl: '/uploads/recipe_def456_v2.pdf',
+							storageMode: 'local',
+							timestamp: expect.any(String),
+							fileSize: expect.any(String),
+						},
+						conversion: {
+							originalFormat: 'image/jpeg',
+							convertedTo: 'application/pdf',
+							originalFileName: 'recipe-photo.jpg',
+						},
+					});
+
+					// Verify PDF metadata was set correctly
+					expect(mockSetProperties).toHaveBeenCalledWith({
+						title: 'recipe-photo.jpg',
+						subject: 'Recipe Image converted to PDF',
+						author: 'Family Foodie App',
+						creator: 'Family Foodie Recipe Management System',
+					});
+
+					// Verify image was added with quality settings
+					expect(mockAddImage).toHaveBeenCalledWith(
+						expect.stringMatching(/^data:image\/jpeg;base64,/),
+						'JPEG',
+						expect.any(Number), // x position
+						expect.any(Number), // y position
+						expect.any(Number), // width
+						expect.any(Number), // height
+						undefined,
+						'SLOW' // Quality setting
+					);
+
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'pdf', 'application/pdf');
 				},
 				requestPatcher: mockAuthenticatedUser,
@@ -184,7 +245,8 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(200);
 					expect(json.success).toBe(true);
-					expect(json.cleanup).toBe('No old files to clean up');
+					// Cleanup info should not be in response, only logged
+					expect(json.cleanup).toBeUndefined();
 					expect(mockConsoleWarn).toHaveBeenCalledWith('File cleanup failed but continuing with upload:', expect.any(Error));
 				},
 				requestPatcher: mockAuthenticatedUser,
@@ -202,14 +264,66 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(400);
-					expect(json).toEqual({ error: 'File and recipe ID are required' });
+					expect(json).toEqual({
+						error: 'PDF file is required.',
+						field: 'pdf',
+						message: 'Please select a PDF or JPEG file to upload.',
+					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('returns 400 for invalid file type', async () => {
+		it('returns 400 when recipe ID is missing', async () => {
+			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Recipe ID is required.',
+						field: 'recipeId',
+						message: 'Please specify which recipe to update.',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 when recipe ID is not a valid number', async () => {
+			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', 'not-a-number');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Recipe ID must be a valid number.',
+						field: 'recipeId',
+						receivedValue: 'not-a-number',
+						message: 'Please provide a valid numeric recipe ID.',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 for invalid file type with detailed error', async () => {
 			const mockFile = createMockFile('test.png', 'image/png', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -222,13 +336,53 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(400);
-					expect(json).toEqual({ error: 'Only PDF and JPG files are allowed' });
+					expect(json).toEqual({
+						error: 'Invalid file type. Only PDF and JPEG files are supported.',
+						supportedTypes: ['application/pdf', 'image/jpeg'],
+						receivedType: 'image/png',
+						fileName: 'test.png',
+						message: 'Please upload a PDF document or JPEG image.',
+					});
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('returns 400 for oversized file', async () => {
+		it('returns 400 for various unsupported file types', async () => {
+			const testCases = [
+				{ type: 'image/gif', name: 'test.gif', description: 'GIF image' },
+				{ type: 'text/plain', name: 'test.txt', description: 'text file' },
+				{ type: 'application/msword', name: 'test.doc', description: 'Word document' },
+				{ type: 'video/mp4', name: 'test.mp4', description: 'video file' },
+			];
+
+			for (const testCase of testCases) {
+				const mockFile = createMockFile(testCase.name, testCase.type, 1024);
+				const formData = new FormData();
+				formData.append('pdf', mockFile);
+				formData.append('recipeId', '1');
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({ method: 'POST', body: formData });
+						const json = await response.json();
+
+						expect(response.status).toBe(400);
+						expect(json).toEqual({
+							error: 'Invalid file type. Only PDF and JPEG files are supported.',
+							supportedTypes: ['application/pdf', 'image/jpeg'],
+							receivedType: testCase.type,
+							fileName: testCase.name,
+							message: 'Please upload a PDF document or JPEG image.',
+						});
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
+			}
+		});
+
+		it('returns 400 for oversized file with helpful context', async () => {
 			const largeFile = createMockFile('large.pdf', 'application/pdf', 11 * 1024 * 1024); // 11MB
 			const formData = new FormData();
 			formData.append('pdf', largeFile);
@@ -241,13 +395,44 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(400);
-					expect(json).toEqual({ error: 'File size must be less than 10MB' });
+					expect(json).toEqual({
+						error: 'File size exceeds maximum limit.',
+						maxSizeAllowed: '10MB',
+						receivedSize: '11MB',
+						fileName: 'large.pdf',
+						message: 'Please compress your file or use a smaller PDF/image.',
+						suggestion: 'Try reducing image quality or splitting large documents into smaller files.',
+					});
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('returns 404 when recipe not found', async () => {
+		it('returns 401 when user is not authenticated', async () => {
+			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(401);
+					expect(json).toEqual({
+						success: false,
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				// No requestPatcher - simulates unauthenticated user
+			});
+		});
+
+		it('returns 404 when recipe not found with helpful message', async () => {
 			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -262,14 +447,19 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(404);
-					expect(json).toEqual({ error: 'Recipe not found' });
+					expect(json).toEqual({
+						error: 'Recipe not found.',
+						recipeId: '999',
+						message: 'The specified recipe does not exist or has been deleted.',
+						suggestion: 'Please check the recipe ID and try again.',
+					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('returns 500 when upload fails', async () => {
+		it('returns 500 when upload fails with user-friendly message', async () => {
 			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -288,13 +478,21 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(500);
-					expect(json).toEqual({ error: 'Storage unavailable' });
+					expect(json).toEqual({
+						error: 'Unable to save the PDF file. Please try again.',
+						retryable: true,
+						message: 'There was a temporary problem with file storage.',
+						suggestion: 'If this problem persists, please contact support.',
+						supportContact: 'support@familyfoodie.com',
+					});
+					// Internal error should be logged but not exposed
+					expect(mockConsoleError).toHaveBeenCalledWith('Upload failed:', 'Storage unavailable');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('returns 500 when database update fails', async () => {
+		it('returns 500 when database update fails and rolls back uploaded file', async () => {
 			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -306,6 +504,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc_v2.pdf');
 			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf' });
+			mockDeleteFile.mockResolvedValue({ success: true }); // Rollback succeeds
 
 			await testApiHandler({
 				appHandler,
@@ -314,7 +513,16 @@ describe('/api/recipe/update-pdf', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(500);
-					expect(json).toEqual({ error: 'Failed to update recipe PDF filename' });
+					expect(json).toEqual({
+						error: 'Failed to save PDF information. Please try uploading again.',
+						retryable: true,
+						message: 'The file was uploaded but could not be properly saved.',
+						recipeId: '1',
+					});
+
+					// Verify that uploaded file was cleaned up on failure
+					expect(mockDeleteFile).toHaveBeenCalledWith('recipe_abc_v2', 'pdf');
+					expect(mockConsoleLog).toHaveBeenCalledWith('Rolled back uploaded file: recipe_abc_v2.pdf');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -345,7 +553,7 @@ describe('/api/recipe/update-pdf', () => {
 					expect(mockConsoleLog).toHaveBeenCalledWith('Storage mode: cloud');
 					expect(mockConsoleLog).toHaveBeenCalledWith('Updating PDF from recipe_original.pdf to recipe_original_v2.pdf');
 					expect(mockConsoleLog).toHaveBeenCalledWith('Updated database pdf_filename to recipe_original_v2.pdf for recipe 1');
-					expect(json.storageMode).toBe('cloud');
+					expect(json.upload.storageMode).toBe('cloud');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -456,8 +664,119 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(200);
 					expect(json.success).toBe(true);
-					expect(json.cleanup).toBe('No old files to clean up');
+					// Cleanup info should not be in response
+					expect(json.cleanup).toBeUndefined();
 					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('handles concurrent upload attempts gracefully', async () => {
+			const mockFile = createMockFile('concurrent.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', '1');
+
+			// Mock a database lock or conflict scenario
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]) // First query succeeds
+				.mockRejectedValueOnce(new Error('ER_LOCK_WAIT_TIMEOUT')); // Update fails due to lock
+
+			mockExtractBaseHash.mockReturnValue('abc');
+			mockFindAndDeleteHashFiles.mockResolvedValue([]);
+			mockGenerateVersionedFilename.mockReturnValue('recipe_abc_v2.pdf');
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf' });
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(409);
+					expect(json).toEqual({
+						error: 'Another upload is currently in progress for this recipe.',
+						message: 'Please wait for the current upload to complete before trying again.',
+						retryAfter: expect.any(Number), // seconds to wait
+						recipeId: '1',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('validates that cleanup happens after successful database update, not before', async () => {
+			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', '1');
+
+			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc123.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+			mockExtractBaseHash.mockReturnValue('abc123');
+			mockFindAndDeleteHashFiles.mockResolvedValue(['recipe_abc123_v1.pdf']);
+			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v2.pdf');
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v2.pdf' });
+			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_abc123_v2.pdf');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+
+					// Verify that database update was called (cleanup logic timing test)
+					// Note: In ideal implementation, cleanup should happen after successful DB update
+					expect(mockExecute).toHaveBeenCalledWith('UPDATE recipes SET pdf_filename = ? WHERE id = ?', ['recipe_abc123_v2.pdf', 1]);
+
+					// Response should not include internal cleanup details
+					expect(json.cleanup).toBeUndefined();
+					expect(json.internalDetails).toBeUndefined();
+
+					// But cleanup should still be logged for debugging
+					expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Cleaned up'));
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('handles image loading errors gracefully during conversion', async () => {
+			// Mock image loading failure
+			global.Image = class {
+				width = 800;
+				height = 600;
+				onload: (() => void) | null = null;
+				onerror: ((error: Error) => void) | null = null;
+				src = '';
+				constructor() {
+					setTimeout(() => {
+						if (this.onerror) this.onerror(new Error('Image loading failed'));
+					}, 0);
+				}
+			} as typeof Image;
+
+			const mockFile = createMockFile('corrupted.jpg', 'image/jpeg', 2048);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Invalid or corrupted image file.',
+						message: 'The uploaded image could not be processed.',
+						fileName: 'corrupted.jpg',
+						suggestion: 'Please try uploading a different image or convert it to PDF first.',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});

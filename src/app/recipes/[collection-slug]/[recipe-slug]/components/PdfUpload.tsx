@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useFileUpload } from '../hooks/useFileUpload';
-import { FileUploadResponse } from '@/types/fileUpload';
+import { UpdatePdfResponse } from '@/types/fileUpload';
 
 interface PdfUploadProps {
-	onPdfUploaded?: (uploadResponse?: FileUploadResponse) => void;
+	onPdfUploaded?: (uploadResponse?: UpdatePdfResponse) => void;
 	recipeId?: number;
 	isEditing?: boolean;
 }
@@ -22,7 +22,8 @@ const PdfUpload = ({ onPdfUploaded, recipeId, isEditing = false }: PdfUploadProp
 		if (recipeId && pdfUpload.selectedFile) {
 			const result = await pdfUpload.uploadFile(recipeId, 'pdf');
 			if (result.success && onPdfUploaded) {
-				onPdfUploaded(result.data);
+				// Cast the generic response to UpdatePdfResponse for PDF uploads
+				onPdfUploaded(result.data as unknown as UpdatePdfResponse);
 			}
 		}
 	};
