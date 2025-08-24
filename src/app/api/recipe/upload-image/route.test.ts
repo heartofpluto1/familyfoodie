@@ -98,8 +98,8 @@ describe('/api/recipe/upload-image', () => {
 						success: true,
 						message: 'Image uploaded successfully',
 						filename: expect.stringContaining('.jpg'),
-						url: '/uploads/recipe_1_123456.jpg',
-						imageUrl: '/static/recipes/recipe_1_123456.jpg',
+						uploadUrl: '/uploads/recipe_1_123456.jpg',
+						displayUrl: '/static/recipes/recipe_1_123456.jpg',
 						storageMode: 'local',
 					});
 					expect(mockUploadFile).toHaveBeenCalled();

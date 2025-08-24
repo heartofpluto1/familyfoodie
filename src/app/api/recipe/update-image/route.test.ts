@@ -17,6 +17,7 @@ jest.mock('@/lib/db.js', () => ({
 jest.mock('@/lib/storage', () => ({
 	uploadFile: jest.fn(),
 	getStorageMode: jest.fn(),
+	deleteFile: jest.fn(),
 }));
 
 // Mock the utils modules
@@ -30,7 +31,7 @@ jest.mock('@/lib/utils/secureFilename.server', () => ({
 	findAndDeleteHashFiles: jest.fn(),
 }));
 
-import { uploadFile, getStorageMode } from '@/lib/storage';
+import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 
@@ -40,6 +41,7 @@ const mockDatabase = jest.mocked(jest.requireMock('@/lib/db.js'));
 // Get mock functions
 const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStorageMode>;
+const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
 const mockGetRecipeImageUrl = getRecipeImageUrl as jest.MockedFunction<typeof getRecipeImageUrl>;
 const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFunction<typeof generateVersionedFilename>;
 const mockExtractBaseHash = extractBaseHash as jest.MockedFunction<typeof extractBaseHash>;
@@ -104,8 +106,8 @@ describe('/api/recipe/update-image', () => {
 						success: true,
 						message: 'Recipe image updated successfully',
 						filename: 'recipe_abc123_v3.jpg',
-						url: '/uploads/recipe_abc123_v3.jpg',
-						imageUrl: '/static/recipes/recipe_abc123_v3.jpg',
+						uploadUrl: '/uploads/recipe_abc123_v3.jpg',
+						displayUrl: '/static/recipes/recipe_abc123_v3.jpg',
 						storageMode: 'local',
 						cleanup: 'Cleaned up 2 old file(s): recipe_abc123_v1.jpg, recipe_abc123_v2.jpg',
 					});
@@ -475,7 +477,7 @@ describe('/api/recipe/update-image', () => {
 			});
 		});
 
-		it('returns 500 when database update fails', async () => {
+		it('returns 500 when database update fails and attempts file cleanup', async () => {
 			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
 			const formData = new FormData();
 			formData.append('image', mockFile);
@@ -492,6 +494,8 @@ describe('/api/recipe/update-image', () => {
 				url: '/uploads/recipe_abc_v2.jpg',
 			});
 
+			mockDeleteFile.mockResolvedValue({ success: true });
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -505,6 +509,8 @@ describe('/api/recipe/update-image', () => {
 					expect(json).toEqual({
 						error: 'Failed to update recipe image filename',
 					});
+					expect(mockDeleteFile).toHaveBeenCalledWith('recipe_abc_v2', 'jpg'); // Should attempt cleanup
+					expect(mockConsoleWarn).toHaveBeenCalledWith('Database update failed, cleaning up uploaded file: recipe_abc_v2.jpg');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -582,6 +588,8 @@ describe('/api/recipe/update-image', () => {
 					expect(mockConsoleLog).toHaveBeenCalledWith('Updating image from recipe_original.jpg to recipe_original_v2.jpg');
 					expect(mockConsoleLog).toHaveBeenCalledWith('Updated database image_filename to recipe_original_v2.jpg for recipe 1');
 					expect(json.storageMode).toBe('cloud');
+					expect(json.uploadUrl).toBe('/uploads/recipe_original_v2.jpg');
+					expect(json.displayUrl).toBe('/static/recipes/recipe_original_v2.jpg');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -646,9 +654,30 @@ describe('/api/recipe/update-image', () => {
 			formData.append('image', mockFile);
 			formData.append('recipeId', 'abc');
 
-			mockDatabase.execute.mockResolvedValueOnce([
-				[], // Query will work but return no results due to NaN conversion
-			]);
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Invalid recipe ID format',
+					});
+					expect(mockDatabase.execute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 for empty file upload', async () => {
+			const mockFile = createMockFile('empty.jpg', 'image/jpeg', 0);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -659,10 +688,179 @@ describe('/api/recipe/update-image', () => {
 					});
 					const json = await response.json();
 
-					expect(response.status).toBe(404);
+					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Recipe not found',
+						error: 'File cannot be empty',
 					});
+					expect(mockDatabase.execute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('handles recipe with null image_filename', async () => {
+			const mockFile = createMockFile('new.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			mockDatabase.execute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]) // Recipe with no existing image
+				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Update successful
+
+			mockGenerateVersionedFilename.mockReturnValue('recipe_new_abc123_v1.jpg');
+
+			mockUploadFile.mockResolvedValue({
+				success: true,
+				url: '/uploads/recipe_new_abc123_v1.jpg',
+			});
+
+			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_new_abc123_v1.jpg');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+					expect(json.success).toBe(true);
+					expect(json.filename).toMatch(/^recipe_.*_v1\.jpg$/);
+					expect(json.uploadUrl).toMatch(/^\/uploads\/recipe_.*_v1\.jpg$/);
+					expect(json.displayUrl).toMatch(/^\/static\/recipes\/recipe_.*_v1\.jpg$/);
+					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled(); // No cleanup needed for new images
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 for file extension and MIME type mismatch', async () => {
+			// Create a file with PNG extension but JPEG MIME type
+			const mockFile = new File([new ArrayBuffer(1024)], 'test.png', { type: 'image/jpeg' });
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'File extension does not match MIME type',
+					});
+					expect(mockDatabase.execute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 500 for invalid storage configuration', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			mockGetStorageMode.mockReturnValue(null as unknown as string); // Invalid storage mode
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(500);
+					expect(json).toEqual({
+						error: 'Storage configuration error',
+					});
+					expect(mockDatabase.execute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('handles version conflict during concurrent updates', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			mockDatabase.execute
+				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc123.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+			mockExtractBaseHash.mockReturnValue('abc123');
+			mockFindAndDeleteHashFiles.mockResolvedValue([]);
+			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v2.jpg');
+
+			// Simulate version already exists error
+			mockUploadFile.mockResolvedValueOnce({
+				success: false,
+				error: 'Version conflict: recipe_abc123_v2.jpg already exists',
+			});
+
+			// Second attempt with incremented version
+			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v3.jpg');
+			mockUploadFile.mockResolvedValueOnce({
+				success: true,
+				url: '/uploads/recipe_abc123_v3.jpg',
+			});
+
+			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.jpg');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+					expect(json.success).toBe(true);
+					expect(json.filename).toBe('recipe_abc123_v3.jpg');
+					expect(json.uploadUrl).toBe('/uploads/recipe_abc123_v3.jpg');
+					expect(json.displayUrl).toBe('/static/recipes/recipe_abc123_v3.jpg');
+					expect(mockUploadFile).toHaveBeenCalledTimes(2); // Retry on conflict
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 for corrupt image data', async () => {
+			// Create a file with valid MIME type but invalid image data
+			const corruptData = Buffer.from('not an image');
+			const mockFile = new File([corruptData], 'corrupt.jpg', { type: 'image/jpeg' });
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Invalid image data',
+					});
+					expect(mockDatabase.execute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});

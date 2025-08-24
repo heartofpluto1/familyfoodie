@@ -1,10 +1,12 @@
-export interface FileUploadResponse {
+export interface UpdateImageResponse {
 	success: boolean;
 	message: string;
 	filename: string;
-	url: string;
-	cacheBustedUrl: string;
+	uploadUrl: string;
+	displayUrl: string;
 	storageMode: string;
+	cleanup?: string; // For update-image cleanup status
+	previousImage?: string; // For upload-image when replacing existing image
 }
 
 export interface UpdatePdfResponse {

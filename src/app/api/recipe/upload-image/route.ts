@@ -11,15 +11,7 @@ interface RecipeRow extends RowDataPacket {
 	name: string;
 }
 
-interface UploadResponse {
-	success: true;
-	message: string;
-	filename: string;
-	url: string;
-	imageUrl: string;
-	storageMode: string;
-	previousImage?: string;
-}
+import { UpdateImageResponse } from '@/types/fileUpload';
 
 // Helper function to validate file content matches declared MIME type
 function validateFileContent(buffer: Buffer, mimeType: string): boolean {
@@ -151,12 +143,12 @@ async function postHandler(request: NextRequest) {
 		const isReplacement = !!currentImageFilename;
 		const message = isReplacement ? 'Image replaced successfully' : 'Image uploaded successfully';
 
-		const response: UploadResponse = {
+		const response: UpdateImageResponse = {
 			success: true,
 			message,
 			filename: uploadFilename,
-			url: uploadResult.url!,
-			imageUrl,
+			uploadUrl: uploadResult.url!,
+			displayUrl: imageUrl,
 			storageMode: getStorageMode(),
 			...(isReplacement && { previousImage: currentImageFilename }),
 		};
