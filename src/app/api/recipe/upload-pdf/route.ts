@@ -252,7 +252,28 @@ async function postHandler(request: NextRequest) {
 		const pdfUrl = getRecipePdfUrl(uploadFilename);
 
 		// Create organized response structure
-		const response: any = {
+		interface UploadResponse {
+			success: boolean;
+			message: string;
+			recipe: {
+				id: number;
+				pdfUrl: string;
+				filename: string;
+			};
+			upload: {
+				storageUrl: string;
+				storageMode: string;
+				timestamp: string;
+				fileSize: string;
+			};
+			conversion?: {
+				originalFormat: string;
+				convertedTo: string;
+				originalFileName: string;
+			};
+		}
+
+		const response: UploadResponse = {
 			success: true,
 			message: 'PDF uploaded successfully',
 			recipe: {

@@ -16,12 +16,7 @@ const storage = useGCS
 const bucketName = process.env.GCS_BUCKET_NAME;
 const bucket = storage && bucketName ? storage.bucket(bucketName) : null;
 
-export interface FileUploadResult {
-	success: boolean;
-	url?: string;
-	filename?: string;
-	error?: string;
-}
+export type FileUploadResult = { success: true; url: string; filename: string } | { success: false; error: string };
 
 /**
  * Get the public URL for a file
