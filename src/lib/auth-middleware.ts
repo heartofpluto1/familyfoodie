@@ -30,7 +30,8 @@ export async function requireAuth(request: NextRequest) {
 			response: NextResponse.json(
 				{
 					success: false,
-					error: 'Authentication required!!',
+					error: 'Authentication required',
+					code: 'UNAUTHORIZED',
 				},
 				{ status: 401 }
 			),

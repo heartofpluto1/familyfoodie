@@ -31,6 +31,95 @@ describe('/api/recipe/ingredients', () => {
 	});
 
 	describe('PUT /api/recipe/ingredients', () => {
+		it('should return 400 with standardized error for missing required fields', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 1,
+							quantity: '2 cups',
+							// Missing quantity4
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Ingredient ID and quantities are required',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 with standardized error for invalid ID type', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 'not-a-number',
+							quantity: '2 cups',
+							quantity4: '500ml',
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Invalid ingredient ID format',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 404 when ingredient does not exist', async () => {
+			mockExecute.mockResolvedValueOnce([
+				{ affectedRows: 0 }, // No rows updated - ingredient not found
+				[],
+			]);
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 999,
+							quantity: '2 cups',
+							quantity4: '500ml',
+						}),
+					});
+
+					expect(response.status).toBe(404);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ingredient not found',
+						code: 'INGREDIENT_NOT_FOUND',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
 		it('should successfully update recipe ingredient', async () => {
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 1 }, // Successful update
@@ -58,6 +147,12 @@ describe('/api/recipe/ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Ingredient updated successfully',
+						data: {
+							id: 1,
+							quantity: '2 cups',
+							quantity4: '500ml',
+							measureId: 5,
+						},
 					});
 
 					// Verify database call
@@ -67,7 +162,7 @@ describe('/api/recipe/ingredients', () => {
 			});
 		});
 
-		it('should return 401 for unauthenticated users', async () => {
+		it('should return 401 with standardized error for unauthenticated users', async () => {
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -84,6 +179,12 @@ describe('/api/recipe/ingredients', () => {
 					});
 
 					expect(response.status).toBe(401);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
+					});
 				},
 				requestPatcher: mockNonAuthenticatedUser,
 			});
@@ -91,6 +192,127 @@ describe('/api/recipe/ingredients', () => {
 	});
 
 	describe('POST /api/recipe/ingredients', () => {
+		it('should return 400 with standardized error for missing required fields', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 1,
+							quantity: '3 cups',
+							// Missing ingredientId and quantity4
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID, ingredient ID, and quantities are required',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 with standardized error for empty quantities', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 1,
+							ingredientId: 5,
+							quantity: '',
+							quantity4: '750ml',
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Quantity cannot be empty',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 when recipe does not exist', async () => {
+			// Mock foreign key constraint violation
+			mockExecute.mockRejectedValueOnce(new Error('FOREIGN KEY constraint failed'));
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 999, // Non-existent recipe
+							ingredientId: 5,
+							quantity: '3 cups',
+							quantity4: '750ml',
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe not found',
+						code: 'INVALID_RECIPE_ID',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 409 when ingredient already exists in recipe', async () => {
+			// Mock duplicate key constraint violation
+			mockExecute.mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 1,
+							ingredientId: 5,
+							quantity: '3 cups',
+							quantity4: '750ml',
+						}),
+					});
+
+					expect(response.status).toBe(409);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Ingredient already exists in this recipe',
+						code: 'DUPLICATE_INGREDIENT',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
 		it('should successfully add recipe ingredient with all fields', async () => {
 			mockExecute.mockResolvedValueOnce([
 				{ insertId: 42 }, // Successful insert
@@ -120,7 +342,15 @@ describe('/api/recipe/ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Ingredient added successfully',
-						id: 42,
+						data: {
+							id: 42,
+							recipeId: 1,
+							ingredientId: 5,
+							quantity: '3 cups',
+							quantity4: '750ml',
+							measureId: 10,
+							preparationId: 2,
+						},
 					});
 
 					// Verify database call with all parameters including primaryIngredient as 0
@@ -130,7 +360,7 @@ describe('/api/recipe/ingredients', () => {
 			});
 		});
 
-		it('should return 401 for unauthenticated users', async () => {
+		it('should return 401 with standardized error for unauthenticated users', async () => {
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -148,6 +378,12 @@ describe('/api/recipe/ingredients', () => {
 					});
 
 					expect(response.status).toBe(401);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
+					});
 				},
 				requestPatcher: mockNonAuthenticatedUser,
 			});
@@ -155,6 +391,52 @@ describe('/api/recipe/ingredients', () => {
 	});
 
 	describe('DELETE /api/recipe/ingredients', () => {
+		it('should return 400 with standardized error for invalid ID format', async () => {
+			await testApiHandler({
+				appHandler,
+				url: '/api/recipe/ingredients?id=not-a-number',
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Invalid ingredient ID format',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+			});
+		});
+
+		it('should return 404 when ingredient does not exist', async () => {
+			mockExecute.mockResolvedValueOnce([
+				{ affectedRows: 0 }, // No rows deleted - ingredient not found
+			]);
+
+			await testApiHandler({
+				appHandler,
+				url: '/api/recipe/ingredients?id=999',
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+					});
+
+					expect(response.status).toBe(404);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ingredient not found',
+						code: 'INGREDIENT_NOT_FOUND',
+					});
+				},
+			});
+		});
+
 		it('should successfully delete recipe ingredient', async () => {
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 1 }, // Successful delete
@@ -174,6 +456,9 @@ describe('/api/recipe/ingredients', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Ingredient removed successfully',
+						data: {
+							deletedId: 1,
+						},
 					});
 
 					// Verify database call was made with correct parameters

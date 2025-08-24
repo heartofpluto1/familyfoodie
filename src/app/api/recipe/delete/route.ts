@@ -14,39 +14,36 @@ interface PlanRow extends RowDataPacket {
 	count: number;
 }
 
-function validateRecipeId(recipeId: any): { isValid: boolean; error?: any } {
+function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { success: false; error: string; code: string } } {
 	if (recipeId === undefined || recipeId === null || recipeId === '') {
 		return { isValid: false, error: { success: false, error: 'Recipe ID is required', code: 'MISSING_RECIPE_ID' } };
 	}
-	
+
 	if (typeof recipeId === 'string' && isNaN(Number(recipeId))) {
 		return { isValid: false, error: { success: false, error: 'Recipe ID must be a number', code: 'INVALID_RECIPE_ID' } };
 	}
-	
+
 	const numericId = Number(recipeId);
 	if (!Number.isInteger(numericId)) {
 		return { isValid: false, error: { success: false, error: 'Recipe ID must be an integer', code: 'INVALID_RECIPE_ID' } };
 	}
-	
+
 	if (numericId <= 0) {
 		return { isValid: false, error: { success: false, error: 'Recipe ID must be a positive integer', code: 'INVALID_RECIPE_ID' } };
 	}
-	
+
 	return { isValid: true };
 }
 
 async function deleteHandler(request: NextRequest) {
-	let recipeId: any;
-	
+	let recipeId: unknown;
+
 	// Handle JSON parsing with proper error handling
 	try {
 		const body = await request.json();
 		recipeId = body.recipeId;
-	} catch (jsonError) {
-		return NextResponse.json(
-			{ success: false, error: 'Invalid JSON in request body', code: 'INVALID_JSON' },
-			{ status: 400 }
-		);
+	} catch {
+		return NextResponse.json({ success: false, error: 'Invalid JSON in request body', code: 'INVALID_JSON' }, { status: 400 });
 	}
 
 	// Validate recipe ID
@@ -56,22 +53,24 @@ async function deleteHandler(request: NextRequest) {
 	}
 
 	try {
-
 		// First, check if the recipe exists and get its filenames
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId as string)]);
 
 		if (recipeRows.length === 0) {
-			return NextResponse.json({ 
-				success: false, 
-				error: 'Recipe not found', 
-				code: 'RECIPE_NOT_FOUND' 
-			}, { status: 404 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Recipe not found',
+					code: 'RECIPE_NOT_FOUND',
+				},
+				{ status: 404 }
+			);
 		}
 
 		const recipe = recipeRows[0];
 
 		// Check if the recipe is used in any planned weeks
-		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM plans WHERE recipe_id = ?', [parseInt(recipeId)]);
+		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM plans WHERE recipe_id = ?', [parseInt(recipeId as string)]);
 
 		if (planRows[0].count > 0) {
 			return NextResponse.json(
@@ -90,7 +89,7 @@ async function deleteHandler(request: NextRequest) {
 			`SELECT COUNT(*) as count FROM shopping_lists sl 
 			 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
 			 WHERE ri.recipe_id = ?`,
-			[parseInt(recipeId)]
+			[parseInt(recipeId as string)]
 		);
 
 		const hasShoppingListHistory = shoppingListUsage[0].count > 0;
@@ -119,21 +118,21 @@ async function deleteHandler(request: NextRequest) {
 
 				// First, get all ingredients used by this recipe so we can check for unused ones later
 				const [recipeIngredients] = await connection.execute<RowDataPacket[]>('SELECT DISTINCT ingredient_id FROM recipe_ingredients WHERE recipe_id = ?', [
-					parseInt(recipeId),
+					parseInt(recipeId as string),
 				]);
 				const ingredientIds = recipeIngredients.map(row => row.ingredient_id);
 
 				// Delete recipe ingredients first (foreign key constraint)
-				await connection.execute('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [parseInt(recipeId)]);
+				await connection.execute('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [parseInt(recipeId as string)]);
 
 				// Account associations no longer exist - recipes are globally available
 
 				// Delete the recipe
-				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [parseInt(recipeId as string)]);
 
 				if (deleteResult.affectedRows === 0) {
-					const error = new Error('Failed to delete recipe from database');
-					(error as any).code = 'DELETE_FAILED';
+					const error = new Error('Failed to delete recipe from database') as Error & { code: string };
+					error.code = 'DELETE_FAILED';
 					throw error;
 				}
 
@@ -200,7 +199,7 @@ async function deleteHandler(request: NextRequest) {
 					message,
 					deletedIngredientsCount,
 					deletedIngredientNames,
-					...(warning && { warning })
+					...(warning && { warning }),
 				};
 
 				return NextResponse.json(response);
@@ -214,20 +213,22 @@ async function deleteHandler(request: NextRequest) {
 			connection.release();
 		}
 	} catch (error) {
-		const errorCode = (error as any)?.code;
+		const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: unknown }).code : undefined;
 		const errorMessage = error instanceof Error ? error.message : 'Failed to delete recipe';
 		let responseCode = 'SERVER_ERROR';
-		
+
 		if (errorCode === 'DELETE_FAILED') {
 			responseCode = 'DELETE_FAILED';
-		} else if (errorCode === 'DATABASE_ERROR' || 
-		           errorMessage.includes('Pool exhausted') || 
-		           errorMessage.includes('Database constraint violation') ||
-		           errorMessage.includes('Connection') ||
-		           errorMessage.includes('ECONNREFUSED')) {
+		} else if (
+			errorCode === 'DATABASE_ERROR' ||
+			errorMessage.includes('Pool exhausted') ||
+			errorMessage.includes('Database constraint violation') ||
+			errorMessage.includes('Connection') ||
+			errorMessage.includes('ECONNREFUSED')
+		) {
 			responseCode = 'DATABASE_ERROR';
 		}
-		
+
 		return NextResponse.json(
 			{
 				success: false,

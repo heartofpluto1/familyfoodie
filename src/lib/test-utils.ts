@@ -46,7 +46,8 @@ export const authMiddlewareMock = {
 				return new Response(
 					JSON.stringify({
 						success: false,
-						error: 'Authentication required!!',
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
 					}),
 					{ status: 401, headers: { 'Content-Type': 'application/json' } }
 				);
