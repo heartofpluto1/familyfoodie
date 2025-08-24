@@ -123,7 +123,7 @@ describe('/api/recipe/update-details', () => {
 			});
 		});
 
-		it('should handle zero values for time fields', async () => {
+		it('should convert zero values in time fields to null for backward compatibility', async () => {
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -144,13 +144,18 @@ describe('/api/recipe/update-details', () => {
 					});
 
 					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe details updated successfully',
+					});
 
-					// Verify zero values are converted to null (0 || null = null)
+					// Verify zero values are converted to null in database call
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
 						'Zero Time Recipe',
 						'No prep or cook time',
-						null, // prepTime: 0 || null = null
-						null, // cookTime: 0 || null = null
+						null, // prepTime converted from 0 to null
+						null, // cookTime converted from 0 to null
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
@@ -311,7 +316,7 @@ describe('/api/recipe/update-details', () => {
 			});
 		});
 
-		it('should handle invalid JSON payload', async () => {
+		it('should return 400 for invalid JSON payload', async () => {
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -323,15 +328,15 @@ describe('/api/recipe/update-details', () => {
 						body: 'invalid-json',
 					});
 
-					expect(response.status).toBe(500);
+					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Failed to update recipe details');
+					expect(data.error).toBe('Invalid JSON payload');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('should handle undefined description', async () => {
+		it('should handle undefined description by converting to null', async () => {
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -350,16 +355,24 @@ describe('/api/recipe/update-details', () => {
 
 					expect(response.status).toBe(200);
 
-					// Verify undefined description is passed through
-					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([undefined]));
+					// Verify undefined description is converted to null
+					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
+						'Recipe without description',
+						null, // description should be null, not undefined
+						null, // prepTime
+						null, // cookTime
+						null, // seasonId
+						null, // primaryTypeId
+						null, // secondaryTypeId
+						null, // collectionId
+						1,
+					]);
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('should handle negative time values', async () => {
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
-
+		it('should return 400 for negative time values', async () => {
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -377,18 +390,18 @@ describe('/api/recipe/update-details', () => {
 						}),
 					});
 
-					expect(response.status).toBe(200);
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Prep and cook times must be positive integers or null');
 
-					// Verify negative values are passed through (no validation)
-					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([-10, -15]));
+					// Ensure no database calls were made
+					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('should handle very large time values', async () => {
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
-
+		it('should return 400 for unrealistically large time values', async () => {
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -406,18 +419,18 @@ describe('/api/recipe/update-details', () => {
 						}),
 					});
 
-					expect(response.status).toBe(200);
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Prep and cook times must not exceed 1440 minutes (24 hours)');
 
-					// Verify large values are passed through
-					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([999999, 888888]));
+					// Ensure no database calls were made
+					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('should handle negative foreign key IDs', async () => {
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
-
+		it('should return 400 for negative foreign key IDs', async () => {
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -437,16 +450,18 @@ describe('/api/recipe/update-details', () => {
 						}),
 					});
 
-					expect(response.status).toBe(200);
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Foreign key IDs must be positive integers');
 
-					// Verify negative foreign key IDs are passed through
-					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([-1, -2, -3, -4]));
+					// Ensure no database calls were made
+					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('should handle string ID conversion', async () => {
+		it('should properly parse string ID to integer', async () => {
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -466,16 +481,83 @@ describe('/api/recipe/update-details', () => {
 
 					expect(response.status).toBe(200);
 
-					// Verify string ID is used as-is
-					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining(['123']));
+					// Verify string ID is parsed to integer
+					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
+						'Recipe Name',
+						'Description',
+						null, // prepTime
+						null, // cookTime
+						null, // seasonId
+						null, // primaryTypeId
+						null, // secondaryTypeId
+						null, // collectionId
+						123, // ID should be parsed to integer
+					]);
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
-		it('should handle very long name and description strings', async () => {
-			const longName = 'a'.repeat(2000);
-			const longDescription = 'b'.repeat(10000);
+		it('should return 400 for non-numeric string ID', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 'not-a-number',
+							name: 'Recipe Name',
+							description: 'Description',
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Recipe ID must be a valid number');
+
+					// Ensure no database calls were made
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 for name exceeding database limit', async () => {
+			const longName = 'a'.repeat(65); // Database limit is varchar(64)
+			const validDescription = 'Valid description';
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 1,
+							name: longName,
+							description: validDescription,
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Recipe name must not exceed 64 characters');
+
+					// Ensure no database calls were made
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should accept long description within database limits', async () => {
+			const validName = 'Valid Recipe Name';
+			const longDescription = 'b'.repeat(10000); // longtext can handle this
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -489,15 +571,15 @@ describe('/api/recipe/update-details', () => {
 						},
 						body: JSON.stringify({
 							id: 1,
-							name: longName,
+							name: validName,
 							description: longDescription,
 						}),
 					});
 
 					expect(response.status).toBe(200);
 
-					// Verify long strings are passed through
-					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([longName, longDescription]));
+					// Verify long description is accepted (longtext field)
+					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([validName, longDescription]));
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -571,6 +653,68 @@ describe('/api/recipe/update-details', () => {
 						null, // collectionId
 						1,
 					]);
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 for whitespace-only recipe name', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 1,
+							name: '   \t\n   ', // Only whitespace
+							description: 'Valid description',
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Recipe name cannot be empty or whitespace only');
+
+					// Ensure no database calls were made
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 when foreign key references do not exist', async () => {
+			// Mock database to return foreign key constraint error
+			mockExecute.mockRejectedValueOnce({
+				code: 'ER_NO_REFERENCED_ROW_2',
+				errno: 1452,
+				sqlMessage: 'Cannot add or update a child row: a foreign key constraint fails',
+			});
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 1,
+							name: 'Recipe Name',
+							description: 'Description',
+							seasonId: 999, // Non-existent season
+							primaryTypeId: 888, // Non-existent primary type
+							secondaryTypeId: 777, // Non-existent secondary type
+							collectionId: 666, // Non-existent collection
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data.error).toBe('Referenced season, type, or collection does not exist');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
