@@ -162,26 +162,22 @@ describe('/api/recipe/ingredients', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher(request) {
-					request.nextUrl.searchParams.set('id', '1');
-					mockAuthenticatedUser(request);
-				},
+				url: '/api/recipe/ingredients?id=1',
+				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
 					});
 
-					// TODO: Query parameter passing issue - getting 400 instead of 200
-					// The route expects ?id=1 but searchParams.get('id') returns null
-					// This affects DELETE operations across multiple test files
-					expect(response.status).toBe(400); // Temporarily expect 400 until query param issue is fixed
+					expect(response.status).toBe(200);
 					const data = await response.json();
 					expect(data).toEqual({
-						error: 'Ingredient ID is required',
+						success: true,
+						message: 'Ingredient removed successfully',
 					});
 
-					// Database call should not be made when ID is missing
-					expect(mockExecute).not.toHaveBeenCalled();
+					// Verify database call was made with correct parameters
+					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM recipe_ingredients'), [1]);
 				},
 			});
 		});
@@ -189,10 +185,8 @@ describe('/api/recipe/ingredients', () => {
 		it('should return 401 for unauthenticated users', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher(request) {
-					request.nextUrl.searchParams.set('id', '1');
-					mockNonAuthenticatedUser(request);
-				},
+				url: '/api/recipe/ingredients?id=1',
+				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
