@@ -215,14 +215,171 @@ export async function getRecipesInCollection(collection_id: number, household_id
 #### Task 1.3: Scoped Resource Access
 Implement the three-tier access system with existing query compatibility:
 ```typescript
-// Core household-scoped queries maintaining existing interfaces
-export async function getMyRecipes(household_id: number) // Owned + subscribed for meal planning (remove duplicates - prioritise owned)
-export async function getAllRecipesWithDetails(household_id: number, collectionId?: number) // Enhanced for search
-export async function getRecipeDetails(id: string, household_id: number) // Single recipe with precedence
-export async function getMyIngredients(household_id: number) // Enhanced discovery access
-export async function getMyCollections(household_id: number) // Owned + subscribed only (remove duplicates - prioritise owned)
-export async function getPublicCollections(household_id: number) // Public browsing/discovery
-export async function getCollectionById(id: number, household_id: number) // Single collection access
+// src/lib/queries/menus.ts - Update existing file
+export async function getMyRecipes(household_id: number): Promise<Recipe[]> {
+  // Owned + subscribed for meal planning (remove duplicates - prioritise owned)
+  const query = `
+    SELECT DISTINCT r.*, 
+           CASE WHEN r.household_id = ? THEN 'owned' ELSE 'subscribed' END as access_type,
+           r.household_id = ? as can_edit
+    FROM recipes r
+    LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+    LEFT JOIN collections c ON cr.collection_id = c.id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE (
+      r.household_id = ? OR  -- Owned recipes
+      (c.household_id = ? OR cs.household_id IS NOT NULL) -- Recipes from owned/subscribed collections
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM recipes r2 
+      WHERE r2.household_id = ? 
+      AND r2.parent_id = r.id
+      AND r.household_id != ?  -- Only check for household copies when recipe is not already owned
+    )
+    ORDER BY access_type ASC, r.name ASC  -- Prioritize owned recipes
+  `;
+  
+  const [rows] = await pool.execute(query, [
+    household_id, household_id, household_id, household_id, household_id, 
+    household_id, household_id
+  ]);
+  return rows as Recipe[];
+}
+
+export async function getAllRecipesWithDetails(household_id: number, collectionId?: number): Promise<Recipe[]> {
+  // Enhanced for search with household precedence
+  let query = `
+    SELECT DISTINCT r.*,
+           CASE WHEN r.household_id = ? THEN 'customized'
+                WHEN EXISTS (SELECT 1 FROM collections c WHERE c.id = cr.collection_id AND c.household_id = r.household_id) THEN 'original'
+                ELSE 'referenced' END as status,
+           GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections,
+           r.household_id = ? as can_edit
+    FROM recipes r
+    LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id  
+    LEFT JOIN collections c ON cr.collection_id = c.id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE (
+      r.household_id = ? OR  -- Household's own recipes
+      c.public = 1 OR        -- Recipes in public collections  
+      cs.household_id IS NOT NULL  -- Recipes in subscribed collections
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM recipes r2 
+      WHERE r2.household_id = ? 
+      AND r2.parent_id = r.id
+      AND r.household_id != ?
+    )
+  `;
+  
+  const params = [household_id, household_id, household_id, household_id, household_id, household_id];
+  
+  if (collectionId) {
+    query += ` AND cr.collection_id = ?`;
+    params.push(collectionId);
+  }
+  
+  query += ` GROUP BY r.id ORDER BY status ASC, r.name ASC`;
+  
+  const [rows] = await pool.execute(query, params);
+  return rows as Recipe[];
+}
+
+export async function getRecipeDetails(id: string, household_id: number): Promise<Recipe | null> {
+  // Single recipe with household precedence
+  const query = `
+    SELECT r.*,
+           CASE WHEN r.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
+           r.household_id = ? as can_edit,
+           GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections
+    FROM recipes r
+    LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+    LEFT JOIN collections c ON cr.collection_id = c.id  
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE r.id = ?
+    AND (
+      r.household_id = ? OR  -- User owns recipe
+      c.public = 1 OR        -- Recipe in public collection
+      cs.household_id IS NOT NULL  -- Recipe in subscribed collection
+    )
+    GROUP BY r.id
+  `;
+  
+  const [rows] = await pool.execute(query, [household_id, household_id, household_id, id, household_id]);
+  const recipes = rows as Recipe[];
+  return recipes.length > 0 ? recipes[0] : null;
+}
+
+export async function getMyIngredients(household_id: number): Promise<Ingredient[]> {
+  // Enhanced discovery access - household + collection_id=1 (Spencer's essentials) + subscribed collections
+  const query = `
+    SELECT DISTINCT i.*,
+           CASE WHEN i.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
+           i.household_id = ? as can_edit
+    FROM ingredients i
+    LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
+    LEFT JOIN recipes r ON ri.recipe_id = r.id
+    LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+    LEFT JOIN collections c ON cr.collection_id = c.id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE (
+      i.household_id = ? OR  -- Household's own ingredients
+      c.id = 1 OR           -- Always include Spencer's essentials (collection_id=1)
+      cs.household_id IS NOT NULL  -- Ingredients from subscribed collections
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM ingredients i2 
+      WHERE i2.household_id = ? 
+      AND i2.parent_id = i.id
+      AND i.household_id != ?
+    )
+    ORDER BY access_type ASC, i.name ASC  -- Prioritize owned ingredients
+  `;
+  
+  const [rows] = await pool.execute(query, [
+    household_id, household_id, household_id, household_id, 
+    household_id, household_id
+  ]);
+  return rows as Ingredient[];
+}
+
+export async function getCollectionById(id: number, household_id: number): Promise<Collection | null> {
+  // Single collection access with household validation
+  const query = `
+    SELECT c.*, h.name as owner_name,
+           CASE 
+             WHEN c.household_id = ? THEN 'owned'
+             WHEN cs.household_id IS NOT NULL THEN 'subscribed' 
+             WHEN c.public = 1 THEN 'public'
+             ELSE NULL 
+           END as access_type,
+           COUNT(cr.recipe_id) as recipe_count,
+           c.household_id = ? as can_edit,
+           (c.public = 1 AND c.household_id != ? AND cs.household_id IS NULL) as can_subscribe
+    FROM collections c
+    JOIN households h ON c.household_id = h.id
+    LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE c.id = ?
+    AND (
+      c.household_id = ? OR       -- User owns collection
+      cs.household_id IS NOT NULL OR  -- User subscribed to collection
+      c.public = 1               -- Public collection
+    )
+    GROUP BY c.id
+  `;
+  
+  const [rows] = await pool.execute(query, [
+    household_id, household_id, household_id, household_id, 
+    id, household_id
+  ]);
+  const collections = rows as Collection[];
+  return collections.length > 0 ? collections[0] : null;
+}
+
+// Keep existing functions signatures for reference
+export async function getMyCollections(household_id: number) // Owned + subscribed only (remove duplicates - prioritise owned) - IMPLEMENTED ABOVE
+export async function getPublicCollections(household_id: number) // Public browsing/discovery - IMPLEMENTED ABOVE
 ```
 
 #### Task 1.4: Shopping List Query Integration
@@ -396,11 +553,119 @@ export async function canEditResource(
 #### Task 3.1: Collection Subscription APIs
 Implement complete subscription management system:
 ```typescript
-// src/lib/queries/subscriptions.ts
-export async function subscribeToCollection(household_id: number, collection_id: number)
-export async function unsubscribeFromCollection(household_id: number, collection_id: number) 
-export async function getSubscribedCollections(household_id: number)
-export async function isSubscribed(household_id: number, collection_id: number)
+// src/lib/queries/subscriptions.ts - NEW FILE
+import pool from '@/lib/db.js';
+
+export async function subscribeToCollection(household_id: number, collection_id: number): Promise<boolean> {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // Check if collection exists and is public
+    const checkQuery = `
+      SELECT c.id, c.public, c.household_id
+      FROM collections c 
+      WHERE c.id = ?
+    `;
+    const [checkRows] = await connection.execute(checkQuery, [collection_id]);
+    
+    if (checkRows.length === 0) {
+      throw new Error('Collection not found');
+    }
+    
+    const collection = checkRows[0];
+    
+    // Cannot subscribe to own collections
+    if (collection.household_id === household_id) {
+      throw new Error('Cannot subscribe to your own collection');
+    }
+    
+    // Can only subscribe to public collections
+    if (!collection.public) {
+      throw new Error('Cannot subscribe to private collection');
+    }
+    
+    // Check if already subscribed
+    const existsQuery = `
+      SELECT 1 FROM collection_subscriptions 
+      WHERE household_id = ? AND collection_id = ?
+    `;
+    const [existsRows] = await connection.execute(existsQuery, [household_id, collection_id]);
+    
+    if (existsRows.length > 0) {
+      await connection.rollback();
+      return false; // Already subscribed
+    }
+    
+    // Insert subscription
+    const insertQuery = `
+      INSERT INTO collection_subscriptions (household_id, collection_id, subscribed_at)
+      VALUES (?, ?, NOW())
+    `;
+    await connection.execute(insertQuery, [household_id, collection_id]);
+    
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function unsubscribeFromCollection(household_id: number, collection_id: number): Promise<boolean> {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // Delete subscription
+    const deleteQuery = `
+      DELETE FROM collection_subscriptions 
+      WHERE household_id = ? AND collection_id = ?
+    `;
+    const [result] = await connection.execute(deleteQuery, [household_id, collection_id]);
+    
+    await connection.commit();
+    return result.affectedRows > 0;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function getSubscribedCollections(household_id: number): Promise<Collection[]> {
+  const query = `
+    SELECT c.*, h.name as owner_name,
+           'subscribed' as access_type,
+           COUNT(cr.recipe_id) as recipe_count,
+           false as can_edit,
+           true as can_subscribe,
+           cs.subscribed_at
+    FROM collections c
+    JOIN households h ON c.household_id = h.id
+    JOIN collection_subscriptions cs ON c.id = cs.collection_id
+    LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
+    WHERE cs.household_id = ?
+    GROUP BY c.id
+    ORDER BY cs.subscribed_at DESC, c.title ASC
+  `;
+  
+  const [rows] = await pool.execute(query, [household_id]);
+  return rows as Collection[];
+}
+
+export async function isSubscribed(household_id: number, collection_id: number): Promise<boolean> {
+  const query = `
+    SELECT 1 FROM collection_subscriptions 
+    WHERE household_id = ? AND collection_id = ?
+  `;
+  
+  const [rows] = await pool.execute(query, [household_id, collection_id]);
+  return rows.length > 0;
+}
 ```
 
 #### Task 3.2: Three-Tier Access Implementation
@@ -414,46 +679,186 @@ export async function isSubscribed(household_id: number, collection_id: number)
 #### Task 4.1: Advanced Search Implementation
 Implement household-scoped search maintaining existing capabilities:
 ```typescript
-// Multi-field search with household + subscribed precedence
+// src/lib/queries/search.ts - NEW FILE
+import pool from '@/lib/db.js';
+
 export async function searchRecipesWithPrecedence(
   searchTerm: string,
   household_id: number,
   collectionId?: number
-) {
-  // Search across: recipe.name, recipe.description, season.name, ingredients
-  // Apply household precedence logic
-  // Maintain real-time filtering performance
-  // Support URL parameter synchronization
+): Promise<Recipe[]> {
+  // Multi-field search with household + subscribed precedence
+  let query = `
+    SELECT DISTINCT r.*, 
+           CASE WHEN r.household_id = ? THEN 'customized'
+                WHEN EXISTS (SELECT 1 FROM collections c WHERE c.id = cr.collection_id AND c.household_id = r.household_id) THEN 'original'
+                ELSE 'referenced' END as status,
+           GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections,
+           r.household_id = ? as can_edit,
+           s.name as seasonName
+    FROM recipes r
+    LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+    LEFT JOIN collections c ON cr.collection_id = c.id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    LEFT JOIN seasons s ON r.season_id = s.id
+    LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+    LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+    WHERE (
+      r.household_id = ? OR  -- Household's own recipes
+      c.public = 1 OR        -- Recipes in public collections  
+      cs.household_id IS NOT NULL  -- Recipes in subscribed collections
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM recipes r2 
+      WHERE r2.household_id = ? 
+      AND r2.parent_id = r.id
+      AND r.household_id != ?
+    )
+    AND (
+      LOWER(r.name) LIKE LOWER(?) OR
+      LOWER(r.description) LIKE LOWER(?) OR
+      LOWER(s.name) LIKE LOWER(?) OR
+      LOWER(i.name) LIKE LOWER(?)
+    )
+  `;
+  
+  const searchPattern = `%${searchTerm}%`;
+  const params = [
+    household_id, household_id, household_id, household_id, 
+    household_id, household_id, 
+    searchPattern, searchPattern, searchPattern, searchPattern
+  ];
+  
+  if (collectionId) {
+    query += ` AND cr.collection_id = ?`;
+    params.push(collectionId);
+  }
+  
+  query += ` GROUP BY r.id ORDER BY status ASC, r.name ASC`;
+  
+  const [rows] = await pool.execute(query, params);
+  return rows as Recipe[];
 }
 
-// Client-side filtering for performance (pre-loaded household data)
-const filteredRecipes = recipes.filter(recipe => {
+// Client-side filtering helper for performance (pre-loaded household data)
+export function filterRecipesClientSide(recipes: Recipe[], searchTerm: string): Recipe[] {
   const search = searchTerm.toLowerCase();
-  return recipe.name.toLowerCase().includes(search) ||
-         recipe.description?.toLowerCase().includes(search) ||
-         recipe.seasonName?.toLowerCase().includes(search) ||
-         recipe.ingredients?.some(ingredient => ingredient.toLowerCase().includes(search));
-});
+  return recipes.filter(recipe => 
+    recipe.name.toLowerCase().includes(search) ||
+    recipe.description?.toLowerCase().includes(search) ||
+    recipe.seasonName?.toLowerCase().includes(search) ||
+    recipe.ingredients?.some(ingredient => ingredient.toLowerCase().includes(search))
+  );
+}
 ```
 
 #### Task 4.2: SEO & URL System Integration  
 Implement household-aware URL validation and routing:
 ```typescript
-// URL parsing with household context validation
+// src/lib/queries/validation.ts - NEW FILE
+import pool from '@/lib/db.js';
+
 export async function validateCollectionAccess(
   collectionId: number, 
   household_id: number
-): Promise<'owned' | 'subscribed' | 'public' | null>
+): Promise<'owned' | 'subscribed' | 'public' | null> {
+  const query = `
+    SELECT c.household_id, c.public,
+           cs.household_id as is_subscribed
+    FROM collections c
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE c.id = ?
+  `;
+  
+  const [rows] = await pool.execute(query, [household_id, collectionId]);
+  
+  if (rows.length === 0) {
+    return null; // Collection not found
+  }
+  
+  const collection = rows[0];
+  
+  if (collection.household_id === household_id) {
+    return 'owned';
+  } else if (collection.is_subscribed) {
+    return 'subscribed';
+  } else if (collection.public) {
+    return 'public';
+  } else {
+    return null; // No access
+  }
+}
 
 export async function validateRecipeAccess(
   recipeId: number,
   collectionId: number, 
   household_id: number
-): Promise<boolean>
+): Promise<boolean> {
+  const query = `
+    SELECT r.household_id as recipe_household_id,
+           c.household_id as collection_household_id,
+           c.public as collection_public,
+           cs.household_id as is_subscribed_to_collection
+    FROM recipes r
+    JOIN collection_recipes cr ON r.id = cr.recipe_id
+    JOIN collections c ON cr.collection_id = c.id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE r.id = ? AND c.id = ?
+  `;
+  
+  const [rows] = await pool.execute(query, [household_id, recipeId, collectionId]);
+  
+  if (rows.length === 0) {
+    return false; // Recipe not found in collection
+  }
+  
+  const access = rows[0];
+  
+  // User can access recipe if:
+  // 1. They own the recipe
+  // 2. They own the collection containing the recipe
+  // 3. They're subscribed to the collection containing the recipe  
+  // 4. The collection containing the recipe is public
+  return (
+    access.recipe_household_id === household_id ||
+    access.collection_household_id === household_id ||
+    access.is_subscribed_to_collection ||
+    access.collection_public
+  );
+}
+
+// Helper function for URL slug validation with household context
+export async function validateSlugAccess(
+  collectionSlug: string,
+  recipeSlug: string,
+  household_id: number
+): Promise<{ collection_id: number; recipe_id: number } | null> {
+  const query = `
+    SELECT c.id as collection_id, r.id as recipe_id
+    FROM collections c
+    JOIN collection_recipes cr ON c.id = cr.collection_id
+    JOIN recipes r ON cr.recipe_id = r.id
+    LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+    WHERE c.url_slug = ? AND r.url_slug = ?
+    AND (
+      c.household_id = ? OR          -- User owns collection
+      r.household_id = ? OR          -- User owns recipe
+      cs.household_id IS NOT NULL OR -- User subscribed to collection
+      c.public = 1                   -- Collection is public
+    )
+  `;
+  
+  const [rows] = await pool.execute(query, [
+    household_id, collectionSlug, recipeSlug, 
+    household_id, household_id
+  ]);
+  
+  return rows.length > 0 ? rows[0] : null;
+}
 
 // SEO redirects with household-aware URL generation
-// Maintain existing parseSlugPath(), parseRecipeUrl(), generateSlugFromTitle()
-// Add household context to URL validation flows
+// Note: Maintain existing parseSlugPath(), parseRecipeUrl(), generateSlugFromTitle()
+// These functions add household context to URL validation flows
 ```
 
 ### Phase 5: API Endpoint Development (Days 13-15)
@@ -937,6 +1342,87 @@ const testRecipes = [
 3. **Performance Tests**: Run weekly to catch performance regressions
 4. **Security Tests**: Run on every deployment to validate household isolation
 5. **Load Tests**: Run monthly with production-scale data
+
+## Function Signature Changes & Agent 3 Integration Reference
+
+### Updated Existing Query Functions
+**Agent 3 must update these function calls to include `household_id` parameter:**
+
+#### In `/src/lib/queries/collections.ts`:
+```typescript
+// BEFORE: export async function getCollectionById(id: number): Promise<Collection | null>
+// AFTER:  export async function getCollectionById(id: number, household_id: number): Promise<Collection | null>
+```
+
+#### In `/src/lib/queries/menus.ts`:
+```typescript
+// BEFORE: export async function getAllRecipesWithDetails(collectionId?: number): Promise<Recipe[]>
+// AFTER:  export async function getAllRecipesWithDetails(household_id: number, collectionId?: number): Promise<Recipe[]>
+
+// BEFORE: export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
+// AFTER:  export async function getRecipeDetails(id: string, household_id: number): Promise<Recipe | null>
+
+// RENAMED: getRecipesForRandomization() → getMyRecipes()
+// BEFORE: export async function getRecipesForRandomization(): Promise<Recipe[]>
+// AFTER:  export async function getMyRecipes(household_id: number): Promise<Recipe[]>
+```
+
+### New Query Files Created
+**Agent 3 can import these new functions:**
+
+#### `/src/lib/queries/subscriptions.ts`:
+```typescript
+export async function subscribeToCollection(household_id: number, collection_id: number): Promise<boolean>
+export async function unsubscribeFromCollection(household_id: number, collection_id: number): Promise<boolean>
+export async function getSubscribedCollections(household_id: number): Promise<Collection[]>
+export async function isSubscribed(household_id: number, collection_id: number): Promise<boolean>
+```
+
+#### `/src/lib/queries/search.ts`:
+```typescript
+export async function searchRecipesWithPrecedence(searchTerm: string, household_id: number, collectionId?: number): Promise<Recipe[]>
+export function filterRecipesClientSide(recipes: Recipe[], searchTerm: string): Recipe[]
+```
+
+#### `/src/lib/queries/validation.ts`:
+```typescript
+export async function validateCollectionAccess(collectionId: number, household_id: number): Promise<'owned' | 'subscribed' | 'public' | null>
+export async function validateRecipeAccess(recipeId: number, collectionId: number, household_id: number): Promise<boolean>
+export async function validateSlugAccess(collectionSlug: string, recipeSlug: string, household_id: number): Promise<{ collection_id: number; recipe_id: number } | null>
+```
+
+### Files Requiring Import Updates
+**Agent 3 must update these files to use new function signatures:**
+
+#### Pages:
+- `/src/app/recipes/[collection-slug]/page.tsx` - Update `getCollectionById()` and `getAllRecipesWithDetails()` calls
+- `/src/app/recipes/[collection-slug]/[recipe-slug]/page.tsx` - Update `getRecipeDetails()` call
+- `/src/app/plan/page.tsx` - Update `getAllRecipesWithDetails()` call
+
+#### API Routes:
+- `/src/app/api/plan/randomize/route.ts` - Change import from `getRecipesForRandomization` to `getMyRecipes`
+- All API routes in Phase 5 sections - Add household_id parameter extraction from authentication middleware
+
+### Authentication Context Integration
+**Agent 3 will consume these interfaces from Agent 2:**
+
+```typescript
+// From src/lib/auth.ts
+interface SessionUser {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  household_id: number;  // NEW
+  household_name: string; // NEW
+}
+
+// From src/lib/middleware/withAuth.ts  
+interface AuthenticatedRequest extends NextRequest {
+  user: SessionUser;
+  household_id: number; // NEW: direct access for API handlers
+}
+```
 
 ## Integration Points with Agent 3
 

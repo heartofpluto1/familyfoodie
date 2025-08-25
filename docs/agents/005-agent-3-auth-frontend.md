@@ -188,73 +188,99 @@ export interface Ingredient {
 ### Phase 3: Data Fetching Integration (Days 5-7)
 
 #### Task 3.1: Collection Data Fetching
-Update all collection-related data fetching:
+Update existing recipes page to show collections with server-side queries:
 ```typescript
-// src/app/collections/page.tsx - Main collections page
-export default function CollectionsPage() {
-  const { household_id } = useAuth();
-  const [collections, setCollections] = useState<Collection[]>([]);
-  
-  useEffect(() => {
-    // Use new household-scoped API
-    fetch('/api/collections')
-      .then(res => res.json())
-      .then(data => setCollections(data));
-  }, [household_id]);
+// src/app/recipes/page.tsx - Update existing recipes page to show collections
+import { getMyCollections, getPublicCollections } from '@/lib/queries/collections';
+import { validateSession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+
+export default async function RecipesPage() {
+  // Get user session for household context
+  const session = await validateSession();
+  if (!session) {
+    redirect('/login');
+  }
+
+  // Server-side data fetching - runs in parallel
+  const [myCollections, publicCollections] = await Promise.all([
+    getMyCollections(session.household_id), // Household's owned and subscribed collections
+    getPublicCollections(session.household_id) // Browsable public collections
+  ]);
 
   return (
     <div>
-      {collections.map(collection => (
-        <CollectionCard
-          key={collection.id}
-          collection={collection}
-          showSubscribeButton={collection.access_type === 'public'}
-          onSubscribe={handleSubscribe}
-          onUnsubscribe={handleUnsubscribe}
-        />
-      ))}
+      {/* My Collections Section */}
+      <section>
+        <h2>My Collections</h2>
+        {myCollections.map(collection => (
+          <CollectionCard
+            key={collection.id}
+            collection={collection}
+            isSubscribed={true} // All collections in "My Collections" are subscribed/owned
+            canToggleSubscription={collection.access_type === 'subscribed'} // Can only unsubscribe from subscribed collections (not owned)
+            onToggleSubscription={handleToggleSubscription}
+          />
+        ))}
+      </section>
+
+      {/* Public Collections Section */}
+      <section>
+        <h2>Browse Public Collections</h2>
+        {publicCollections.map(collection => (
+          <CollectionCard
+            key={collection.id}
+            collection={collection}
+            isSubscribed={false} // All public collections are not yet subscribed
+            canToggleSubscription={true} // Can subscribe to any public collection
+            onToggleSubscription={handleToggleSubscription}
+          />
+        ))}
+      </section>
     </div>
   );
 }
 ```
 
 #### Task 3.2: Recipe Data Fetching with Precedence
-Update recipe search and collection browsing:
+Update existing collection recipe page with server-side data fetching:
 ```typescript
-// src/app/collections/[slug]/page.tsx - Collection details
-export default function CollectionPage({ params }: { params: { slug: string } }) {
-  const { household_id } = useAuth();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [collection, setCollection] = useState<Collection | null>(null);
-  
-  useEffect(() => {
-    // Fetch collection details for context
-    fetch(`/api/collections/${params.slug}`)
-      .then(res => res.json())
-      .then(data => setCollection(data));
-    
-    // Uses enhanced household precedence logic from Agent 2 with collection context
-    fetch(`/api/collections/${params.slug}/recipes`)
-      .then(res => res.json())
-      .then(data => setRecipes(data)); // Recipes now include access_context
-  }, [params.slug, household_id]);
+// src/app/recipes/[collection_slug]/page.tsx - Update existing collection recipe page
+import { getCollectionBySlug, getRecipesInCollection } from '@/lib/queries/collections';
+import { validateSession } from '@/lib/auth';
 
-  const handleEditRecipe = (recipe: Recipe) => {
-    // Navigate to collection-aware edit URL
-    const collectionSlug = recipe.current_collection_slug || params.slug;
-    window.location.href = `/recipes/${collectionSlug}/${recipe.url_slug}/edit`;
+interface CollectionRecipesPageProps {
+  params: { collection_slug: string };
+}
+
+export default async function CollectionRecipesPage({ params }: CollectionRecipesPageProps) {
+  // Get user session for household context
+  const session = await validateSession();
+  if (!session) {
+    redirect('/login');
+  }
+
+  // Server-side data fetching - runs in parallel
+  const [collection, recipes] = await Promise.all([
+    getCollectionBySlug(params.collection_slug, session.household_id),
+    getRecipesInCollection(params.collection_slug, session.household_id) // Uses enhanced household precedence logic
+  ]);
+
+  const handleViewRecipe = (recipe: Recipe) => {
+    // Navigate to recipe details page (not edit page)
+    const collectionSlug = recipe.current_collection_slug || params.collection_slug;
+    window.location.href = `/recipes/${collectionSlug}/${recipe.url_slug}`;
   };
 
   return (
     <div>
-      <h1>{collection?.title}</h1>
+      <h1>{collection?.title || params.collection_slug}</h1>
       {recipes.map(recipe => (
         <RecipeCard
           key={recipe.id}
           recipe={recipe}
           showStatus={true} // Show customized/original/referenced status
-          showCopyWarning={!recipe.access_context?.user_owns_recipe || !recipe.access_context?.user_owns_collection}
-          onEditRecipe={() => handleEditRecipe(recipe)}
+          onViewRecipe={() => handleViewRecipe(recipe)}
         />
       ))}
     </div>
@@ -265,25 +291,48 @@ export default function CollectionPage({ params }: { params: { slug: string } })
 ### Phase 4: Copy-on-Write UI Integration (Days 8-10)
 
 #### Task 4.1: Edit Flow Integration
-Add copy-on-write logic to all edit operations:
+Update existing recipe details page to include copy-on-write logic for editing:
 ```typescript
-// src/app/recipes/[collection_slug]/[recipe_slug]/edit/page.tsx
-export default function EditRecipePage({ 
-  params 
-}: { 
-  params: { collection_slug: string; recipe_slug: string } 
-}) {
-  const { household_id } = useAuth();
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+// src/app/recipes/[collection_slug]/[recipe_slug]/page.tsx - Update existing recipe details page
+import { getRecipeBySlug } from '@/lib/queries/recipes';
+import { validateSession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+
+interface RecipeDetailsPageProps {
+  params: { collection_slug: string; recipe_slug: string };
+}
+
+export default async function RecipeDetailsPage({ params }: RecipeDetailsPageProps) {
+  // Get user session for household context
+  const session = await validateSession();
+  if (!session) {
+    redirect('/login');
+  }
+
+  // Server-side data fetching for recipe with collection context
+  const recipe = await getRecipeBySlug(params.recipe_slug, params.collection_slug, session.household_id);
+  
+  if (!recipe) {
+    redirect('/404');
+  }
+
+  return <RecipeDetailsClient recipe={recipe} params={params} />;
+}
+
+// Update existing client component to include copy-on-write logic
+'use client';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+interface RecipeDetailsClientProps {
+  recipe: Recipe;
+  params: { collection_slug: string; recipe_slug: string };
+}
+
+function RecipeDetailsClient({ recipe, params }: RecipeDetailsClientProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const router = useRouter();
-  
-  // Load recipe data for editing (NO copy-on-write triggered here)
-  useEffect(() => {
-    fetch(`/api/recipes/${params.recipe_slug}?collection_slug=${params.collection_slug}`)
-      .then(res => res.json())
-      .then(data => setRecipe(data));
-  }, [params.recipe_slug, params.collection_slug]);
   
   const handleSave = async (updatedRecipe: Recipe) => {
     if (!recipe?.current_collection_id) {
@@ -317,6 +366,9 @@ export default function EditRecipePage({
           
           // Note: User is automatically unsubscribed from original collection when copied
           router.push(`/recipes/${newCollectionSlug}/${newRecipeSlug}`);
+        } else {
+          // No copy-on-write needed, just exit edit mode
+          setIsEditing(false);
         }
       }
     } finally {
@@ -333,78 +385,88 @@ export default function EditRecipePage({
     return <div>Creating your personalized {copyingActions}...</div>;
   }
 
-  return <RecipeEditForm recipe={recipe} onSave={handleSave} />;
+  return (
+    <div>
+      {/* Recipe details view/edit toggle */}
+      {isEditing ? (
+        <RecipeEditForm 
+          recipe={recipe} 
+          onSave={handleSave}
+          onCancel={() => setIsEditing(false)}
+        />
+      ) : (
+        <RecipeDetailsView 
+          recipe={recipe}
+          onEdit={() => setIsEditing(true)}
+          showEditButton={recipe.access_context?.user_owns_recipe || recipe.access_context?.user_owns_collection}
+        />
+      )}
+    </div>
+  );
 }
 ```
 
-#### Task 4.2: Collection Copying UI
-Add collection copying functionality:
+#### Task 4.2: Subscription Toggle UI
+Simplified subscription toggle - same component across both lists with different toggle states:
 ```typescript
 // src/app/components/CollectionCard.tsx
 interface CollectionCardProps {
   collection: Collection;
-  showSubscribeButton?: boolean;
-  showCopyButton?: boolean;
-  onSubscribe?: (collection: Collection) => void;
-  onUnsubscribe?: (collection: Collection) => void;
-  onCopy?: (collection: Collection) => void;
+  isSubscribed: boolean;
+  canToggleSubscription: boolean;
+  onToggleSubscription: (collection: Collection, currentlySubscribed: boolean) => void;
 }
 
-const CollectionCard = ({ collection, showCopyButton, onCopy }: CollectionCardProps) => {
-  const [isCopying, setIsCopying] = useState(false);
-  
-  const handleCopy = async () => {
-    if (!onCopy) return;
-    setIsCopying(true);
-    try {
-      await onCopy(collection);
-    } finally {
-      setIsCopying(false);
-    }
-  };
-
+const CollectionCard = ({ collection, isSubscribed, canToggleSubscription, onToggleSubscription }: CollectionCardProps) => {
   return (
     <div className="collection-card">
       {/* Collection content */}
+      <h3>{collection.title}</h3>
+      <p>{collection.subtitle}</p>
       
-      {showCopyButton && (
-        <button
-          onClick={handleCopy}
-          disabled={isCopying}
-          className="copy-collection-btn"
-        >
-          {isCopying ? 'Copying...' : 'Copy Collection'}
-        </button>
+      {/* Subscription toggle */}
+      {canToggleSubscription && (
+        <SubscriptionToggle
+          collection={collection}
+          isSubscribed={isSubscribed}
+          onToggle={() => onToggleSubscription(collection, isSubscribed)}
+        />
+      )}
+      
+      {!canToggleSubscription && isSubscribed && (
+        <span className="owned-badge">Owned</span>
       )}
     </div>
   );
 };
+
+// Note: Collection copying happens automatically when users:
+// 1. Edit collection metadata (title, subtitle, etc.) they don't own
+// 2. Edit recipes/ingredients in collections they don't own
+// No explicit "Copy Collection" UI needed - copy-on-write handles it transparently
 ```
 
 ### Phase 5: Subscription Management UI (Days 11-12)
 
-#### Task 5.1: Collection Subscription Interface
-Create subscription management components:
+#### Task 5.1: Collection Subscription Toggle Component
+Create a unified subscription toggle button component with icon:
 ```typescript
-// src/app/components/SubscriptionButton.tsx
-interface SubscriptionButtonProps {
+// src/app/components/SubscriptionToggle.tsx
+import { BookmarkIcon, BookmarkSlashIcon } from '@/app/components/Icons';
+
+interface SubscriptionToggleProps {
   collection: Collection;
   isSubscribed: boolean;
-  onSubscribe: (collectionId: number) => Promise<void>;
-  onUnsubscribe: (collectionId: number) => Promise<void>;
+  onToggle: () => Promise<void>;
 }
 
-const SubscriptionButton = ({ collection, isSubscribed, onSubscribe, onUnsubscribe }: SubscriptionButtonProps) => {
+const SubscriptionToggle = ({ collection, isSubscribed, onToggle }: SubscriptionToggleProps) => {
   const [loading, setLoading] = useState(false);
   
   const handleToggle = async () => {
     setLoading(true);
     try {
-      if (isSubscribed) {
-        await onUnsubscribe(collection.id);
-      } else {
-        await onSubscribe(collection.id);
-      }
+      await onToggle();
     } finally {
       setLoading(false);
     }
@@ -414,12 +476,64 @@ const SubscriptionButton = ({ collection, isSubscribed, onSubscribe, onUnsubscri
     <button
       onClick={handleToggle}
       disabled={loading}
-      className={`subscription-btn ${isSubscribed ? 'subscribed' : 'unsubscribed'}`}
+      className={`subscription-toggle ${isSubscribed ? 'subscribed' : 'unsubscribed'}`}
     >
-      {loading ? 'Loading...' : (isSubscribed ? 'Unsubscribe' : 'Subscribe')}
+      {loading ? (
+        <span>Loading...</span>
+      ) : (
+        <>
+          {isSubscribed ? <BookmarkIcon /> : <BookmarkSlashIcon />}
+          <span>{isSubscribed ? 'Subscribed' : 'Subscribe'}</span>
+        </>
+      )}
     </button>
   );
 };
+
+// Add to src/app/components/Icons.tsx
+export function BookmarkIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+      />
+    </svg>
+  );
+}
+
+export function BookmarkSlashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 3l18 18"
+      />
+    </svg>
+  );
+}
 ```
 
 #### Task 5.2: Subscription Status Indicators
@@ -431,40 +545,56 @@ Add visual indicators for subscription status throughout the app:
 ### Phase 6: Search & Filtering Updates (Day 13)
 
 #### Task 6.1: Recipe Search Integration
-Update RecipeSearch component to use household precedence:
+No changes needed to RecipeSearch component - permission boundaries and household precedence are handled entirely at the API level:
 ```typescript
 // src/app/components/RecipeSearch.tsx
-const RecipeSearch = ({ onSearch, resultsCount, totalCount }: RecipeSearchProps) => {
-  const { household_id } = useAuth();
-  
-  // Update to use searchRecipesWithPrecedence API
-  const handleSearch = useCallback((searchTerm: string) => {
-    const params = new URLSearchParams();
-    params.set('q', searchTerm);
-    params.set('household_id', household_id.toString());
-    
-    onSearch(`/api/recipes/search?${params.toString()}`);
-  }, [household_id, onSearch]);
+// Component remains unchanged - existing search functionality works as-is
+// The API endpoints (/api/recipes/search) will handle:
+// - Household context from session authentication
+// - Permission boundaries for recipe visibility
+// - Household precedence in search results
+// - Filtering based on accessible collections
 
-  // Component continues to work as before, but now with household context
+// Frontend simply calls existing search API - no household_id parameter needed
+const RecipeSearch = ({ onSearch, resultsCount, totalCount }: RecipeSearchProps) => {
+  const handleSearch = useCallback((searchTerm: string) => {
+    onSearch(`/api/recipes/search?q=${searchTerm}`);
+  }, [onSearch]);
+
+  // Component continues to work exactly as before
 };
 ```
 
 #### Task 6.2: Meal Planning Integration
-Update meal planning to use subscription-scoped recipe access:
+Update meal planning with server-side data fetching for subscription-scoped recipe access:
 ```typescript
 // src/app/plan/page.tsx - Meal planning page
-export default function PlanPage() {
-  const { household_id } = useAuth();
+import { getMyRecipes } from '@/lib/queries/recipes';
+import { validateSession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+
+export default async function PlanPage() {
+  // Get user session for household context
+  const session = await validateSession();
+  if (!session) {
+    redirect('/login');
+  }
+
+  // Server-side data fetching - household owned recipes + recipes from subscribed collections
+  const availableRecipes = await getMyRecipes(session.household_id);
   
-  useEffect(() => {
-    // Use getMyRecipes() - strict subscription-based access
-    fetch('/api/recipes/my-recipes')
-      .then(res => res.json())
-      .then(data => setAvailableRecipes(data));
-  }, [household_id]);
-  
-  // Rest of meal planning logic remains the same
+  return <PlanPageClient availableRecipes={availableRecipes} />;
+}
+
+// Separate client component for meal planning interactions
+'use client';
+interface PlanPageClientProps {
+  availableRecipes: Recipe[];
+}
+
+function PlanPageClient({ availableRecipes }: PlanPageClientProps) {
+  // Rest of meal planning logic remains the same with client-side state for user interactions
+  // availableRecipes is pre-loaded from server
 };
 ```
 
