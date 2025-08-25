@@ -278,6 +278,13 @@ export default function EditRecipePage({
   const [isCopying, setIsCopying] = useState(false);
   const router = useRouter();
   
+  // Load recipe data for editing (NO copy-on-write triggered here)
+  useEffect(() => {
+    fetch(`/api/recipes/${params.recipe_slug}?collection_slug=${params.collection_slug}`)
+      .then(res => res.json())
+      .then(data => setRecipe(data));
+  }, [params.recipe_slug, params.collection_slug]);
+  
   const handleSave = async (updatedRecipe: Recipe) => {
     if (!recipe?.current_collection_id) {
       console.error('Missing collection context for copy-on-write');
@@ -287,7 +294,7 @@ export default function EditRecipePage({
     setIsCopying(true);
     
     try {
-      // Enhanced API call with collection context for copy-on-write
+      // Copy-on-write triggered ONLY when user submits changes via this API call
       const response = await fetch(`/api/recipes/${params.recipe_slug}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -308,6 +315,7 @@ export default function EditRecipePage({
           const newCollectionSlug = new_collection_slug || params.collection_slug;
           const newRecipeSlug = new_recipe_slug || params.recipe_slug;
           
+          // Note: User is automatically unsubscribed from original collection when copied
           router.push(`/recipes/${newCollectionSlug}/${newRecipeSlug}`);
         }
       }

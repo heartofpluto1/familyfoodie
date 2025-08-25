@@ -276,6 +276,8 @@ export async function triggerCascadeCopyWithContext(
     const result = results[0];
     const actions = result.actions_taken ? result.actions_taken.split(',').filter(Boolean) : [];
     
+    // Note: actions_taken may include 'unsubscribed_from_original' when collection is copied
+    
     // Get new slugs if resources were copied
     let new_collection_slug, new_recipe_slug;
     
@@ -312,7 +314,7 @@ export async function triggerCascadeCopyWithContext(
   }
 }
 
-// Original optimized collection copying (still used for subscription scenarios)
+// Original optimized collection copying (shallow copy with automatic unsubscribe)
 export async function copyCollectionOptimized(source_id: number, target_household_id: number) {
   const connection = await pool.getConnection();
   try {
@@ -324,6 +326,8 @@ export async function copyCollectionOptimized(source_id: number, target_househol
       SELECT CONCAT(title, ' (Copy)'), subtitle, filename, filename_dark, ?, id, 0
       FROM collections WHERE id = ?
     `;
+    const [result] = await connection.execute(copyQuery, [target_household_id, source_id]);
+    const newCollectionId = result.insertId;
     
     // Copy junction records (12 bytes each vs 500+ bytes for recipe records)
     const junctionQuery = `
@@ -331,11 +335,22 @@ export async function copyCollectionOptimized(source_id: number, target_househol
       SELECT ?, cr.recipe_id, NOW()
       FROM collection_recipes cr WHERE cr.collection_id = ?
     `;
+    await connection.execute(junctionQuery, [newCollectionId, source_id]);
+    
+    // Unsubscribe from original collection since we now have our own copy
+    const unsubscribeQuery = `
+      DELETE FROM collection_subscriptions 
+      WHERE household_id = ? AND collection_id = ?
+    `;
+    await connection.execute(unsubscribeQuery, [target_household_id, source_id]);
     
     await connection.commit();
+    return newCollectionId;
   } catch (error) {
     await connection.rollback();
     throw error;
+  } finally {
+    connection.release();
   }
 }
 ```
@@ -452,8 +467,8 @@ export async function validateRecipeAccess(
 - Ensure only household-owned recipes can be deleted
 
 // src/app/api/recipe/update-details/route.ts  
-- Add triggerCascadeCopyIfNeeded() before updating details
-- Handle copy-on-write for non-owned recipes
+- Add triggerCascadeCopyIfNeeded() AFTER receiving form submission but before updating details
+- Handle copy-on-write for non-owned recipes only when user submits changes
 
 // NEW: Collection context-aware recipe editing endpoint
 // src/app/api/recipes/[recipe_slug]/edit/route.ts
@@ -463,16 +478,16 @@ export async function validateRecipeAccess(
 - Support actions_taken response for UI feedback
 
 // src/app/api/recipe/update-ingredients/route.ts
-- Add triggerCascadeCopyIfNeeded() before updating ingredients
-- Handle ingredient copy-on-write as well
+- Add triggerCascadeCopyIfNeeded() AFTER receiving form submission but before updating ingredients
+- Handle ingredient copy-on-write only when user submits ingredient changes
 
 // src/app/api/recipe/update-image/route.ts
-- Add triggerCascadeCopyIfNeeded() before updating image
-- Handle copy-on-write for image updates
+- Add triggerCascadeCopyIfNeeded() AFTER receiving image upload but before updating image
+- Handle copy-on-write only when user submits image changes
 
 // src/app/api/recipe/update-pdf/route.ts
-- Add triggerCascadeCopyIfNeeded() before updating PDF
-- Handle copy-on-write for PDF updates
+- Add triggerCascadeCopyIfNeeded() AFTER receiving PDF upload but before updating PDF
+- Handle copy-on-write only when user submits PDF changes
 
 // src/app/api/recipe/upload-image/route.ts
 - Add household_id to new recipes created via image upload
@@ -497,8 +512,8 @@ export async function validateRecipeAccess(
 - Add cleanup of orphaned ingredients
 
 // src/app/api/ingredients/update/route.ts
-- Add triggerCascadeCopyIfNeeded() before updating ingredients
-- Handle copy-on-write for non-owned ingredients
+- Add triggerCascadeCopyIfNeeded() AFTER receiving form submission but before updating ingredients
+- Handle copy-on-write only when user submits ingredient changes
 ```
 
 #### Task 5.3: Update Existing Collection Endpoints
@@ -596,6 +611,7 @@ export async function validateRecipeAccess(
 POST - copyCollectionOptimized() with junction table approach
 - Implement optimized collection copying with 14x storage savings
 - Handle transaction rollback on failure
+- Automatically unsubscribe user from original collection after copying
 
 // src/app/api/collections/[id]/subscribe/route.ts
 POST - subscribeToCollection() for subscription management
@@ -682,8 +698,9 @@ DELETE - unsubscribeFromCollection() for unsubscribing
 // src/lib/queries/collections.test.ts
 - Test getMyCollections() with various household scenarios
 - Test getPublicCollections() with subscription states
-- Test copyCollectionOptimized() transaction handling
+- Test copyCollectionOptimized() transaction handling with automatic unsubscribe
 - Test junction table query performance vs old approach
+- Test automatic unsubscription from original collection after copying
 
 // src/lib/queries/recipes.test.ts  
 - Test getRecipesInCollection() with household precedence
@@ -721,20 +738,20 @@ DELETE - unsubscribeFromCollection() for unsubscribing
 - Test only household-owned recipes can be deleted
 
 // src/app/api/recipe/update-details/route.test.ts
-- Test triggerCascadeCopyIfNeeded() before updating details
-- Test copy-on-write triggered for non-owned recipes
+- Test triggerCascadeCopyIfNeeded() triggered only on form submission
+- Test copy-on-write NOT triggered when just loading edit form
 
 // src/app/api/recipe/update-ingredients/route.test.ts
-- Test triggerCascadeCopyIfNeeded() before updating ingredients
-- Test ingredient copy-on-write integration
+- Test triggerCascadeCopyIfNeeded() triggered only on ingredient form submission
+- Test ingredient copy-on-write integration on save
 
 // src/app/api/recipe/update-image/route.test.ts
-- Test triggerCascadeCopyIfNeeded() before updating image
-- Test copy-on-write for image updates
+- Test triggerCascadeCopyIfNeeded() triggered only on image upload submission
+- Test copy-on-write for image updates on save
 
 // src/app/api/recipe/update-pdf/route.test.ts
-- Test triggerCascadeCopyIfNeeded() before updating PDF
-- Test copy-on-write for PDF updates
+- Test triggerCascadeCopyIfNeeded() triggered only on PDF upload submission
+- Test copy-on-write for PDF updates on save
 
 // src/app/api/recipe/upload-image/route.test.ts
 - Test household_id added to new recipes from image upload
@@ -754,8 +771,8 @@ DELETE - unsubscribeFromCollection() for unsubscribing
 - Test cleanup of orphaned ingredients
 
 // src/app/api/ingredients/update/route.test.ts
-- Test triggerCascadeCopyIfNeeded() before updating ingredients
-- Test copy-on-write for non-owned ingredients
+- Test triggerCascadeCopyIfNeeded() triggered only on ingredient form submission
+- Test copy-on-write for non-owned ingredients on save
 
 // Update existing collection endpoint tests
 // src/app/api/collections/create/route.test.ts

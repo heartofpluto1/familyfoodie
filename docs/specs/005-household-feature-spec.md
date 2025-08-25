@@ -122,7 +122,7 @@ households
                 └── ingredients (household_id NOT NULL - Spencer owns originals)
 ```
 
-**Critical Insight**: Spencer household owns all original recipes and ingredients. Other households reference these until they make edits, which triggers copy-on-write to create their own versions.
+**Critical Insight**: Spencer household owns all original recipes and ingredients. Other households can view and load edit forms for these resources, but copy-on-write is triggered only when they submit changes through edit forms.
 
 **Rationale**: 
 - **Clear ownership**: Every resource has a definitive owner (no NULL confusion)
@@ -295,7 +295,7 @@ NEW APPROACH (Junction Table):
 
 #### Edit Triggers Copy (True Copy-on-Write)
 ```sql
--- When user edits a recipe/ingredient not owned by their household, trigger copy
+-- When user submits changes to a recipe/ingredient not owned by their household, trigger copy
 DELIMITER $$
 CREATE PROCEDURE CopyRecipeForEdit(
     IN p_recipe_id INT,
@@ -422,6 +422,11 @@ BEGIN
         SELECT p_new_collection_id, cr.recipe_id, NOW()
         FROM collection_recipes cr
         WHERE cr.collection_id = p_collection_id;
+        
+        -- Unsubscribe from original collection since we now have our own copy
+        DELETE FROM collection_subscriptions 
+        WHERE household_id = p_user_household_id AND collection_id = p_collection_id;
+        SET v_actions = CONCAT(v_actions, 'unsubscribed_from_original,');
     END IF;
     
     -- Copy recipe if not owned by user's household
@@ -872,6 +877,13 @@ export async function copyCollectionOptimized(source_id: number, target_househol
       WHERE cr.collection_id = ?
     `;
     await connection.execute(junctionQuery, [newCollectionId, source_id]);
+    
+    // Unsubscribe from original collection since we now have our own copy
+    const unsubscribeQuery = `
+      DELETE FROM collection_subscriptions 
+      WHERE household_id = ? AND collection_id = ?
+    `;
+    await connection.execute(unsubscribeQuery, [target_household_id, source_id]);
     
     await connection.commit();
     return newCollectionId;
