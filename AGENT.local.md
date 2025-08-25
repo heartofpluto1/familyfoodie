@@ -214,7 +214,7 @@ This file contains specific learnings and preferences for this Family Foodie cod
 
 ## Database Schema Reference
 
-**IMPORTANT**: Always refer to `docs/schema.sql` for the complete database schema when working with:
+**IMPORTANT**: Always refer to `docs/db/schema.sql` for the complete database schema when working with:
 - Database queries and SQL statements
 - Understanding table relationships and foreign keys
 - Adding new database-related functionality
