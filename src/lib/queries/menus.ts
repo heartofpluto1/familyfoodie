@@ -504,14 +504,13 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 				ingredient.recipeIngredient_id,
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
-				ingredient.supermarketCategory_id, // supermarketCategory_id from ingredients table
 			]);
 
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
