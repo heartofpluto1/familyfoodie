@@ -71,7 +71,7 @@ export async function getTopFruitsAndVegetables() {
 		FROM shopping_lists sl
 		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
+		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
 		WHERE 1=1
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
@@ -103,7 +103,7 @@ export async function getTopHerbs() {
 		FROM shopping_lists sl
 		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
+		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
 		WHERE 1=1
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1

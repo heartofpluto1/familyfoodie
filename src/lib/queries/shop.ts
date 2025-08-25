@@ -91,7 +91,7 @@ export async function getShoppingList(week: string, year: string) {
         LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
         LEFT JOIN ingredients i ON ri.ingredient_id = i.id
         LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
-        LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
+        LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
         LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 1        ORDER BY sl.sort, sl.id;
       `,
@@ -119,7 +119,7 @@ export async function getShoppingList(week: string, year: string) {
         LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
         LEFT JOIN ingredients i ON ri.ingredient_id = i.id
         LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
-        LEFT JOIN category_supermarket sc ON sl.supermarketCategory_id = sc.id
+        LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
         LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 0        ORDER BY sl.sort, sl.id;
     `,

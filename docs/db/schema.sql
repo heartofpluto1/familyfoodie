@@ -56,15 +56,15 @@ CREATE TABLE `collections` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `subtitle` text,
-  `filename` varchar(255) DEFAULT NULL,
-  `filename_dark` varchar(255) NOT NULL,
+  `filename` varchar(255) DEFAULT 'custom_collection_004',
+  `filename_dark` varchar(255) DEFAULT 'custom_collection_004_dark',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `url_slug` varchar(255) DEFAULT NULL,
+  `url_slug` varchar(255) NOT NULL DEFAULT '1-initial',
   PRIMARY KEY (`id`),
   KEY `idx_title` (`title`),
   KEY `idx_url_slug` (`url_slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -122,7 +122,7 @@ CREATE TABLE `plans` (
   PRIMARY KEY (`id`),
   KEY `menus_recipeweek_da50e9c3` (`recipe_id`),
   CONSTRAINT `menus_recipeweek_recipe_id_4ff45663a2e8e49d_fk_menus_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1723 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=1725 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -165,7 +165,7 @@ CREATE TABLE `recipe_ingredients` (
   CONSTRAINT `menus_re_quantityMeasure_id_22c6089332a864ec_fk_menus_measure_id` FOREIGN KEY (`quantityMeasure_id`) REFERENCES `measurements` (`id`),
   CONSTRAINT `menus_recipeingred_recipe_id_12e8587e0cec8eee_fk_menus_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`id`),
   CONSTRAINT `menus_recipeingredie_ingredient_id_23d8ab19_fk_menus_ing` FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4182 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=4262 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -180,7 +180,6 @@ CREATE TABLE `recipes` (
   `name` varchar(64) NOT NULL,
   `prepTime` smallint DEFAULT NULL,
   `cookTime` smallint NOT NULL,
-  `filename` varchar(64) DEFAULT NULL,
   `description` longtext,
   `duplicate` tinyint(1) NOT NULL,
   `season_id` int DEFAULT NULL,
@@ -188,18 +187,22 @@ CREATE TABLE `recipes` (
   `secondaryType_id` int DEFAULT NULL,
   `public` tinyint(1) NOT NULL,
   `collection_id` int DEFAULT NULL,
-  `url_slug` varchar(255) DEFAULT NULL,
+  `url_slug` varchar(255) NOT NULL,
+  `image_filename` varchar(100) DEFAULT NULL,
+  `pdf_filename` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `menus_recipe_season_id_dafbec51_fk_menus_season_id` (`season_id`),
   KEY `menus_recipe_primaryType_id_2d656011_fk_menus_primarytype_id` (`primaryType_id`),
   KEY `menus_recipe_secondaryType_id_8ff8267b_fk_menus_secondarytype_id` (`secondaryType_id`),
   KEY `idx_collection_id` (`collection_id`),
   KEY `idx_recipe_url_slug` (`url_slug`),
+  KEY `idx_image_filename` (`image_filename`),
+  KEY `idx_pdf_filename` (`pdf_filename`),
   CONSTRAINT `fk_recipes_collection` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `menus_recipe_primaryType_id_2d656011_fk` FOREIGN KEY (`primaryType_id`) REFERENCES `type_proteins` (`id`),
   CONSTRAINT `menus_recipe_season_id_dafbec51_fk_menus_season_id` FOREIGN KEY (`season_id`) REFERENCES `seasons` (`id`),
   CONSTRAINT `menus_recipe_secondaryType_id_8ff8267b_fk` FOREIGN KEY (`secondaryType_id`) REFERENCES `type_carbs` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=290 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=298 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -251,13 +254,10 @@ CREATE TABLE `shopping_lists` (
   `recipeIngredient_id` int DEFAULT NULL,
   `purchased` tinyint(1) NOT NULL,
   `stockcode` int DEFAULT NULL,
-  `supermarketCategory_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `menus_shoppinglist_recipeIngredient_id_1b4f44ab_fk_menus_rec` (`recipeIngredient_id`),
-  KEY `menus_shoppinglist_supermarketCategory__4f049627_fk_menus_sup` (`supermarketCategory_id`),
-  CONSTRAINT `menus_shoppinglist_recipeIngredient_id_1b4f44ab_fk_menus_rec` FOREIGN KEY (`recipeIngredient_id`) REFERENCES `recipe_ingredients` (`id`),
-  CONSTRAINT `menus_shoppinglist_supermarketCategory__4f049627_fk_menus_sup` FOREIGN KEY (`supermarketCategory_id`) REFERENCES `category_supermarket` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19998 DEFAULT CHARSET=latin1;
+  CONSTRAINT `menus_shoppinglist_recipeIngredient_id_1b4f44ab_fk_menus_rec` FOREIGN KEY (`recipeIngredient_id`) REFERENCES `recipe_ingredients` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=20042 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -342,5 +342,10 @@ INSERT INTO `schema_migrations` (`version`, `executed_at`, `execution_time_ms`) 
 ('012_assign_recipes_to_first_collection.sql', '2025-08-22 10:00:11', 500),
 ('013_add_url_slug_fields.sql', '2025-08-22 10:00:12', 150),
 ('014_add_filename_dark_to_collections.sql', '2025-08-22 10:00:13', 100);
+('015_add_versioned_file_columns.sql', '2025-08-22 10:00:14', 100);
+('016_fix_url_slug_format_and_constraints.sql', '2025-08-22 10:00:15', 100);
+('017_set_default_values_collections_filenames.sql', '2025-08-22 10:00:16', 100);
+('018_set_default_value_url_slug.sql', '2025-08-22 10:00:17', 100);
+('019_remove_shopping_list_category_redundancy.sql', '2025-08-22 10:00:18', 100);
 
 -- Dump completed on [DATE]

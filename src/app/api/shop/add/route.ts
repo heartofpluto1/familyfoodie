@@ -63,18 +63,18 @@ async function handler(request: NextRequest) {
 				[insertResult] = await connection.execute(
 					`
 					INSERT INTO shopping_lists 
-					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) 
-					VALUES (?, ?, 1, ?, ?, ?, NULL, 0, ?, ?)
+					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
+					VALUES (?, ?, 1, ?, ?, ?, NULL, 0, ?)
 				`,
-					[week, year, name, newSort, knownIngredient.cost, knownIngredient.stockcode, knownIngredient.supermarketCategory_id]
+					[week, year, name, newSort, knownIngredient.cost, knownIngredient.stockcode]
 				);
 			} else {
 				// Add unknown ingredient as text with null values
 				[insertResult] = await connection.execute(
 					`
 					INSERT INTO shopping_lists 
-					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, supermarketCategory_id) 
-					VALUES (?, ?, 1, ?, ?, NULL, NULL, 0, NULL, NULL)
+					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
+					VALUES (?, ?, 1, ?, ?, NULL, NULL, 0, NULL)
 				`,
 					[week, year, name, newSort]
 				);
