@@ -25,7 +25,7 @@ describe('Copy-on-Write Functions', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.resetAllMocks();
-		
+
 		mockConnection = {
 			beginTransaction: jest.fn().mockResolvedValue(undefined),
 			commit: jest.fn().mockResolvedValue(undefined),
@@ -35,7 +35,7 @@ describe('Copy-on-Write Functions', () => {
 		};
 
 		mockPool.getConnection.mockResolvedValue(mockConnection);
-		
+
 		// Reset all copy operation mocks to default behavior
 		Object.values(mockCopyOperations).forEach(mockFn => {
 			if (jest.isMockFunction(mockFn)) {
@@ -51,7 +51,7 @@ describe('Copy-on-Write Functions', () => {
 			prepTime: 30,
 			cookTime: 45,
 			description: 'Test description',
-			duplicate: 0,
+			archived: 0,
 			season_id: 1,
 			primaryType_id: 1,
 			secondaryType_id: 1,
@@ -167,7 +167,7 @@ describe('Copy-on-Write Functions', () => {
 			prepTime: 30,
 			cookTime: 45,
 			description: 'Test description',
-			duplicate: 0,
+			archived: 0,
 			season_id: 1,
 			primaryType_id: 1,
 			secondaryType_id: 1,
@@ -245,11 +245,11 @@ describe('Copy-on-Write Functions', () => {
 			expect(mockCopyOperations.copyCollection).toHaveBeenCalledWith(mockConnection, mockCollection, 1);
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 300);
 			expect(mockCopyOperations.removeCollectionSubscription).toHaveBeenCalledWith(mockConnection, 1, 1);
-			
+
 			// Recipe should NOT be copied since it's already owned
 			expect(mockCopyOperations.copyRecipe).not.toHaveBeenCalled();
 			expect(mockCopyOperations.copyRecipeIngredients).not.toHaveBeenCalled();
-			
+
 			// Recipe should be linked to new collection via copyCollectionRecipes
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 300);
 		});
@@ -296,7 +296,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -327,7 +327,7 @@ describe('Copy-on-Write Functions', () => {
 		it('should copy collection and recipe, use existing ingredient (FFO)', async () => {
 			// Collection Foreign, Recipe Foreign, Ingredient Owned
 			const ownedIngredient = { ...mockIngredient, household_id: 1 };
-			
+
 			mockCopyOperations.getCollectionById.mockResolvedValue({
 				id: 1,
 				title: 'Test Collection',
@@ -346,7 +346,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -384,7 +384,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -425,7 +425,7 @@ describe('Copy-on-Write Functions', () => {
 			expect(mockCopyOperations.copyRecipe).not.toHaveBeenCalled();
 			expect(mockCopyOperations.copyIngredient).toHaveBeenCalledWith(mockConnection, mockIngredient, 1);
 			expect(mockCopyOperations.updateRecipeIngredientsForHousehold).toHaveBeenCalledWith(mockConnection, 1, 700, 1);
-			
+
 			// Recipe should be linked to new collection
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 600);
 		});
@@ -439,7 +439,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -479,7 +479,7 @@ describe('Copy-on-Write Functions', () => {
 			expect(mockCopyOperations.copyCollection).toHaveBeenCalledWith(mockConnection, expect.any(Object), 1);
 			expect(mockCopyOperations.copyRecipe).not.toHaveBeenCalled();
 			expect(mockCopyOperations.copyIngredient).not.toHaveBeenCalled();
-			
+
 			// Recipe should be linked to new collection
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 800);
 		});
@@ -505,7 +505,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -557,7 +557,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -610,7 +610,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -661,7 +661,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -765,7 +765,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: null,
 				cookTime: null,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: null,
 				primaryType_id: null,
 				secondaryType_id: null,
@@ -813,7 +813,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -832,21 +832,19 @@ describe('Copy-on-Write Functions', () => {
 
 			// Verify copyRecipeIngredients was called correctly
 			expect(mockCopyOperations.copyRecipeIngredients).toHaveBeenCalledWith(mockConnection, 1, 100);
-			
+
 			// Verify the SQL execution within copyRecipeIngredients
-			expect(mockConnection.execute).toHaveBeenCalledWith(
-				expect.stringContaining('INSERT INTO recipe_ingredients'),
-				[100, 1]
-			);
+			expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [100, 1]);
 		});
 
 		it('should verify updateJunctionTableForCollectionRecipe SQL execution', async () => {
 			// Mock the updateJunctionTableForCollectionRecipe implementation
 			mockCopyOperations.updateJunctionTableForCollectionRecipe.mockImplementation(async (connection, collectionId, oldRecipeId, newRecipeId) => {
-				await connection.execute(
-					'UPDATE collection_recipes SET recipe_id = ? WHERE collection_id = ? AND recipe_id = ?',
-					[newRecipeId, collectionId, oldRecipeId]
-				);
+				await connection.execute('UPDATE collection_recipes SET recipe_id = ? WHERE collection_id = ? AND recipe_id = ?', [
+					newRecipeId,
+					collectionId,
+					oldRecipeId,
+				]);
 			});
 
 			const ownedRecipe = {
@@ -855,7 +853,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -887,7 +885,7 @@ describe('Copy-on-Write Functions', () => {
 
 			// In this scenario, collection is copied and existing recipe is linked via copyCollectionRecipes
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 200);
-			
+
 			// Verify the function call for junction table copy
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 200);
 		});
@@ -921,7 +919,7 @@ describe('Copy-on-Write Functions', () => {
 
 			// Verify household update was called correctly
 			expect(mockCopyOperations.updateRecipeIngredientsForHousehold).toHaveBeenCalledWith(mockConnection, 1, 300, 1);
-			
+
 			// Verify the SQL execution
 			expect(mockConnection.execute).toHaveBeenCalledWith(
 				'UPDATE recipe_ingredients ri JOIN recipes r ON ri.recipe_id = r.id SET ri.ingredient_id = ? WHERE r.household_id = ? AND ri.ingredient_id = ?',
@@ -930,7 +928,7 @@ describe('Copy-on-Write Functions', () => {
 		});
 
 		it('should verify copyCollectionRecipes SQL execution preserves relationships', async () => {
-			// Mock the copyCollectionRecipes implementation  
+			// Mock the copyCollectionRecipes implementation
 			mockCopyOperations.copyCollectionRecipes.mockImplementation(async (connection, originalCollectionId, newCollectionId) => {
 				await connection.execute(
 					'INSERT INTO collection_recipes (collection_id, recipe_id, added_at, display_order) SELECT ?, recipe_id, NOW(), display_order FROM collection_recipes WHERE collection_id = ?',
@@ -957,7 +955,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -976,12 +974,9 @@ describe('Copy-on-Write Functions', () => {
 
 			// Verify collection recipes were copied correctly
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 400);
-			
+
 			// Verify the SQL execution preserves display_order and other relationships
-			expect(mockConnection.execute).toHaveBeenCalledWith(
-				expect.stringContaining('INSERT INTO collection_recipes'),
-				[400, 1]
-			);
+			expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), [400, 1]);
 		});
 	});
 
@@ -994,7 +989,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1011,15 +1006,7 @@ describe('Copy-on-Write Functions', () => {
 			await copyRecipeForEdit(1, 1);
 
 			// Verify operations happen in the correct order
-			const callOrder = [
-				'beginTransaction',
-				'getRecipeById',
-				'copyRecipe', 
-				'copyRecipeIngredients',
-				'updateJunctionTableForRecipe',
-				'commit',
-				'release'
-			];
+			const callOrder = ['beginTransaction', 'getRecipeById', 'copyRecipe', 'copyRecipeIngredients', 'updateJunctionTableForRecipe', 'commit', 'release'];
 
 			// Verify that all operations were called in the expected sequence
 			const calls = [
@@ -1027,12 +1014,12 @@ describe('Copy-on-Write Functions', () => {
 				mockCopyOperations.getRecipeById,
 				mockCopyOperations.copyRecipe,
 				mockCopyOperations.copyRecipeIngredients,
-				mockConnection.commit
+				mockConnection.commit,
 			];
-			
+
 			// Verify all operations were called
 			calls.forEach(mockFn => expect(mockFn).toHaveBeenCalled());
-			
+
 			// Verify beginTransaction was called first
 			expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
 			expect(mockConnection.commit).toHaveBeenCalledTimes(1);
@@ -1046,7 +1033,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1081,7 +1068,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1123,7 +1110,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1199,7 +1186,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1290,7 +1277,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: 'Test description',
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1331,7 +1318,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1381,7 +1368,7 @@ describe('Copy-on-Write Functions', () => {
 		it('should minimize database calls for partially owned resources', async () => {
 			// Reset any previous mocks that might interfere
 			mockCopyOperations.copyRecipeIngredients.mockReset().mockResolvedValue(undefined);
-			
+
 			// Only recipe is foreign, collection and ingredient are owned
 			const ownedCollection = {
 				id: 1,
@@ -1402,7 +1389,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1438,7 +1425,7 @@ describe('Copy-on-Write Functions', () => {
 			// Verify ONLY recipe operations were called
 			expect(mockCopyOperations.copyRecipe).toHaveBeenCalledTimes(1);
 			expect(mockCopyOperations.copyRecipeIngredients).toHaveBeenCalledTimes(1);
-			
+
 			// Collection and ingredient operations should NOT be called
 			expect(mockCopyOperations.copyCollection).not.toHaveBeenCalled();
 			expect(mockCopyOperations.copyIngredient).not.toHaveBeenCalled();
@@ -1448,7 +1435,7 @@ describe('Copy-on-Write Functions', () => {
 		it('should batch junction table operations efficiently', async () => {
 			// Reset any previous mocks that might interfere
 			mockCopyOperations.copyCollectionRecipes.mockReset().mockResolvedValue(undefined);
-			
+
 			const foreignCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -1468,7 +1455,7 @@ describe('Copy-on-Write Functions', () => {
 				prepTime: 30,
 				cookTime: 45,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: 1,
 				primaryType_id: 1,
 				secondaryType_id: 1,
@@ -1491,7 +1478,7 @@ describe('Copy-on-Write Functions', () => {
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalled();
 			expect(mockCopyOperations.copyRecipe).toHaveBeenCalled();
 			expect(mockCopyOperations.copyRecipeIngredients).toHaveBeenCalled();
-			
+
 			// Both junction operations should be called
 			expect(mockCopyOperations.copyCollectionRecipes).toHaveBeenCalledWith(mockConnection, 1, 1000);
 			expect(mockCopyOperations.copyRecipeIngredients).toHaveBeenCalledWith(mockConnection, 1, 1100);
@@ -1502,14 +1489,14 @@ describe('Copy-on-Write Functions', () => {
 		it('should handle null/undefined values gracefully', async () => {
 			// Reset any previous mocks that might interfere
 			mockCopyOperations.copyRecipeIngredients.mockReset().mockResolvedValue(undefined);
-			
+
 			const recipeWithNulls = {
 				id: 1,
 				name: 'Test Recipe',
 				prepTime: null,
 				cookTime: null,
 				description: null,
-				duplicate: 0,
+				archived: 0,
 				season_id: null,
 				primaryType_id: null,
 				secondaryType_id: null,

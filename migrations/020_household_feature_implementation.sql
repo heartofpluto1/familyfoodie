@@ -669,6 +669,26 @@ ALTER TABLE plans MODIFY COLUMN household_id INT NOT NULL;
 ALTER TABLE shopping_lists MODIFY COLUMN household_id INT NOT NULL;
 
 -- =============================================================================
+-- PHASE 7: RENAME DUPLICATE COLUMN TO ARCHIVED
+-- =============================================================================
+
+-- Rename duplicate column to archived for better semantic meaning
+-- Check if the column rename is needed
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND COLUMN_NAME = 'duplicate'
+);
+SET @sql = IF(@column_exists > 0, 
+    'ALTER TABLE recipes CHANGE duplicate archived TINYINT(1) NOT NULL', 
+    'SELECT "duplicate column already renamed or does not exist" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- =============================================================================
 -- MIGRATION COMPLETE - Database Schema Ready for Application Layer
 -- =============================================================================
 

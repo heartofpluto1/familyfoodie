@@ -178,7 +178,7 @@ async function importHandler(request: NextRequest) {
 			const placeholderSlug = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, url_slug, duplicate, public, household_id) 
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, url_slug, archived, public, household_id) 
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 1)`,
 				[
 					recipe.title,

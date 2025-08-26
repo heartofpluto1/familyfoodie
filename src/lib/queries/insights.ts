@@ -293,8 +293,8 @@ export async function getRecipePairingSuggestions() {
 			INNER JOIN collection_recipes cr2 ON r2.id = cr2.recipe_id
 			INNER JOIN collections c2 ON cr2.collection_id = c2.id
 			CROSS JOIN (SELECT @row_number := 0, @prev_ingredient := '') AS vars
-			WHERE r1.duplicate = 0 
-				AND r2.duplicate = 0
+			WHERE r1.archived = 0 
+				AND r2.archived = 0
 				AND i.fresh = 1
 				AND (sc.name IN ('fresh-fruitvege', 'fresh-herbs') 
 					OR sc.name LIKE '%fruit%' 

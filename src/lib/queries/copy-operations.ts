@@ -11,7 +11,7 @@ export interface Recipe {
 	prepTime: number | null;
 	cookTime: number | null;
 	description: string | null;
-	duplicate: number;
+	archived: number;
 	season_id: number | null;
 	primaryType_id: number | null;
 	secondaryType_id: number | null;
@@ -66,7 +66,7 @@ export interface RecipeIngredient {
 export async function getRecipeById(connection: PoolConnection, recipeId: number): Promise<Recipe | null> {
 	const [rows] = await connection.execute(
 		`
-    SELECT id, name, prepTime, cookTime, description, duplicate, season_id, 
+    SELECT id, name, prepTime, cookTime, description, archived, season_id, 
            primaryType_id, secondaryType_id, public, url_slug, image_filename, 
            pdf_filename, household_id, parent_id
     FROM recipes 
@@ -121,7 +121,7 @@ export async function getIngredientById(connection: PoolConnection, ingredientId
 export async function copyRecipe(connection: PoolConnection, recipe: Recipe, newHouseholdId: number): Promise<number> {
 	const [result] = await connection.execute(
 		`
-    INSERT INTO recipes (name, prepTime, cookTime, description, duplicate, season_id, 
+    INSERT INTO recipes (name, prepTime, cookTime, description, archived, season_id, 
                         primaryType_id, secondaryType_id, public, url_slug, 
                         image_filename, pdf_filename, household_id, parent_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -131,7 +131,7 @@ export async function copyRecipe(connection: PoolConnection, recipe: Recipe, new
 			recipe.prepTime,
 			recipe.cookTime,
 			recipe.description,
-			recipe.duplicate,
+			recipe.archived,
 			recipe.season_id,
 			recipe.primaryType_id,
 			recipe.secondaryType_id,

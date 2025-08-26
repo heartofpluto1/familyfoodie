@@ -124,7 +124,7 @@ export async function getAllRecipes(collectionId?: number): Promise<Recipe[]> {
 		FROM recipes r
 		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 		INNER JOIN collections c ON cr.collection_id = c.id
-		WHERE r.duplicate = 0
+		WHERE r.archived = 0
 	`;
 
 	const params: (string | number)[] = [];
@@ -182,7 +182,7 @@ export async function getAllRecipesWithDetails(collectionId?: number): Promise<R
 		LEFT JOIN seasons s ON r.season_id = s.id
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		WHERE r.duplicate = 0
+		WHERE r.archived = 0
 	`;
 
 	const params: (string | number)[] = [];
@@ -381,7 +381,7 @@ export async function getRecipesForRandomization(): Promise<Recipe[]> {
 		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		WHERE r.duplicate = 0 
+		WHERE r.archived = 0 
 		  AND r.id NOT IN (
 			SELECT DISTINCT recipe_id 
 			FROM plans 
@@ -571,7 +571,7 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
 		LEFT JOIN preparations p ON ri.preperation_id = p.id
 		LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
-		WHERE r.id = ? AND r.duplicate = 0 
+		WHERE r.id = ? AND r.archived = 0 
 		ORDER BY pc.id ASC, i.name ASC
 	`;
 

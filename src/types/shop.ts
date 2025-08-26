@@ -50,7 +50,7 @@ export interface Recipe {
 	cookTime: number;
 	filename?: string;
 	description?: string;
-	duplicate: boolean;
+	archived: boolean;
 	public: boolean;
 }
 
