@@ -854,7 +854,7 @@ DELIMITER ;
 DELIMITER $$
 
 DROP TRIGGER IF EXISTS cleanup_after_recipe_delete;
-CREATE DEFINER=CURRENT_USER TRIGGER cleanup_after_recipe_delete 
+CREATE TRIGGER cleanup_after_recipe_delete 
 AFTER DELETE ON recipes FOR EACH ROW
 BEGIN
     -- Clean up recipe_ingredients for this recipe
