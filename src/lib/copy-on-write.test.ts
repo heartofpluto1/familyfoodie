@@ -9,7 +9,6 @@ import {
 } from './copy-on-write';
 import * as copyOperations from './queries/copy-operations';
 import pool from './db.js';
-import { PoolConnection } from 'mysql2/promise';
 import { MockConnection } from '@/lib/test-utils';
 
 // Mock the database pool and operations
@@ -1006,7 +1005,6 @@ describe('Copy-on-Write Functions', () => {
 			await copyRecipeForEdit(1, 1);
 
 			// Verify operations happen in the correct order
-			const callOrder = ['beginTransaction', 'getRecipeById', 'copyRecipe', 'copyRecipeIngredients', 'updateJunctionTableForRecipe', 'commit', 'release'];
 
 			// Verify that all operations were called in the expected sequence
 			const calls = [
