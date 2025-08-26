@@ -74,6 +74,7 @@ This agent is responsible for all database-level changes required for the househ
    - Create `collection_subscriptions` table
    - Add household ownership columns to all relevant tables
    - Add parent tracking columns for copy-on-write functionality
+   - Make all SQL idempotent so it's safe to run the migration multiple times
 
 2. **Data Migration Execution**
    - Execute all 15 migration steps from the parent spec
@@ -240,12 +241,7 @@ Implement the `cleanup_after_recipe_delete` trigger to automatically clean up or
 - Test stored procedure performance with large datasets
 - Validate index effectiveness on household-scoped queries
 
-#### Task 5.3: Rollback Procedures
-- Document complete rollback procedure for migration
-- Test rollback on development copy
-- Prepare emergency rollback scripts
-
-#### Task 5.4: System Verification
+#### Task 5.3: System Verification
 After completing all database changes, run comprehensive verification to ensure the system still works correctly:
 
 ```bash
@@ -326,21 +322,20 @@ npm run build
 
 ### High Risk: Data Loss During Migration
 - **Mitigation**: Full database backup before migration, comprehensive testing on staging
-- **Rollback**: Complete rollback procedure documented and tested
+- **Idempotent**: Ensure SQL is idempotent so it's safe to run multiple times
 
 ### Medium Risk: Performance Degradation
 - **Mitigation**: Benchmark before/after, optimize indexes proactively
-- **Rollback**: Performance rollback to previous schema if needed
+- **Idempotent**: Ensure SQL is idempotent so it's safe to run multiple times
 
 ### Medium Risk: Complex Stored Procedures
 - **Mitigation**: Extensive unit testing, step-by-step validation
-- **Rollback**: Disable procedures, manual copy process as fallback
+- **Idempotent**: Ensure stored procedures are idempotent so it's safe to run multiple times
 
 ## Testing Strategy
 
 1. **Unit Tests**: Test each stored procedure in isolation
 2. **Integration Tests**: Test complete migration flow on test data
-4. **Rollback Tests**: Verify complete rollback capability
 5. **Data Validation**: Verify data integrity at each migration step
 
 ## Handoff to Other Agents
