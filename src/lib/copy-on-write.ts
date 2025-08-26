@@ -1,5 +1,5 @@
 import pool from '@/lib/db.js';
-import { PoolConnection } from 'mysql2/promise';
+import { PoolConnection, ResultSetHeader } from 'mysql2/promise';
 import {
 	getRecipeById,
 	getCollectionById,
@@ -355,6 +355,156 @@ export async function performCompleteCleanupAfterRecipeDelete(
 	} catch (error) {
 		await connection.rollback();
 		throw error;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
+ * Enhanced cascade copy with collection context awareness and slug information
+ * Implements the interface expected by Task 2.1
+ */
+export async function triggerCascadeCopyWithContext(
+	userHouseholdId: number,
+	collectionId: number,
+	recipeId: number
+): Promise<{
+	new_collection_id: number;
+	new_recipe_id: number;
+	new_collection_slug?: string;
+	new_recipe_slug?: string;
+	actions_taken: string[];
+}> {
+	const connection = await pool.getConnection();
+	try {
+		await connection.beginTransaction();
+
+		// Use the existing cascade copy logic
+		const cascadeResult = await cascadeCopyWithContextInTransaction(connection, userHouseholdId, collectionId, recipeId);
+
+		// Get new slugs if resources were copied
+		let new_collection_slug: string | undefined;
+		let new_recipe_slug: string | undefined;
+
+		if (cascadeResult.actionsTaken.includes('collection_copied')) {
+			const [collectionRows] = await connection.execute('SELECT url_slug FROM collections WHERE id = ?', [cascadeResult.newCollectionId]);
+			const collections = collectionRows as Array<{ url_slug: string }>;
+			new_collection_slug = collections[0]?.url_slug;
+		}
+
+		if (cascadeResult.actionsTaken.includes('recipe_copied')) {
+			const [recipeRows] = await connection.execute('SELECT url_slug FROM recipes WHERE id = ?', [cascadeResult.newRecipeId]);
+			const recipes = recipeRows as Array<{ url_slug: string }>;
+			new_recipe_slug = recipes[0]?.url_slug;
+		}
+
+		await connection.commit();
+
+		return {
+			new_collection_id: cascadeResult.newCollectionId,
+			new_recipe_id: cascadeResult.newRecipeId,
+			new_collection_slug,
+			new_recipe_slug,
+			actions_taken: cascadeResult.actionsTaken,
+		};
+	} catch (error) {
+		await connection.rollback();
+		throw error;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
+ * Optimized collection copying with junction table approach
+ * 14x storage savings vs full recipe copying
+ */
+export async function copyCollectionOptimized(sourceId: number, targetHouseholdId: number): Promise<number> {
+	const connection = await pool.getConnection();
+	try {
+		await connection.beginTransaction();
+
+		// Copy collection record only
+		const copyQuery = `
+			INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, parent_id, public, url_slug)
+			SELECT CONCAT(title, ' (Copy)'), subtitle, filename, filename_dark, ?, id, 0, url_slug
+			FROM collections WHERE id = ?
+		`;
+		const [result] = await connection.execute(copyQuery, [targetHouseholdId, sourceId]);
+		const newCollectionId = (result as ResultSetHeader).insertId;
+
+		// Copy junction records (12 bytes each vs 500+ bytes for recipe records)
+		const junctionQuery = `
+			INSERT INTO collection_recipes (collection_id, recipe_id, added_at, display_order)
+			SELECT ?, cr.recipe_id, NOW(), cr.display_order
+			FROM collection_recipes cr WHERE cr.collection_id = ?
+		`;
+		await connection.execute(junctionQuery, [newCollectionId, sourceId]);
+
+		// Unsubscribe from original collection since we now have our own copy
+		const unsubscribeQuery = `
+			DELETE FROM collection_subscriptions 
+			WHERE household_id = ? AND collection_id = ?
+		`;
+		await connection.execute(unsubscribeQuery, [targetHouseholdId, sourceId]);
+
+		await connection.commit();
+		return newCollectionId;
+	} catch (error) {
+		await connection.rollback();
+		throw error;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
+ * Trigger cascade copy if needed for recipe editing
+ * Returns the recipe ID to use (either original or newly copied)
+ */
+export async function triggerCascadeCopyIfNeeded(userHouseholdId: number, recipeId: number): Promise<number> {
+	const connection = await pool.getConnection();
+	try {
+		// Get the recipe with ownership info
+		const recipe = await getRecipeById(connection, recipeId);
+		if (!recipe) {
+			throw new Error(`Recipe with ID ${recipeId} not found`);
+		}
+
+		// Check if recipe is already owned by this household
+		if (recipe.household_id === userHouseholdId) {
+			return recipeId; // No copy needed
+		}
+
+		// Use copyRecipeForEdit to handle the copying
+		const copyResult = await copyRecipeForEdit(recipeId, userHouseholdId);
+		return copyResult.newId;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
+ * Trigger cascade copy if needed for ingredient editing
+ * Returns the ingredient ID to use (either original or newly copied)
+ */
+export async function triggerCascadeCopyIfNeededForIngredient(userHouseholdId: number, ingredientId: number): Promise<number> {
+	const connection = await pool.getConnection();
+	try {
+		// Get the ingredient with ownership info
+		const ingredient = await getIngredientById(connection, ingredientId);
+		if (!ingredient) {
+			throw new Error(`Ingredient with ID ${ingredientId} not found`);
+		}
+
+		// Check if ingredient is already owned by this household
+		if (ingredient.household_id === userHouseholdId) {
+			return ingredientId; // No copy needed
+		}
+
+		// Use copyIngredientForEdit to handle the copying
+		const copyResult = await copyIngredientForEdit(ingredientId, userHouseholdId);
+		return copyResult.newId;
 	} finally {
 		connection.release();
 	}

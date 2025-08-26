@@ -115,6 +115,7 @@ export async function authenticateUserWithHousehold(username: string, password: 
 		await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
 		// Return user without password
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { password: _, ...userWithoutPassword } = user;
 		return {
 			success: true,

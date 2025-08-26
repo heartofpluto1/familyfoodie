@@ -1,11 +1,4 @@
-import {
-	canEditResource,
-	validateHouseholdAccess,
-	canAccessRecipe,
-	canAccessIngredient,
-	canEditMultipleResources,
-	isAdmin,
-} from './permissions';
+import { canEditResource, validateHouseholdAccess, canAccessRecipe, canAccessIngredient, canEditMultipleResources, isAdmin } from './permissions';
 import pool from './db.js';
 
 // Mock the database pool
@@ -29,10 +22,7 @@ describe('Permission System', () => {
 			const result = await canEditResource(1, 'recipes', 123);
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				'SELECT household_id FROM recipes WHERE id = ?',
-				[123]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith('SELECT household_id FROM recipes WHERE id = ?', [123]);
 		});
 
 		it('should return false for resources owned by other households', async () => {
@@ -205,10 +195,7 @@ describe('Permission System', () => {
 			const result = await canAccessRecipe(1, 123, 456);
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('WHERE r.id = ? AND c.id = ?'),
-				[1, 123, 456]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE r.id = ? AND c.id = ?'), [1, 123, 456]);
 		});
 	});
 
@@ -320,10 +307,7 @@ describe('Permission System', () => {
 			const result = await isAdmin(1);
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				'SELECT is_admin FROM users WHERE id = ?',
-				[1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith('SELECT is_admin FROM users WHERE id = ?', [1]);
 		});
 
 		it('should return false for non-admin users', async () => {

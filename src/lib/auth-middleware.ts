@@ -113,9 +113,7 @@ export function withAuth(handler: (request: NextRequest, session: { username: st
  * Enhanced higher-order function with household context for Agent 2 implementation
  * Provides SessionUser with household_id directly on the request object
  */
-export function withAuthHousehold<T = {}>(
-	handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
-) {
+export function withAuthHousehold<T = Record<string, unknown>>(handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>) {
 	return async (request: NextRequest, context?: T) => {
 		const { response, user } = await requireAuthWithHousehold(request);
 

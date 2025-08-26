@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { triggerCascadeCopyIfNeeded } from '@/lib/copy-on-write';
 
 interface UpdateRecipeDetailsRequest {
 	id: number | string;
@@ -21,7 +22,7 @@ interface DatabaseError extends Error {
 	sqlMessage?: string;
 }
 
-async function updateDetailsHandler(request: NextRequest) {
+async function updateDetailsHandler(request: AuthenticatedRequest, context?: unknown) {
 	let body: UpdateRecipeDetailsRequest;
 
 	// Parse and validate JSON
@@ -101,19 +102,26 @@ async function updateDetailsHandler(request: NextRequest) {
 	const safeCollectionId = collectionId === undefined ? null : collectionId;
 
 	try {
-		// Update only the recipe details
+		// Trigger cascade copy if needed (copy-on-write for non-owned recipes)
+		const actualRecipeId = await triggerCascadeCopyIfNeeded(request.household_id, recipeId);
+
+		// Update the recipe details (using the potentially new recipe ID after copy-on-write)
 		const [result] = await pool.execute<ResultSetHeader>(
 			`UPDATE recipes 
 			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?, collection_id = ?
 			 WHERE id = ?`,
-			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, safeCollectionId, recipeId]
+			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, safeCollectionId, actualRecipeId]
 		);
 
 		if (result.affectedRows === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
 		}
 
-		return NextResponse.json({ success: true, message: 'Recipe details updated successfully' });
+		return NextResponse.json({
+			success: true,
+			message: 'Recipe details updated successfully',
+			...(actualRecipeId !== recipeId && { newRecipeId: actualRecipeId, copied: true }),
+		});
 	} catch (error: unknown) {
 		// Handle foreign key constraint errors
 		const dbError = error as DatabaseError;
@@ -126,4 +134,4 @@ async function updateDetailsHandler(request: NextRequest) {
 	}
 }
 
-export const PUT = withAuth(updateDetailsHandler);
+export const PUT = withAuthHousehold(updateDetailsHandler);

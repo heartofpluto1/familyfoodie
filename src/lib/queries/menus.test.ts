@@ -1,10 +1,4 @@
-import {
-	getRecipesInCollection,
-	getMyRecipes,
-	getAllRecipesWithDetailsHousehold,
-	getRecipeDetailsHousehold,
-	getMyIngredients,
-} from './menus';
+import { getRecipesInCollection, getMyRecipes, getAllRecipesWithDetailsHousehold, getRecipeDetailsHousehold, getMyIngredients } from './menus';
 import pool from '@/lib/db.js';
 
 // Mock the database pool
@@ -54,10 +48,7 @@ describe('Household-Aware Recipe Queries', () => {
 			expect(result).toHaveLength(2);
 			expect(result[0].access_context.user_owns_recipe).toBe(true);
 			expect(result[1].access_context.user_owns_recipe).toBe(false);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('WHERE cr.collection_id = ? AND r.archived = 0'),
-				[1, 10, 1, 1, 10, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE cr.collection_id = ? AND r.archived = 0'), [1, 10, 1, 1, 10, 1, 1, 1]);
 		});
 
 		it('should prioritize household versions over originals', async () => {
@@ -65,10 +56,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getRecipesInCollection(10, 1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('AND NOT EXISTS ('),
-				[1, 10, 1, 1, 10, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND NOT EXISTS ('), [1, 10, 1, 1, 10, 1, 1, 1]);
 		});
 
 		it('should order by display_order and added_at', async () => {
@@ -76,10 +64,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getRecipesInCollection(10, 1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('ORDER BY cr.display_order ASC, cr.added_at ASC'),
-				[1, 10, 1, 1, 10, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY cr.display_order ASC, cr.added_at ASC'), [1, 10, 1, 1, 10, 1, 1, 1]);
 		});
 	});
 
@@ -109,10 +94,7 @@ describe('Household-Aware Recipe Queries', () => {
 			const result = await getMyRecipes(1);
 
 			expect(result).toEqual(mockRecipes);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('r.household_id = ? OR  -- Owned recipes'),
-				[1, 1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('r.household_id = ? OR  -- Owned recipes'), [1, 1, 1, 1, 1, 1, 1]);
 		});
 
 		it('should prioritize owned recipes in ordering', async () => {
@@ -120,10 +102,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getMyRecipes(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('ORDER BY access_type ASC, r.name ASC'),
-				[1, 1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY access_type ASC, r.name ASC'), [1, 1, 1, 1, 1, 1, 1]);
 		});
 
 		it('should exclude household copies of other recipes', async () => {
@@ -131,10 +110,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getMyRecipes(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('AND NOT EXISTS ('),
-				[1, 1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND NOT EXISTS ('), [1, 1, 1, 1, 1, 1, 1]);
 		});
 	});
 
@@ -159,10 +135,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].ingredients).toEqual(['tomato', 'basil', 'olive oil']);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('ORDER BY status ASC, r.name ASC'),
-				[1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY status ASC, r.name ASC'), [1, 1, 1, 1, 1, 1]);
 		});
 
 		it('should filter by collection when provided', async () => {
@@ -170,10 +143,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getAllRecipesWithDetailsHousehold(1, 10);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('AND cr.collection_id = ?'),
-				[1, 1, 1, 1, 1, 1, 10]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND cr.collection_id = ?'), [1, 1, 1, 1, 1, 1, 10]);
 		});
 
 		it('should include public and subscribed collections', async () => {
@@ -181,10 +151,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getAllRecipesWithDetailsHousehold(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('c.public = 1 OR        -- Recipes in public collections'),
-				[1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.public = 1 OR        -- Recipes in public collections'), [1, 1, 1, 1, 1, 1]);
 		});
 	});
 
@@ -231,10 +198,7 @@ describe('Household-Aware Recipe Queries', () => {
 			expect(result!.name).toBe('Test Recipe');
 			expect(result!.ingredients).toHaveLength(1);
 			expect(result!.ingredients[0].ingredient.name).toBe('Tomato');
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('WHERE r.id = ? AND r.archived = 0'),
-				[1, 1, 1, '1', 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE r.id = ? AND r.archived = 0'), [1, 1, 1, '1', 1]);
 		});
 
 		it('should return null for non-existent or inaccessible recipe', async () => {
@@ -250,10 +214,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getRecipeDetailsHousehold('1', 1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('r.household_id = ? OR  -- User owns recipe'),
-				[1, 1, 1, '1', 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('r.household_id = ? OR  -- User owns recipe'), [1, 1, 1, '1', 1]);
 		});
 	});
 
@@ -282,7 +243,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			expect(result).toEqual(mockIngredients);
 			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('c.id = 1 OR           -- Always include Spencer\'s essentials'),
+				expect.stringContaining("c.id = 1 OR           -- Always include Spencer's essentials"),
 				[1, 1, 1, 1, 1, 1]
 			);
 		});
@@ -292,10 +253,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getMyIngredients(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('ORDER BY access_type ASC, i.name ASC'),
-				[1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY access_type ASC, i.name ASC'), [1, 1, 1, 1, 1, 1]);
 		});
 
 		it('should exclude household copies of other ingredients', async () => {
@@ -303,10 +261,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getMyIngredients(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('AND NOT EXISTS ('),
-				[1, 1, 1, 1, 1, 1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND NOT EXISTS ('), [1, 1, 1, 1, 1, 1]);
 		});
 	});
 });

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import pool from '@/lib/db.js';
 import { QueryResult, Menu, PlannedMeal, Recipe, RecipeDetail } from '@/types/menus.js';
 
@@ -352,10 +353,10 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 	const connection = await pool.getConnection();
 	try {
 		await connection.beginTransaction();
-		
+
 		// Delete existing shopping list items for the week and household
 		await connection.execute('DELETE FROM shopping_lists WHERE week = ? AND year = ? AND household_id = ?', [week, year, householdId]);
-		
+
 		// Get all ingredients from recipes planned for this week by this household
 		const ingredientsQuery = `
 			SELECT 
@@ -387,7 +388,7 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 		`;
 		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, householdId]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
-		
+
 		// Group ingredients by ingredient_id AND quantityMeasure_id (only group if same ingredient with same measurement)
 		const groupedIngredients = ingredients.reduce((acc: Record<string, GroupedIngredient>, ingredient) => {
 			// Create composite key from ingredient_id and quantityMeasure_id to ensure we only group same ingredients with same measurements
@@ -412,7 +413,7 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 			acc[key].quantity4 += parseFloat(ingredient.quantity4 || '');
 			return acc;
 		}, {});
-		
+
 		// Insert grouped ingredients into shopping list with household_id
 		if (Object.keys(groupedIngredients).length > 0) {
 			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient, index: number) => [
@@ -434,7 +435,7 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 				flatValues
 			);
 		}
-		
+
 		await connection.commit();
 	} catch (error) {
 		await connection.rollback();
@@ -846,12 +847,9 @@ export async function getRecipesInCollection(collectionId: number, householdId: 
 		)
 		ORDER BY cr.display_order ASC, cr.added_at ASC
 	`;
-	
-	const [rows] = await pool.execute(query, [
-		householdId, collectionId, householdId, householdId, collectionId, 
-		householdId, householdId, householdId
-	]);
-	
+
+	const [rows] = await pool.execute(query, [householdId, collectionId, householdId, householdId, collectionId, householdId, householdId, householdId]);
+
 	// Transform rows to include access_context
 	return (rows as any[]).map(row => ({
 		...row,
@@ -861,8 +859,8 @@ export async function getRecipesInCollection(collectionId: number, householdId: 
 			collection_household_id: row.collection_household_id,
 			recipe_household_id: row.household_id,
 			user_owns_collection: !!row.user_owns_collection,
-			user_owns_recipe: !!row.user_owns_recipe
-		}
+			user_owns_recipe: !!row.user_owns_recipe,
+		},
 	}));
 }
 
@@ -892,11 +890,8 @@ export async function getMyRecipes(householdId: number): Promise<Recipe[]> {
 		)
 		ORDER BY access_type ASC, r.name ASC  -- Prioritize owned recipes
 	`;
-	
-	const [rows] = await pool.execute(query, [
-		householdId, householdId, householdId, householdId, householdId, 
-		householdId, householdId
-	]);
+
+	const [rows] = await pool.execute(query, [householdId, householdId, householdId, householdId, householdId, householdId, householdId]);
 	return rows as Recipe[];
 }
 
@@ -933,20 +928,20 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 		  AND r.household_id != ?
 		)
 	`;
-	
+
 	const params = [householdId, householdId, householdId, householdId, householdId, householdId];
-	
+
 	if (collectionId) {
 		query += ` AND cr.collection_id = ?`;
 		params.push(collectionId);
 	}
-	
+
 	query += ` GROUP BY r.id ORDER BY status ASC, r.name ASC`;
-	
+
 	const [rows] = await pool.execute(query, params);
 	return (rows as any[]).map(row => ({
 		...row,
-		ingredients: row.ingredients ? row.ingredients.split(', ') : []
+		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
 	}));
 }
 
@@ -996,19 +991,19 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 		)
 		ORDER BY pc.id ASC, i.name ASC
 	`;
-	
+
 	const [rows] = await pool.execute(query, [householdId, householdId, householdId, id, householdId]);
 	const results = rows as RecipeDetailRow[];
-	
+
 	if (results.length === 0) {
 		return null;
 	}
-	
+
 	// Process results same as original getRecipeDetails function
 	const recipe = results[0];
 	const ingredients: any[] = [];
 	const ingredientMap = new Map();
-	
+
 	results.forEach(row => {
 		if (row.ingredient_id && !ingredientMap.has(row.ingredient_id)) {
 			ingredientMap.set(row.ingredient_id, {
@@ -1018,18 +1013,24 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 				ingredient: {
 					id: row.ingredient_table_id,
 					name: row.ingredient_name,
-					pantryCategory: row.pantry_category_id ? {
-						id: row.pantry_category_id,
-						name: row.pantry_category_name
-					} : null
+					pantryCategory: row.pantry_category_id
+						? {
+								id: row.pantry_category_id,
+								name: row.pantry_category_name,
+							}
+						: null,
 				},
-				preperation: row.preperation_name ? {
-					name: row.preperation_name
-				} : null,
-				quantityMeasure: row.measure_id ? {
-					id: row.measure_id,
-					name: row.measure_name
-				} : null
+				preperation: row.preperation_name
+					? {
+							name: row.preperation_name,
+						}
+					: null,
+				quantityMeasure: row.measure_id
+					? {
+							id: row.measure_id,
+							name: row.measure_name,
+						}
+					: null,
 			});
 			ingredients.push(ingredientMap.get(row.ingredient_id));
 		}
@@ -1047,10 +1048,10 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 		collection_id: recipe.collection_id,
 		collection_title: recipe.collection_title,
 		collection_url_slug: recipe.collection_url_slug || `${recipe.collection_id}-fallback`,
-		season: recipe.seasonName ? { name: recipe.seasonName } : null,
-		primaryType: recipe.primaryTypeName ? { name: recipe.primaryTypeName } : null,
-		secondaryType: recipe.secondaryTypeName ? { name: recipe.secondaryTypeName } : null,
-		ingredients: ingredients
+		seasonName: recipe.seasonName,
+		primaryTypeName: recipe.primaryTypeName,
+		secondaryTypeName: recipe.secondaryTypeName,
+		ingredients: ingredients,
 	};
 }
 
@@ -1082,10 +1083,7 @@ export async function getMyIngredients(householdId: number): Promise<any[]> {
 		)
 		ORDER BY access_type ASC, i.name ASC  -- Prioritize owned ingredients
 	`;
-	
-	const [rows] = await pool.execute(query, [
-		householdId, householdId, householdId, householdId, 
-		householdId, householdId
-	]);
+
+	const [rows] = await pool.execute(query, [householdId, householdId, householdId, householdId, householdId, householdId]);
 	return rows as any[];
 }

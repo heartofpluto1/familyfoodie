@@ -15,7 +15,8 @@ jest.mock('crypto', () => ({
 	pbkdf2Sync: jest.fn(),
 }));
 
-const mockCrypto = require('crypto');
+import * as crypto from 'crypto';
+const mockCrypto = crypto;
 
 describe('Authentication with Household Context', () => {
 	beforeEach(() => {
@@ -62,10 +63,7 @@ describe('Authentication with Household Context', () => {
 			});
 
 			// Verify database queries
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('JOIN households h ON u.household_id = h.id'),
-				['testuser']
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('JOIN households h ON u.household_id = h.id'), ['testuser']);
 		});
 
 		it('should reject authentication for invalid username', async () => {
@@ -89,7 +87,7 @@ describe('Authentication with Household Context', () => {
 			};
 
 			mockPool.execute.mockResolvedValueOnce([[mockUser], []]);
-			
+
 			// Mock password verification to fail
 			mockCrypto.pbkdf2Sync.mockReturnValue(Buffer.from('d3JvbmdIYXNo', 'base64')); // base64 of 'wrongHash'
 
@@ -119,10 +117,7 @@ describe('Authentication with Household Context', () => {
 			const result = await validateSessionWithHousehold(1);
 
 			expect(result).toEqual(mockUser);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('JOIN households h ON u.household_id = h.id'),
-				[1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('JOIN households h ON u.household_id = h.id'), [1]);
 		});
 
 		it('should return null for invalid user ID', async () => {

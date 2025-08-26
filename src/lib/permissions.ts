@@ -16,20 +16,16 @@ export type CollectionAccessLevel = 'owned' | 'subscribed' | 'public' | null;
  * Check if a user can edit a specific resource
  * Resources are editable only if they are owned by the user's household
  */
-export async function canEditResource(
-	userHouseholdId: number,
-	resourceType: ResourceType,
-	resourceId: number
-): Promise<boolean> {
+export async function canEditResource(userHouseholdId: number, resourceType: ResourceType, resourceId: number): Promise<boolean> {
 	try {
 		const query = `SELECT household_id FROM ${resourceType} WHERE id = ?`;
 		const [rows] = await pool.execute(query, [resourceId]);
-		
+
 		const resources = rows as Array<{ household_id: number }>;
 		if (resources.length === 0) {
 			return false; // Resource not found
 		}
-		
+
 		return resources[0].household_id === userHouseholdId;
 	} catch (error) {
 		addToast('error', 'Permission Check Error', `Failed to check edit permissions: ${error instanceof Error ? error.message : String(error)}`);
@@ -41,10 +37,7 @@ export async function canEditResource(
  * Validate household access to a collection
  * Returns the access level (owned/subscribed/public) or null if no access
  */
-export async function validateHouseholdAccess(
-	userHouseholdId: number,
-	collectionId: number
-): Promise<CollectionAccessLevel> {
+export async function validateHouseholdAccess(userHouseholdId: number, collectionId: number): Promise<CollectionAccessLevel> {
 	try {
 		const query = `
 			SELECT c.household_id, c.public,
@@ -53,20 +46,20 @@ export async function validateHouseholdAccess(
 			LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 			WHERE c.id = ?
 		`;
-		
+
 		const [rows] = await pool.execute(query, [userHouseholdId, collectionId]);
 		const collections = rows as Array<{
 			household_id: number;
 			public: number;
 			is_subscribed: number | null;
 		}>;
-		
+
 		if (collections.length === 0) {
 			return null; // Collection not found
 		}
-		
+
 		const collection = collections[0];
-		
+
 		if (collection.household_id === userHouseholdId) {
 			return 'owned';
 		} else if (collection.is_subscribed) {
@@ -86,15 +79,11 @@ export async function validateHouseholdAccess(
  * Check if a user can access a specific recipe within a collection context
  * Considers recipe ownership, collection ownership, and subscription status
  */
-export async function canAccessRecipe(
-	userHouseholdId: number,
-	recipeId: number,
-	collectionId?: number
-): Promise<boolean> {
+export async function canAccessRecipe(userHouseholdId: number, recipeId: number, collectionId?: number): Promise<boolean> {
 	try {
 		let query: string;
-		let params: any[];
-		
+		let params: unknown[];
+
 		if (collectionId) {
 			// Check access within collection context
 			query = `
@@ -124,7 +113,7 @@ export async function canAccessRecipe(
 			`;
 			params = [userHouseholdId, recipeId];
 		}
-		
+
 		const [rows] = await pool.execute(query, params);
 		const results = rows as Array<{
 			recipe_household_id: number;
@@ -132,11 +121,11 @@ export async function canAccessRecipe(
 			collection_public: number | null;
 			is_subscribed_to_collection: number | null;
 		}>;
-		
+
 		if (results.length === 0) {
 			return false; // Recipe not found or not in any accessible collection
 		}
-		
+
 		// Check if user has access through any of the collections containing this recipe
 		return results.some(result => {
 			return (
@@ -156,10 +145,7 @@ export async function canAccessRecipe(
  * Check if a user can access a specific ingredient
  * Considers ingredient ownership and recipes that use the ingredient
  */
-export async function canAccessIngredient(
-	userHouseholdId: number,
-	ingredientId: number
-): Promise<boolean> {
+export async function canAccessIngredient(userHouseholdId: number, ingredientId: number): Promise<boolean> {
 	try {
 		const query = `
 			SELECT DISTINCT i.household_id as ingredient_household_id,
@@ -175,7 +161,7 @@ export async function canAccessIngredient(
 			LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 			WHERE i.id = ?
 		`;
-		
+
 		const [rows] = await pool.execute(query, [userHouseholdId, ingredientId]);
 		const results = rows as Array<{
 			ingredient_household_id: number;
@@ -184,11 +170,11 @@ export async function canAccessIngredient(
 			collection_public: number | null;
 			is_subscribed_to_collection: number | null;
 		}>;
-		
+
 		if (results.length === 0) {
 			return false; // Ingredient not found
 		}
-		
+
 		// Check if user has access through ingredient ownership or through recipes/collections
 		return results.some(result => {
 			return (
@@ -210,33 +196,29 @@ export async function canAccessIngredient(
  * Bulk permission check for multiple resources of the same type
  * More efficient than checking permissions one by one
  */
-export async function canEditMultipleResources(
-	userHouseholdId: number,
-	resourceType: ResourceType,
-	resourceIds: number[]
-): Promise<Record<number, boolean>> {
+export async function canEditMultipleResources(userHouseholdId: number, resourceType: ResourceType, resourceIds: number[]): Promise<Record<number, boolean>> {
 	if (resourceIds.length === 0) {
 		return {};
 	}
-	
+
 	try {
 		const placeholders = resourceIds.map(() => '?').join(',');
 		const query = `SELECT id, household_id FROM ${resourceType} WHERE id IN (${placeholders})`;
 		const [rows] = await pool.execute(query, resourceIds);
-		
+
 		const resources = rows as Array<{ id: number; household_id: number }>;
 		const permissions: Record<number, boolean> = {};
-		
+
 		// Initialize all permissions to false
 		resourceIds.forEach(id => {
 			permissions[id] = false;
 		});
-		
+
 		// Set permissions based on household ownership
 		resources.forEach(resource => {
 			permissions[resource.id] = resource.household_id === userHouseholdId;
 		});
-		
+
 		return permissions;
 	} catch (error) {
 		addToast('error', 'Bulk Permission Error', `Failed to check bulk permissions: ${error instanceof Error ? error.message : String(error)}`);
@@ -257,7 +239,7 @@ export async function isAdmin(userId: number): Promise<boolean> {
 	try {
 		const query = 'SELECT is_admin FROM users WHERE id = ?';
 		const [rows] = await pool.execute(query, [userId]);
-		
+
 		const users = rows as Array<{ is_admin: number }>;
 		return users.length > 0 && users[0].is_admin === 1;
 	} catch (error) {
