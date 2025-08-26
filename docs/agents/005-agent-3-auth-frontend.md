@@ -808,11 +808,11 @@ npx tsc --noEmit
 # 2. ESLint check for unused imports
 npm run lint
 
-# 3. Build check  
-npm run build
-
-# 4. Test compilation
+# 3. Test compilation
 npm test -- --passWithNoTests
+
+# 4. Build check  
+npm run build
 ```
 
 #### Task 7.7: Documentation Updates

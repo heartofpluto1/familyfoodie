@@ -4,6 +4,68 @@
 **Agent Role:** Authentication Foundation & API Development Specialist  
 **Assigned Sections:** Authentication Layer (§0), Optimized Query Logic (§3), Application Layer Changes (§6)
 
+## Git Workflow Requirements
+
+### Branch Management
+**BEFORE starting any work**, Agent 2 must create and checkout a dedicated branch:
+
+```bash
+# Create and checkout feature branch
+git checkout -b feature/household-feature-integration-agent-2
+git push -u origin feature/household-feature-integration-agent-2
+```
+
+### Commit Strategy
+**AFTER each completed task**, Agent 2 must commit and push changes:
+
+```bash
+# Stage changes
+git add .
+
+# Commit with descriptive message referencing task
+git commit -m "feat: [Task X.Y] Brief description of changes
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Push to remote
+git push origin feature/household-feature-integration-agent-2
+```
+
+**IMPORTANT**: After completing EVERY individual task (0.1, 0.2, 0.3, 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 3.1, 3.2, 4.1, 4.2, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8), run the commit commands above with the appropriate task-specific message from the list below.
+
+### Commit Message Format
+- **Task 0.1**: `feat: [Task 0.1] Add SessionUser interface with household context`
+- **Task 0.2**: `feat: [Task 0.2] Update withAuth middleware with household context`
+- **Task 0.3**: `feat: [Task 0.3] Implement permission system foundation`
+- **Task 1.1**: `feat: [Task 1.1] Implement collection query optimization with household scope`
+- **Task 1.2**: `feat: [Task 1.2] Add recipe queries with household precedence`
+- **Task 1.3**: `feat: [Task 1.3] Implement three-tier scoped resource access`
+- **Task 1.4**: `feat: [Task 1.4] Add household-scoped shopping list generation`
+- **Task 2.1**: `feat: [Task 2.1] Implement enhanced collection context-aware copy-on-write`
+- **Task 2.2**: `feat: [Task 2.2] Add edit trigger integration with cascade copy`
+- **Task 2.3**: `feat: [Task 2.3] Implement permission system validation`
+- **Task 3.1**: `feat: [Task 3.1] Add collection subscription management APIs`
+- **Task 3.2**: `feat: [Task 3.2] Implement three-tier access system`
+- **Task 4.1**: `feat: [Task 4.1] Add advanced search with household precedence`
+- **Task 4.2**: `feat: [Task 4.2] Implement SEO and URL system with household validation`
+- **Task 5.1**: `feat: [Task 5.1] Update existing recipe endpoints with household logic`
+- **Task 5.2**: `feat: [Task 5.2] Update existing ingredient endpoints with household logic`
+- **Task 5.3**: `feat: [Task 5.3] Update existing collection endpoints with household logic`
+- **Task 5.4**: `feat: [Task 5.4] Update existing plan endpoints with household logic`
+- **Task 5.5**: `feat: [Task 5.5] Update existing shop endpoints with household logic`
+- **Task 5.6**: `feat: [Task 5.6] Update missing recipe endpoints with household logic`
+- **Task 5.7**: `feat: [Task 5.7] Create new collection-specific endpoints`
+- **Task 6.1**: `refactor: [Task 6.1] Clean up authentication code and remove redundancy`
+- **Task 6.2**: `refactor: [Task 6.2] Audit and clean up query functions`
+- **Task 6.3**: `refactor: [Task 6.3] Clean up API endpoint patterns and response types`
+- **Task 6.4**: `refactor: [Task 6.4] Clean up copy-on-write logic and remove debug code`
+- **Task 6.5**: `refactor: [Task 6.5] Optimize database queries for performance`
+- **Task 6.6**: `test: [Task 6.6] Run comprehensive verification (lint, test, build)`
+- **Task 6.7**: `docs: [Task 6.7] Update documentation and code comments`
+- **Task 6.8**: `test: [Task 6.8] Validate performance improvements achieved`
+
 ## Scope & Responsibilities
 
 This agent is responsible for implementing the authentication foundation with household context, all household-aware query logic, API endpoints, and copy-on-write mechanisms that power the household feature functionality.
@@ -1024,6 +1086,133 @@ DELETE - unsubscribeFromCollection() for unsubscribing
 - Validate subscription permissions and state changes
 ```
 
+### Phase 6: Code Cleanup & Verification (Day 16)
+
+After implementing all authentication, queries, copy-on-write logic, subscriptions, and API endpoints, perform comprehensive cleanup and verification to ensure code quality.
+
+#### Task 6.1: Authentication Code Cleanup
+Remove any redundant authentication utilities and clean up unused imports:
+
+```typescript
+// FILES TO AUDIT AND CLEAN:
+
+// 1. Remove old authentication functions that don't handle households
+// - Any authentication utilities that don't include household context
+// - Legacy session management functions without household joins
+// - Old permission checking functions without household_id parameter
+
+// 2. Consolidate authentication middleware
+// - Ensure consistent withAuth() implementation across all API routes
+// - Remove any duplicate authentication logic
+// - Clean up type definitions for AuthenticatedRequest
+```
+
+#### Task 6.2: Query Function Cleanup
+Audit and remove redundant or unused query functions:
+
+```typescript
+// SEARCH AND CLEAN:
+
+// 1. Remove old query functions that were replaced with household-aware versions
+// - Any getAllRecipes() without household_id parameter
+// - Old collection queries without subscription logic
+// - Legacy ingredient queries without household precedence
+
+// 2. Consolidate duplicate query logic
+// - Remove any duplicate SQL queries with slight variations
+// - Ensure consistent parameter ordering across similar queries
+// - Clean up unused imports in query files
+```
+
+#### Task 6.3: API Endpoint Cleanup
+Remove redundant API response types and clean up endpoint handlers:
+
+```typescript
+// CONSOLIDATE API PATTERNS:
+
+// 1. Remove old API handler patterns that don't use household context
+// - Any API routes without withAuth() middleware
+// - Legacy response patterns without household validation
+// - Unused error handling utilities
+
+// 2. Clean up response type definitions
+// - Remove duplicate API response interfaces
+// - Consolidate similar response patterns
+// - Ensure consistent error response formats
+```
+
+#### Task 6.4: Copy-on-Write Logic Cleanup
+Clean up any temporary or redundant copy-on-write utilities:
+
+```typescript
+// AUDIT COPY-ON-WRITE CODE:
+
+// 1. Remove any temporary copy-on-write functions used during development
+// 2. Clean up unused imports related to copying logic
+// 3. Ensure consistent error handling across all copy operations
+// 4. Remove any debug logging or temporary validation code
+```
+
+#### Task 6.5: Database Query Optimization
+Review and optimize database queries for performance:
+
+```typescript
+// OPTIMIZE QUERIES:
+
+// 1. Review all complex queries for optimization opportunities
+// 2. Ensure proper indexing hints are used where beneficial
+// 3. Remove any unused query parameters or redundant WHERE clauses
+// 4. Consolidate similar queries that could be combined
+```
+
+#### Task 6.6: Test Code Verification
+Run comprehensive verification to ensure all changes work correctly:
+
+```bash
+# RUN THESE COMMANDS to verify Agent 2 implementation:
+
+# 1. TypeScript compilation check
+npx tsc --noEmit
+
+# 2. ESLint check for code quality and unused imports
+npm run lint
+
+# 3. Run all tests to ensure functionality works
+npm run test
+
+# 4. Build check to ensure production readiness
+npm run build
+
+# 5. Test specific household features (if applicable)
+npm run test -- --testPathPattern="household|auth|permission"
+```
+
+#### Task 6.7: Documentation and Code Comments
+Update code documentation to reflect household-aware implementation:
+
+```typescript
+// UPDATE DOCUMENTATION:
+
+// 1. JSDoc comments for all new household-aware functions
+// 2. Update API endpoint documentation with household context requirements
+// 3. Code comments explaining complex precedence logic
+// 4. Update any README sections related to authentication or queries
+// 5. Ensure copy-on-write logic is well documented for future maintenance
+```
+
+#### Task 6.8: Performance Validation
+Validate that performance improvements were achieved:
+
+```typescript
+// VALIDATE PERFORMANCE GAINS:
+
+// 1. Confirm junction table queries are faster than old approach
+// 2. Verify copy-on-write operations complete within 500ms target
+// 3. Test search queries with household precedence meet 100ms target
+// 4. Ensure subscription queries are optimized with proper indexing
+// 5. Document any performance bottlenecks discovered during testing
+```
+
 ## Dependencies
 
 ### Upstream Dependencies (Must Complete First)
@@ -1035,6 +1224,13 @@ DELETE - unsubscribeFromCollection() for unsubscribing
 - **Agent 3**: Working subscription management for UI components
 
 ## Success Criteria
+
+### Git Workflow Requirements
+- [ ] Feature branch `feature/household-feature-integration-agent-2` created and checked out before starting
+- [ ] Each task committed individually with descriptive commit messages
+- [ ] All commits pushed to remote branch after completion
+- [ ] Commit messages follow specified format with task numbers
+- [ ] Claude Code attribution included in all commit messages
 
 ### Authentication Requirements
 - [ ] SessionUser interface includes household_id and household_name
@@ -1060,6 +1256,19 @@ DELETE - unsubscribeFromCollection() for unsubscribing
 - [ ] Copy-on-write logic seamlessly integrated into edit flows
 - [ ] Subscription management APIs working with proper validation
 - [ ] Error handling for permission denied scenarios
+
+### Code Cleanup & Verification Requirements
+- [ ] All redundant authentication utilities removed
+- [ ] Old query functions without household context cleaned up
+- [ ] Duplicate API response types consolidated
+- [ ] Copy-on-write debug code and temporary functions removed
+- [ ] Database queries optimized for performance
+- [ ] TypeScript compilation passes without errors (`npx tsc --noEmit`)
+- [ ] ESLint passes with no unused import warnings (`npm run lint`)
+- [ ] All tests pass including household-specific features (`npm run test`)
+- [ ] Production build succeeds (`npm run build`)
+- [ ] Performance targets achieved (500ms copy-on-write, 100ms search queries)
+- [ ] Code documentation updated with household-aware implementation details
 
 ## Risk Mitigation
 

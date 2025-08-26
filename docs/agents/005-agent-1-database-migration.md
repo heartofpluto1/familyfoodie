@@ -4,6 +4,56 @@
 **Agent Role:** Database Schema & Migration Specialist  
 **Assigned Sections:** Database Schema Changes (§1), Data Migration Strategy (§5)
 
+## Git Workflow Requirements
+
+### Branch Management
+**BEFORE starting any work**, Agent 1 must create and checkout a dedicated branch:
+
+```bash
+# Create and checkout feature branch
+git checkout -b feature/household-feature-integration-agent-1
+git push -u origin feature/household-feature-integration-agent-1
+```
+
+### Commit Strategy
+**AFTER each completed task**, Agent 1 must commit and push changes:
+
+```bash
+# Stage changes
+git add .
+
+# Commit with descriptive message referencing task
+git commit -m "feat: [Task X.Y] Brief description of changes
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Push to remote
+git push origin feature/household-feature-integration-agent-1
+```
+
+**IMPORTANT**: After completing EVERY individual task (1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 4.1, 4.2, 5.1, 5.2, 5.3, 5.4), run the commit commands above with the appropriate task-specific message from the list below.
+
+### Commit Message Format
+- **Task 1.1**: `feat: [Task 1.1] Create core household infrastructure tables`
+- **Task 1.2**: `feat: [Task 1.2] Implement collection_recipes junction table`
+- **Task 1.3**: `feat: [Task 1.3] Create collection subscription system tables`
+- **Task 2.1**: `feat: [Task 2.1] Add user-household relationship column`
+- **Task 2.2**: `feat: [Task 2.2] Add collection ownership and parent tracking`
+- **Task 2.3**: `feat: [Task 2.3] Add recipe copy-on-write setup columns`
+- **Task 2.4**: `feat: [Task 2.4] Add household ownership to ingredients and recipe_ingredients`
+- **Task 2.5**: `feat: [Task 2.5] Add household scope to private data tables`
+- **Task 3.1**: `feat: [Task 3.1] Create Spencer household and assign users`
+- **Task 3.2**: `feat: [Task 3.2] Assign household ownership to all resources`
+- **Task 3.3**: `feat: [Task 3.3] Populate junction tables with existing relationships`
+- **Task 4.1**: `feat: [Task 4.1] Implement enhanced cascade copy stored procedures`
+- **Task 4.2**: `feat: [Task 4.2] Create cleanup triggers for orphaned resources`
+- **Task 5.1**: `feat: [Task 5.1] Validate data integrity after migration`
+- **Task 5.2**: `feat: [Task 5.2] Perform performance testing on household queries`
+- **Task 5.3**: `feat: [Task 5.3] Create rollback procedures for migration safety`
+- **Task 5.4**: `test: [Task 5.4] Run system verification (lint, test, build)`
+
 ## Scope & Responsibilities
 
 This agent is responsible for all database-level changes required for the household feature implementation, including schema modifications, data migration, and stored procedures.
@@ -187,6 +237,31 @@ Implement the `cleanup_after_recipe_delete` trigger to automatically clean up or
 - Test rollback on development copy
 - Prepare emergency rollback scripts
 
+#### Task 5.4: System Verification
+After completing all database changes, run comprehensive verification to ensure the system still works correctly:
+
+```bash
+# RUN THESE COMMANDS to verify the system after database migration:
+
+# 1. TypeScript compilation check
+npx tsc --noEmit
+
+# 2. ESLint check for any code that may be affected by schema changes
+npm run lint
+
+# 3. Run all tests to ensure database changes don't break existing functionality
+npm run test
+
+# 4. Build check to ensure the application can still build successfully
+npm run build
+```
+
+**Verification Requirements:**
+- All commands must pass without errors
+- If any tests fail due to schema changes, document them for Agent 2 to address
+- Ensure database migrations didn't break existing authentication or query functionality
+- Confirm that stored procedures and triggers work as expected
+
 ## Dependencies
 
 ### Upstream Dependencies (Must Complete First)
@@ -197,6 +272,13 @@ Implement the `cleanup_after_recipe_delete` trigger to automatically clean up or
 - **Agent 3** requires completed migration for authentication context
 
 ## Success Criteria
+
+### Git Workflow Requirements
+- [ ] Feature branch `feature/household-feature-integration-agent-1` created and checked out before starting
+- [ ] Each task committed individually with descriptive commit messages
+- [ ] All commits pushed to remote branch after completion
+- [ ] Commit messages follow specified format with task numbers
+- [ ] Claude Code attribution included in all commit messages
 
 ### Functional Requirements
 - [ ] All 15 migration steps completed successfully
@@ -222,6 +304,15 @@ Implement the `cleanup_after_recipe_delete` trigger to automatically clean up or
 - [ ] All existing relationships preserved in junction tables
 - [ ] Parent-child relationships properly tracked
 - [ ] Automatic cleanup working correctly
+
+### System Verification Requirements
+- [ ] TypeScript compilation passes without errors (`npx tsc --noEmit`)
+- [ ] ESLint passes with no errors (`npm run lint`)
+- [ ] All existing tests pass after database migration (`npm run test`)
+- [ ] Application builds successfully (`npm run build`)
+- [ ] Any test failures due to schema changes documented for Agent 2
+- [ ] Database migrations don't break existing authentication
+- [ ] Stored procedures and triggers function correctly
 
 ## Risk Mitigation
 
