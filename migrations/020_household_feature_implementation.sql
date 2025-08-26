@@ -57,9 +57,7 @@ ALTER TABLE collections ADD INDEX idx_parent_id (parent_id);
 ALTER TABLE collections ADD INDEX idx_public (public);
 
 -- Task 2.3: Add recipe copy-on-write setup columns
--- Remove collection_id since relationship now managed by junction table
-ALTER TABLE recipes DROP FOREIGN KEY fk_recipes_collection;
-ALTER TABLE recipes DROP COLUMN collection_id;
+-- NOTE: Keep collection_id for now - we'll drop it after data migration
 ALTER TABLE recipes ADD COLUMN household_id INT;
 ALTER TABLE recipes ADD COLUMN parent_id INT NULL;
 ALTER TABLE recipes ADD INDEX idx_household_id (household_id);
@@ -121,7 +119,15 @@ SELECT h.id, 1 FROM households h
 WHERE 1 IN (SELECT id FROM collections WHERE id = 1);
 
 -- =============================================================================
--- PHASE 4: ADD FOREIGN KEY CONSTRAINTS
+-- PHASE 4: REMOVE OLD SCHEMA (After Data Migration)
+-- =============================================================================
+
+-- Now safe to drop collection_id from recipes since data is migrated to junction table
+ALTER TABLE recipes DROP FOREIGN KEY fk_recipes_collection;
+ALTER TABLE recipes DROP COLUMN collection_id;
+
+-- =============================================================================
+-- PHASE 5: ADD FOREIGN KEY CONSTRAINTS
 -- =============================================================================
 
 -- Add foreign key constraints after data migration
@@ -163,7 +169,7 @@ ALTER TABLE shopping_lists ADD CONSTRAINT fk_shopping_lists_household
     ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- =============================================================================
--- FINAL STEP: MAKE COLUMNS NOT NULL AFTER DATA MIGRATION
+-- PHASE 6: MAKE COLUMNS NOT NULL AFTER DATA MIGRATION
 -- =============================================================================
 
 -- Make household_id columns NOT NULL after data is populated
@@ -175,7 +181,7 @@ ALTER TABLE plans MODIFY COLUMN household_id INT NOT NULL;
 ALTER TABLE shopping_lists MODIFY COLUMN household_id INT NOT NULL;
 
 -- =============================================================================
--- PHASE 5: STORED PROCEDURES & TRIGGERS (Tasks 4.1, 4.2)
+-- PHASE 7: STORED PROCEDURES & TRIGGERS (Tasks 4.1, 4.2)
 -- =============================================================================
 
 -- Task 4.1: Implement enhanced cascade copy stored procedures
