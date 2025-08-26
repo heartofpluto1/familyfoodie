@@ -1,8 +1,8 @@
 # Agent 1: Database & Migration Implementation
 
 **Parent Spec:** [005-household-feature-spec.md](../specs/005-household-feature-spec.md)  
-**Agent Role:** Database Schema & Migration Specialist  
-**Assigned Sections:** Database Schema Changes (§1), Data Migration Strategy (§5)
+**Agent Role:** Database Schema, Migration & Copy-on-Write Implementation Specialist  
+**Assigned Sections:** Database Schema Changes (§1), Data Migration Strategy (§5), Application Copy-on-Write Logic (§4)
 
 ## Required reading
 
@@ -55,8 +55,8 @@ git push origin feature/household-feature-integration-agent-1
 - **Task 3.1**: `feat: [Task 3.1] Create Spencer household and assign users`
 - **Task 3.2**: `feat: [Task 3.2] Assign household ownership to all resources`
 - **Task 3.3**: `feat: [Task 3.3] Populate junction tables with existing relationships`
-- **Task 4.1**: `feat: [Task 4.1] Implement enhanced cascade copy stored procedures`
-- **Task 4.2**: `feat: [Task 4.2] Create cleanup triggers for orphaned resources`
+- **Task 4.1**: `feat: [Task 4.1] Implement enhanced cascade copy TypeScript functions`
+- **Task 4.2**: `feat: [Task 4.2] Create application-level cleanup functions`
 - **Task 5.1**: `feat: [Task 5.1] Validate data integrity after migration`
 - **Task 5.2**: `feat: [Task 5.2] Perform performance testing on household queries`
 - **Task 5.3**: `feat: [Task 5.3] Create rollback procedures for migration safety`
@@ -64,7 +64,7 @@ git push origin feature/household-feature-integration-agent-1
 
 ## Scope & Responsibilities
 
-This agent is responsible for all database-level changes required for the household feature implementation, including schema modifications, data migration, and stored procedures.
+This agent is responsible for all database-level changes required for the household feature implementation, including schema modifications, data migration, and application-level copy-on-write functions.
 
 ### Primary Deliverables
 
@@ -77,15 +77,16 @@ This agent is responsible for all database-level changes required for the househ
    - Make all SQL idempotent so it's safe to run the migration multiple times
 
 2. **Data Migration Execution**
-   - Execute all 15 migration steps from the parent spec
+   - Execute all 12 database migration steps from the parent spec
    - Create "Spencer" household and migrate existing data
    - Populate junction tables from existing relationships
    - Validate data integrity throughout migration
 
-3. **Stored Procedures & Triggers**
-   - Implement `CopyRecipeForEdit()` and `CopyIngredientForEdit()` procedures
-   - Create cleanup triggers for orphaned resources
-   - Implement cascade copying logic
+3. **Application Copy-on-Write Functions**
+   - Implement `copyRecipeForEdit()` and `copyIngredientForEdit()` TypeScript functions
+   - Create application-level cleanup logic for orphaned resources
+   - Implement cascade copying logic with transaction management
+   - Write comprehensive unit tests for all copy functions
 
 4. **Performance Optimization**
    - Add all required indexes for household-scoped queries
@@ -206,28 +207,87 @@ SELECT h.id, 1 FROM households h
 WHERE 1 IN (SELECT id FROM collections WHERE id = 1);
 ```
 
-### Phase 4: Stored Procedures & Triggers (Day 7)
+### Phase 4: Application Copy-on-Write Functions (Day 7)
 
-#### Task 4.1: Enhanced Collection Context-Aware Copy-on-Write Procedures
-Implement both the original copy-on-write procedures AND the enhanced collection context-aware procedures:
+#### Task 4.1: Enhanced Collection Context-Aware Copy-on-Write Functions
+Implement both the original copy-on-write functions AND the enhanced collection context-aware functions:
 
-**Original Procedures** (from parent spec "Edit Triggers Copy" section):
-- `CopyRecipeForEdit()` - Single recipe copying with junction table updates
-- `CopyIngredientForEdit()` - Single ingredient copying with recipe updates
+**File Structure:**
+- `src/lib/copy-on-write.ts` - Main copy-on-write functions
+- `src/lib/queries/copy-operations.ts` - Database query utilities for copy operations
+- `src/lib/copy-on-write.test.ts` - Comprehensive unit tests
+- `src/lib/queries/copy-operations.test.ts` - Database query tests
 
-**Enhanced Collection Context-Aware Procedures** (for URL routing scenarios):
-- `CascadeCopyWithContext()` - Collection + recipe cascade copying with collection context validation
-- `CascadeCopyIngredientWithContext()` - Full collection → recipe → ingredient cascade copying
+**Original Functions** (from parent spec "Edit Triggers Copy" section):
+- `copyRecipeForEdit()` - Single recipe copying with junction table updates and transaction management
+- `copyIngredientForEdit()` - Single ingredient copying with recipe updates and proper error handling
 
-These enhanced procedures handle the critical collection context scenarios identified:
+**Enhanced Collection Context-Aware Functions** (for URL routing scenarios):
+- `cascadeCopyWithContext()` - Collection + recipe cascade copying with collection context validation
+- `cascadeCopyIngredientWithContext()` - Full collection → recipe → ingredient cascade copying
+
+These enhanced functions handle the critical collection context scenarios identified:
 - Spencer edits Williams collection → Johnson recipe (copies both collection and recipe)
 - Spencer edits subscribed collection → owned recipe (copies collection only)  
 - Spencer edits owned collection → external recipe (copies recipe only)
 
-The enhanced procedures validate entire ownership chains and ensure complete resource isolation for multi-household editing scenarios accessed via `/recipes/[collection_slug]/[recipe_slug]` URLs.
+The enhanced functions validate entire ownership chains and ensure complete resource isolation for multi-household editing scenarios accessed via `/recipes/[collection_slug]/[recipe_slug]` URLs.
 
-#### Task 4.2: Cleanup Triggers
-Implement the `cleanup_after_recipe_delete` trigger to automatically clean up orphaned household-owned ingredients.
+**Function Signatures:**
+```typescript
+// Main copy-on-write functions
+export async function copyRecipeForEdit(
+  recipeId: number, 
+  householdId: number
+): Promise<{ newRecipeId: number; copied: boolean }>;
+
+export async function copyIngredientForEdit(
+  ingredientId: number, 
+  householdId: number
+): Promise<{ newIngredientId: number; copied: boolean }>;
+
+export async function cascadeCopyWithContext(
+  householdId: number,
+  collectionId: number, 
+  recipeId: number
+): Promise<{
+  newCollectionId: number;
+  newRecipeId: number;
+  actionsTaken: string[];
+}>;
+
+export async function cascadeCopyIngredientWithContext(
+  householdId: number,
+  collectionId: number,
+  recipeId: number, 
+  ingredientId: number
+): Promise<{
+  newCollectionId: number;
+  newRecipeId: number;
+  newIngredientId: number;
+  actionsTaken: string[];
+}>;
+```
+
+#### Task 4.2: Application-Level Cleanup Logic
+Implement application-level cleanup functions to replace database triggers:
+
+**Functions to Implement:**
+- `cleanupOrphanedIngredients()` - Clean up orphaned household-owned ingredients after recipe deletion
+- `cleanupOrphanedRecipeIngredients()` - Clean up recipe_ingredients entries after recipe deletion
+- Integration with existing delete API endpoints to call cleanup functions
+
+**Function Signatures:**
+```typescript
+export async function cleanupOrphanedIngredients(
+  householdId: number, 
+  deletedRecipeId: number
+): Promise<{ deletedIngredientIds: number[] }>;
+
+export async function cleanupOrphanedRecipeIngredients(
+  recipeId: number
+): Promise<{ deletedCount: number }>;
+```
 
 ### Phase 5: Testing & Validation (Days 8-10)
 
@@ -238,7 +298,7 @@ Implement the `cleanup_after_recipe_delete` trigger to automatically clean up or
 
 #### Task 5.2: Performance Testing
 - Benchmark junction table queries vs old collection_id queries
-- Test stored procedure performance with large datasets
+- Test copy function performance with large datasets
 - Validate index effectiveness on household-scoped queries
 
 #### Task 5.3: System Verification
@@ -264,7 +324,7 @@ npm run build
 - All commands must pass without errors
 - If any tests fail due to schema changes, document them for Agent 2 to address
 - Ensure database migrations didn't break existing authentication or query functionality
-- Confirm that stored procedures and triggers work as expected
+- Confirm that copy-on-write functions work as expected
 
 ## Dependencies
 
@@ -285,15 +345,15 @@ npm run build
 - [ ] Claude Code attribution included in all commit messages
 
 ### Functional Requirements
-- [ ] All 15 migration steps completed successfully
+- [ ] All 12 migration steps completed successfully
 - [ ] Spencer household created with all existing data
 - [ ] Junction table approach implemented (14x storage savings achieved)
-- [ ] Original copy-on-write procedures working correctly (`CopyRecipeForEdit`, `CopyIngredientForEdit`)
-- [ ] Enhanced collection context-aware procedures working correctly (`CascadeCopyWithContext`, `CascadeCopyIngredientWithContext`)
+- [ ] Original copy-on-write functions working correctly (`copyRecipeForEdit`, `copyIngredientForEdit`)
+- [ ] Enhanced collection context-aware functions working correctly (`cascadeCopyWithContext`, `cascadeCopyIngredientWithContext`)
 - [ ] All foreign key constraints properly enforced
 
 ### Collection Context Requirements (Enhanced)
-- [ ] Enhanced copy-on-write procedures validate entire collection → recipe → ingredient ownership chains
+- [ ] Enhanced copy-on-write functions validate entire collection → recipe → ingredient ownership chains
 - [ ] Multi-household cascade copying scenarios working correctly
 - [ ] URL slug retrieval integrated for frontend redirection after copying
 - [ ] Transaction safety maintained across collection + recipe + ingredient copying operations
@@ -301,7 +361,7 @@ npm run build
 ### Performance Requirements
 - [ ] Junction table queries show 5-10x performance improvement over previous approach
 - [ ] No performance degradation in existing functionality
-- [ ] Stored procedures execute within 100ms for typical operations
+- [ ] Copy functions execute within 200ms for typical operations
 
 ### Data Integrity Requirements
 - [ ] Zero data loss during migration
@@ -316,7 +376,7 @@ npm run build
 - [ ] Application builds successfully (`npm run build`)
 - [ ] Any test failures due to schema changes documented for Agent 2
 - [ ] Database migrations don't break existing authentication
-- [ ] Stored procedures and triggers function correctly
+- [ ] Copy-on-write functions and cleanup logic work correctly
 
 ## Risk Mitigation
 
@@ -328,14 +388,16 @@ npm run build
 - **Mitigation**: Benchmark before/after, optimize indexes proactively
 - **Idempotent**: Ensure SQL is idempotent so it's safe to run multiple times
 
-### Medium Risk: Complex Stored Procedures
-- **Mitigation**: Extensive unit testing, step-by-step validation
-- **Idempotent**: Ensure stored procedures are idempotent so it's safe to run multiple times
+### Medium Risk: Complex Copy Functions
+- **Mitigation**: Extensive unit testing, step-by-step validation, comprehensive test coverage
+- **Transaction Safety**: Ensure all copy functions use proper transaction management
 
 ## Testing Strategy
 
-1. **Unit Tests**: Test each stored procedure in isolation
+1. **Unit Tests**: Test each copy function in isolation with mocked database calls
 2. **Integration Tests**: Test complete migration flow on test data
+3. **Copy Function Tests**: Test all copy-on-write scenarios with real database transactions
+4. **Transaction Tests**: Verify rollback behavior on copy function failures
 5. **Data Validation**: Verify data integrity at each migration step
 
 ## Handoff to Other Agents
