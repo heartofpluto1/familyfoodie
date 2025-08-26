@@ -417,15 +417,44 @@ UPDATE shopping_lists SET household_id = @spencer_household_id WHERE household_i
 
 -- Task 3.3: Populate junction tables with existing relationships
 -- Migrate existing recipe-collection relationships to junction table (avoid duplicates)
-INSERT INTO collection_recipes (collection_id, recipe_id, added_at)
-SELECT collection_id, id, NOW() 
-FROM recipes 
-WHERE collection_id IS NOT NULL
-AND NOT EXISTS (
-    SELECT 1 FROM collection_recipes cr 
-    WHERE cr.collection_id = recipes.collection_id 
-    AND cr.recipe_id = recipes.id
+-- Only migrate if collection_id column still exists on recipes table
+SET @collection_id_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND COLUMN_NAME = 'collection_id'
 );
+
+-- Check if collection_recipes table already has data to avoid duplicate population
+SET @junction_data_exists = (
+    SELECT COUNT(*) FROM collection_recipes LIMIT 1
+);
+
+SET @sql = IF(@collection_id_exists > 0, 
+    'INSERT INTO collection_recipes (collection_id, recipe_id, added_at)
+     SELECT collection_id, id, NOW() 
+     FROM recipes 
+     WHERE collection_id IS NOT NULL
+     AND NOT EXISTS (
+         SELECT 1 FROM collection_recipes cr 
+         WHERE cr.collection_id = recipes.collection_id 
+         AND cr.recipe_id = recipes.id
+     )', 
+    IF(@junction_data_exists = 0,
+        'INSERT INTO collection_recipes (collection_id, recipe_id, added_at)
+         SELECT 1, id, NOW() 
+         FROM recipes 
+         WHERE NOT EXISTS (
+             SELECT 1 FROM collection_recipes cr 
+             WHERE cr.collection_id = 1 
+             AND cr.recipe_id = recipes.id
+         )',
+        'SELECT "collection_recipes table already has data - skipping default population" as message'
+    )
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Auto-subscribe all households to collection_id=1 (Spencer's essentials) - avoid duplicates
 INSERT INTO collection_subscriptions (household_id, collection_id)
@@ -441,8 +470,35 @@ AND NOT EXISTS (
 -- =============================================================================
 
 -- Now safe to drop collection_id from recipes since data is migrated to junction table
-ALTER TABLE recipes DROP FOREIGN KEY fk_recipes_collection;
-ALTER TABLE recipes DROP COLUMN collection_id;
+-- Only drop if the foreign key constraint exists
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND CONSTRAINT_NAME = 'fk_recipes_collection'
+);
+SET @sql = IF(@constraint_exists > 0, 
+    'ALTER TABLE recipes DROP FOREIGN KEY fk_recipes_collection', 
+    'SELECT "fk_recipes_collection constraint does not exist" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Only drop if the collection_id column exists
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND COLUMN_NAME = 'collection_id'
+);
+SET @sql = IF(@column_exists > 0, 
+    'ALTER TABLE recipes DROP COLUMN collection_id', 
+    'SELECT "collection_id column does not exist" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- =============================================================================
 -- PHASE 5: ADD FOREIGN KEY CONSTRAINTS
@@ -618,8 +674,6 @@ ALTER TABLE shopping_lists MODIFY COLUMN household_id INT NOT NULL;
 
 -- Task 4.1: Implement enhanced cascade copy stored procedures
 
-DELIMITER $$
-
 -- Original copy-on-write procedure for recipes
 DROP PROCEDURE IF EXISTS CopyRecipeForEdit;
 CREATE PROCEDURE CopyRecipeForEdit(
@@ -663,7 +717,7 @@ BEGIN
             SELECT id FROM collections WHERE household_id = p_household_id
         ) AND recipe_id = p_recipe_id;
     END IF;
-END$$
+END;
 
 -- Original copy-on-write procedure for ingredients
 DROP PROCEDURE IF EXISTS CopyIngredientForEdit;
@@ -699,7 +753,7 @@ BEGIN
         WHERE r.household_id = p_household_id 
         AND ri.ingredient_id = p_ingredient_id;
     END IF;
-END$$
+END;
 
 -- Enhanced cascade copy procedure that handles collection context
 DROP PROCEDURE IF EXISTS CascadeCopyWithContext;
@@ -761,7 +815,7 @@ BEGIN
     END IF;
     
     SET p_actions_taken = v_actions;
-END$$
+END;
 
 -- Enhanced ingredient copy that also handles collection/recipe context
 DROP PROCEDURE IF EXISTS CascadeCopyIngredientWithContext;
@@ -786,12 +840,9 @@ BEGIN
     IF p_new_ingredient_id != p_ingredient_id THEN
         SET p_actions_taken = CONCAT(p_actions_taken, 'ingredient_copied');
     END IF;
-END$$
-
-DELIMITER ;
+END;
 
 -- Task 4.2: Create cleanup triggers for orphaned resources
-DELIMITER $$
 
 DROP TRIGGER IF EXISTS cleanup_after_recipe_delete;
 CREATE TRIGGER cleanup_after_recipe_delete 
@@ -812,6 +863,4 @@ BEGIN
         WHERE r.household_id = OLD.household_id
         AND r.id != OLD.id
     );
-END$$
-
-DELIMITER ;
+END;
