@@ -12,11 +12,17 @@ jest.mock('@/lib/db.js', () => ({
 
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
+
 // Mock the auth middleware to properly handle authentication
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
 
-// Already defined above as mockExecute
+// Mock the copy-on-write module
+jest.mock('@/lib/copy-on-write', () => ({
+	triggerCascadeCopyIfNeeded: jest.fn(),
+}));
+
+const mockTriggerCascadeCopyIfNeeded = jest.mocked(jest.requireMock('@/lib/copy-on-write').triggerCascadeCopyIfNeeded);
 
 describe('/api/recipe/update-details', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -24,6 +30,8 @@ describe('/api/recipe/update-details', () => {
 	beforeEach(() => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		// Reset the mock before each test
+		mockTriggerCascadeCopyIfNeeded.mockReset();
 	});
 
 	afterAll(() => {
@@ -31,7 +39,10 @@ describe('/api/recipe/update-details', () => {
 	});
 
 	describe('PUT /api/recipe/update-details', () => {
-		it('should successfully update recipe details with all fields', async () => {
+		it('should successfully update recipe details with all fields when user owns recipe', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 1 }, // Successful update
 			]);
@@ -81,7 +92,10 @@ describe('/api/recipe/update-details', () => {
 			});
 		});
 
-		it('should successfully update recipe details with required fields only', async () => {
+		it('should successfully update recipe details with required fields only when user owns recipe', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(2);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -123,7 +137,65 @@ describe('/api/recipe/update-details', () => {
 			});
 		});
 
+		it('should trigger copy-on-write when user does not own recipe', async () => {
+			// Mock copy-on-write: recipe not owned, returns NEW ID
+			const originalRecipeId = 5;
+			const copiedRecipeId = 123;
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(copiedRecipeId);
+			
+			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: originalRecipeId,
+							name: 'Recipe to Copy',
+							description: 'This recipe will be copied',
+						}),
+					});
+
+					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe details updated successfully',
+						newRecipeId: copiedRecipeId,
+						copied: true,
+					});
+
+					// Verify copy-on-write was called
+					expect(mockTriggerCascadeCopyIfNeeded).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						originalRecipeId
+					);
+
+					// Verify update was called with the NEW recipe ID
+					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
+						'Recipe to Copy',
+						'This recipe will be copied',
+						null, // prepTime
+						null, // cookTime
+						null, // seasonId
+						null, // primaryTypeId
+						null, // secondaryTypeId
+						null, // collectionId
+						copiedRecipeId, // NEW ID after copy
+					]);
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
 		it('should convert zero values in time fields to null for backward compatibility', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -241,6 +313,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should return 404 if recipe not found', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(999);
+			
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 0 }, // No rows affected
 			]);
@@ -269,6 +344,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should return 500 on database error', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockRejectedValueOnce(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
@@ -337,6 +415,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should handle undefined description by converting to null', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -462,6 +543,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should properly parse string ID to integer', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(123);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -559,6 +643,9 @@ describe('/api/recipe/update-details', () => {
 			const validName = 'Valid Recipe Name';
 			const longDescription = 'b'.repeat(10000); // longtext can handle this
 
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -589,6 +676,9 @@ describe('/api/recipe/update-details', () => {
 			const specialName = 'Recipe™ with "quotes" & émojis 🍕';
 			const specialDescription = 'Description with ñoñó, <tags>, & "special" characters™';
 
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -616,6 +706,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should handle explicit null values for optional fields', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -686,6 +779,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should return 400 when foreign key references do not exist', async () => {
+			// Mock copy-on-write: recipe already owned, returns same ID
+			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
+			
 			// Mock database to return foreign key constraint error
 			mockExecute.mockRejectedValueOnce({
 				code: 'ER_NO_REFERENCED_ROW_2',
@@ -715,6 +811,42 @@ describe('/api/recipe/update-details', () => {
 					expect(response.status).toBe(400);
 					const data = await response.json();
 					expect(data.error).toBe('Referenced season, type, or collection does not exist');
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 500 when copy-on-write fails', async () => {
+			// Mock copy-on-write to throw an error
+			mockTriggerCascadeCopyIfNeeded.mockRejectedValueOnce(new Error('Failed to copy recipe'));
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 10,
+							name: 'Recipe that fails to copy',
+							description: 'This will fail during copy-on-write',
+						}),
+					});
+
+					expect(response.status).toBe(500);
+					const data = await response.json();
+					expect(data.error).toBe('Failed to update recipe details');
+					
+					// Verify copy-on-write was attempted
+					expect(mockTriggerCascadeCopyIfNeeded).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						10
+					);
+					
+					// Verify UPDATE was never called since copy failed
+					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});

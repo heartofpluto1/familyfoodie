@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import type { User } from '@/types/user';
 
 // Standard mock admin user data
-export const mockAdminUser: User = {
+export const mockAdminUser: User & { household_id: number } = {
 	id: 1,
 	username: 'admin',
 	first_name: 'Admin',
@@ -12,10 +12,11 @@ export const mockAdminUser: User = {
 	is_active: true,
 	date_joined: '2024-01-01T00:00:00Z',
 	last_login: '2024-08-01T00:00:00Z',
+	household_id: 1, // Added for household context
 };
 
 // Standard mock regular user data
-export const mockRegularUser: User = {
+export const mockRegularUser: User & { household_id: number } = {
 	id: 2,
 	username: 'user',
 	first_name: 'Regular',
@@ -25,6 +26,7 @@ export const mockRegularUser: User = {
 	is_active: true,
 	date_joined: '2024-01-01T00:00:00Z',
 	last_login: '2024-08-01T00:00:00Z',
+	household_id: 1, // Added for household context
 };
 
 /**
@@ -39,8 +41,8 @@ export const clearAllMocks = () => {
  * Use this directly in jest.mock() calls via require
  */
 export const authMiddlewareMock = {
-	withAuth: (handler: (request: NextRequest, session: unknown) => Promise<Response>) => {
-		return async (request: NextRequest & { user?: unknown }) => {
+	withAuth: (handler: (request: NextRequest & { user?: any; household_id?: number }, context?: unknown) => Promise<Response>) => {
+		return async (request: NextRequest & { user?: any; household_id?: number }, context?: unknown) => {
 			// Check if user is set by requestPatcher
 			if (!request.user) {
 				return new Response(
@@ -52,7 +54,9 @@ export const authMiddlewareMock = {
 					{ status: 401, headers: { 'Content-Type': 'application/json' } }
 				);
 			}
-			return handler(request, request.user);
+			// Set household_id from user as the real middleware does
+			request.household_id = request.user.household_id || 1; // Default to household_id 1 for testing
+			return handler(request, context);
 		};
 	},
 };
