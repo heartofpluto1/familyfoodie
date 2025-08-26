@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
-async function createCollectionHandler(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function createCollectionHandler(request: AuthenticatedRequest, context?: unknown) {
 	try {
 		const formData = await request.formData();
 
@@ -35,9 +36,9 @@ async function createCollectionHandler(request: NextRequest) {
 		if (lightImage || darkImage) {
 			// User provided custom images, generate unique filename
 			const [result] = await pool.execute<ResultSetHeader>(
-				`INSERT INTO collections (title, subtitle, created_at, updated_at) 
-				 VALUES (?, ?, NOW(), NOW())`,
-				[title, subtitle || null]
+				`INSERT INTO collections (title, subtitle, household_id, public, created_at, updated_at) 
+				 VALUES (?, ?, ?, 0, NOW(), NOW())`,
+				[title, subtitle || null, request.household_id]
 			);
 
 			collectionId = result.insertId;
@@ -92,9 +93,9 @@ async function createCollectionHandler(request: NextRequest) {
 
 			// Insert collection with default filenames
 			const [result] = await pool.execute<ResultSetHeader>(
-				`INSERT INTO collections (title, subtitle, filename, filename_dark, created_at, updated_at) 
-				 VALUES (?, ?, ?, ?, NOW(), NOW())`,
-				[title, subtitle || null, filename, darkFilename]
+				`INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, public, created_at, updated_at) 
+				 VALUES (?, ?, ?, ?, ?, 0, NOW(), NOW())`,
+				[title, subtitle || null, filename, darkFilename, request.household_id]
 			);
 
 			collectionId = result.insertId;
@@ -121,4 +122,4 @@ async function createCollectionHandler(request: NextRequest) {
 	}
 }
 
-export const POST = withAuth(createCollectionHandler);
+export const POST = withAuthHousehold(createCollectionHandler);

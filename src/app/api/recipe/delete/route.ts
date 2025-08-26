@@ -37,6 +37,7 @@ function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { succ
 	return { isValid: true };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
 	let recipeId: unknown;
 

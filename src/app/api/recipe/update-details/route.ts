@@ -22,6 +22,7 @@ interface DatabaseError extends Error {
 	sqlMessage?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function updateDetailsHandler(request: AuthenticatedRequest, context?: unknown) {
 	let body: UpdateRecipeDetailsRequest;
 

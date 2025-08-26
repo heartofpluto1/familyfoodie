@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { RowDataPacket } from 'mysql2';
 
 interface AddIngredientRequest {
@@ -12,7 +12,8 @@ interface AddIngredientRequest {
 	pantryCategoryId: number | null;
 }
 
-async function addIngredientHandler(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function addIngredientHandler(request: AuthenticatedRequest, context?: unknown) {
 	try {
 		const body: AddIngredientRequest = await request.json();
 		const { name, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId } = body;
@@ -22,26 +23,29 @@ async function addIngredientHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Ingredient name is required' }, { status: 400 });
 		}
 
-		// Check if ingredient already exists
-		const [existingRows] = await pool.execute<RowDataPacket[]>('SELECT id FROM ingredients WHERE name = ? AND public = 1', [name.trim()]);
+		// Check if ingredient already exists in household
+		const [existingRows] = await pool.execute<RowDataPacket[]>('SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
+			name.trim(),
+			request.household_id,
+		]);
 
 		if (existingRows.length > 0) {
-			return NextResponse.json({ error: 'An ingredient with this name already exists' }, { status: 400 });
+			return NextResponse.json({ error: 'An ingredient with this name already exists in your household' }, { status: 400 });
 		}
 
-		// Add the new ingredient
+		// Add the new ingredient with household ownership
 		const [result] = await pool.execute(
 			`INSERT INTO ingredients 
-			 (name, fresh, cost, stockcode, supermarketCategory_id, pantryCategory_id, public) 
-			 VALUES (?, ?, ?, ?, ?, ?, 1)`,
-			[name.trim(), fresh, price, stockcode, supermarketCategoryId, pantryCategoryId]
+			 (name, fresh, cost, stockcode, supermarketCategory_id, pantryCategory_id, public, household_id) 
+			 VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+			[name.trim(), fresh, price, stockcode, supermarketCategoryId, pantryCategoryId, request.household_id]
 		);
 
 		const insertResult = result as { insertId: number };
 
 		return NextResponse.json({
 			success: true,
-			message: 'Ingredient added successfully',
+			message: 'Ingredient added successfully to your household',
 			id: insertResult.insertId,
 		});
 	} catch (error) {
@@ -49,4 +53,4 @@ async function addIngredientHandler(request: NextRequest) {
 	}
 }
 
-export const POST = withAuth(addIngredientHandler);
+export const POST = withAuthHousehold(addIngredientHandler);

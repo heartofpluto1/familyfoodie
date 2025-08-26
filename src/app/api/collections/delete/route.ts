@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { canEditResource } from '@/lib/permissions';
 import { deleteFile, getStorageMode } from '@/lib/storage';
 
-async function deleteHandler(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
 	try {
 		const { collectionId } = await request.json();
 
@@ -17,8 +19,23 @@ async function deleteHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Invalid collection ID' }, { status: 400 });
 		}
 
+		// Check if user can delete this collection (household ownership)
+		const canEdit = await canEditResource(request.household_id, 'collections', parsedCollectionId);
+		if (!canEdit) {
+			return NextResponse.json(
+				{
+					error: 'You can only delete collections owned by your household',
+					code: 'PERMISSION_DENIED',
+				},
+				{ status: 403 }
+			);
+		}
+
 		// First, get the collection to find both filenames for file deletion
-		const [rows] = await pool.execute('SELECT filename, filename_dark FROM collections WHERE id = ?', [parsedCollectionId]);
+		const [rows] = await pool.execute('SELECT filename, filename_dark FROM collections WHERE id = ? AND household_id = ?', [
+			parsedCollectionId,
+			request.household_id,
+		]);
 
 		const collections = rows as Array<{ filename: string; filename_dark: string }>;
 		if (collections.length === 0) {
@@ -36,8 +53,11 @@ async function deleteHandler(request: NextRequest) {
 			return NextResponse.json({ error: `Cannot delete collection. ${recipeCount} recipe(s) are still using this collection.` }, { status: 400 });
 		}
 
-		// Delete the collection from database
-		const [result] = await pool.execute<ResultSetHeader>('DELETE FROM collections WHERE id = ?', [parsedCollectionId]);
+		// Delete the collection from database (household-scoped)
+		const [result] = await pool.execute<ResultSetHeader>('DELETE FROM collections WHERE id = ? AND household_id = ?', [
+			parsedCollectionId,
+			request.household_id,
+		]);
 
 		if (result.affectedRows === 0) {
 			return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
@@ -87,4 +107,4 @@ async function deleteHandler(request: NextRequest) {
 	}
 }
 
-export const DELETE = withAuth(deleteHandler);
+export const DELETE = withAuthHousehold(deleteHandler);
