@@ -4,6 +4,78 @@
 **Agent Role:** Frontend Integration Specialist  
 **Assigned Sections:** Application Layer Changes (§6), User Experience Integration
 
+## 🚨 CRITICAL IMPLEMENTATION PRINCIPLE: COMPONENT REUSE 🚨
+
+**MANDATORY**: This agent must ENHANCE existing components, NOT rebuild them from scratch.
+
+### Component Reuse Requirements
+1. **NEVER create new components** when existing ones can be enhanced
+2. **PRESERVE all existing features** including:
+   - 3D card flip animations in CollectionCard
+   - Drag-and-drop functionality in RecipeCard
+   - Complex form logic in RecipeEditor
+   - All existing UI interactions and animations
+3. **ONLY add household context** where needed - do not rewrite component logic
+4. **RecipeSearch requires NO changes** - Agent 2 handles all scoping at API level
+5. **Use existing RecipeEditor** component - do NOT create RecipeEditForm
+
+### Query Function Updates
+- Agent 2 is REWRITING query functions with household scoping
+- These are not redundant - they're being transformed to be household-aware
+- Frontend components will call the same function names with enhanced behavior
+
+## Git Workflow Requirements
+
+### Branch Management
+**BEFORE starting any work**, Agent 3 must create and checkout a dedicated branch:
+
+```bash
+# Create and checkout feature branch
+git checkout -b feature/household-feature-integration-agent-3
+git push -u origin feature/household-feature-integration-agent-3
+```
+
+### Commit Strategy
+**AFTER each completed task**, Agent 3 must commit and push changes:
+
+```bash
+# Stage changes
+git add .
+
+# Commit with descriptive message referencing task
+git commit -m "feat: [Task X.Y] Brief description of changes
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Push to remote
+git push origin feature/agent-3-frontend-integration
+```
+
+**IMPORTANT**: After completing EVERY individual task (1.1, 1.2, 2.1, 2.2, 3.1, 3.2, 4.1, 4.2, 5.1, 5.2, 6.1, 6.2, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7), run the commit commands above with the appropriate task-specific message from the list below.
+
+### Commit Message Format
+- **Task 1.1**: `feat: [Task 1.1] Add AuthContext household integration`
+- **Task 1.2**: `feat: [Task 1.2] Create household context hooks`
+- **Task 2.1**: `feat: [Task 2.1] Add household TypeScript interfaces`
+- **Task 2.2**: `feat: [Task 2.2] Update existing interfaces with household context`
+- **Task 3.1**: `feat: [Task 3.1] Enhance recipes page with household data fetching`
+- **Task 3.2**: `feat: [Task 3.2] Add household precedence to collection recipes`
+- **Task 4.1**: `feat: [Task 4.1] Integrate copy-on-write in recipe edit flow`
+- **Task 4.2**: `feat: [Task 4.2] Add subscription toggle UI components`
+- **Task 5.1**: `feat: [Task 5.1] Create subscription toggle component`
+- **Task 5.2**: `feat: [Task 5.2] Add subscription status indicators`
+- **Task 6.1**: `feat: [Task 6.1] Confirm RecipeSearch API integration`
+- **Task 6.2**: `feat: [Task 6.2] Update meal planning with household recipes`
+- **Task 7.1**: `refactor: [Task 7.1] Remove redundant TypeScript interfaces`
+- **Task 7.2**: `refactor: [Task 7.2] Update imports to use Agent 2 enhanced types`
+- **Task 7.3**: `refactor: [Task 7.3] Update component props for household types`
+- **Task 7.4**: `refactor: [Task 7.4] Consolidate API response types`
+- **Task 7.5**: `refactor: [Task 7.5] Remove dead code and unused functions`
+- **Task 7.6**: `test: [Task 7.6] Verify TypeScript compilation after cleanup`
+- **Task 7.7**: `docs: [Task 7.7] Update documentation for new types`
+
 ## Scope & Responsibilities
 
 This agent is responsible for integrating household context from Agent 2's authentication system into all frontend components and updating them to work with the new household-aware backend APIs.
@@ -70,6 +142,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
+**Commit after Task 1.1:**
+```bash
+git add .
+git commit -m "feat: [Task 1.1] Add AuthContext household integration
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+git push origin feature/agent-3-frontend-integration
+```
+
 #### Task 1.2: Household Context Hooks
 Create convenient hooks for accessing household information:
 ```typescript
@@ -95,6 +178,17 @@ export function usePermissions() {
       collection.access_type === 'public',
   };
 }
+```
+
+**Commit after Task 1.2:**
+```bash
+git add .
+git commit -m "feat: [Task 1.2] Create household context hooks
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+git push origin feature/agent-3-frontend-integration
 ```
 
 ### Phase 2: TypeScript Interface Updates (Days 3-4)
@@ -124,6 +218,17 @@ export interface CollectionSubscription {
   collection_id: number;
   subscribed_at: string;
 }
+```
+
+**Commit after Task 2.1:**
+```bash
+git add .
+git commit -m "feat: [Task 2.1] Add household TypeScript interfaces
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+git push origin feature/agent-3-frontend-integration
 ```
 
 #### Task 2.2: Interface Updates
@@ -185,12 +290,23 @@ export interface Ingredient {
 }
 ```
 
+**Commit after Task 2.2:**
+```bash
+git add .
+git commit -m "feat: [Task 2.2] Update existing interfaces with household context
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+git push origin feature/agent-3-frontend-integration
+```
+
 ### Phase 3: Data Fetching Integration (Days 5-7)
 
 #### Task 3.1: Collection Data Fetching
-Update existing recipes page to show collections with server-side queries:
+Enhance existing recipes page to use household-aware server-side queries:
 ```typescript
-// src/app/recipes/page.tsx - Update existing recipes page to show collections
+// src/app/recipes/page.tsx - Enhance existing recipes page with household context
 import { getMyCollections, getPublicCollections } from '@/lib/queries/collections';
 import { validateSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -210,11 +326,11 @@ export default async function RecipesPage() {
 
   return (
     <div>
-      {/* My Collections Section */}
+      {/* My Collections Section - using EXISTING CollectionCard component */}
       <section>
         <h2>My Collections</h2>
         {myCollections.map(collection => (
-          <CollectionCard
+          <CollectionCard  {/* EXISTING component - preserve 3D animations */}
             key={collection.id}
             collection={collection}
             isSubscribed={true} // All collections in "My Collections" are subscribed/owned
@@ -224,11 +340,11 @@ export default async function RecipesPage() {
         ))}
       </section>
 
-      {/* Public Collections Section */}
+      {/* Public Collections Section - using EXISTING CollectionCard component */}
       <section>
         <h2>Browse Public Collections</h2>
         {publicCollections.map(collection => (
-          <CollectionCard
+          <CollectionCard  {/* EXISTING component - preserve 3D animations */}
             key={collection.id}
             collection={collection}
             isSubscribed={false} // All public collections are not yet subscribed
@@ -243,9 +359,9 @@ export default async function RecipesPage() {
 ```
 
 #### Task 3.2: Recipe Data Fetching with Precedence
-Update existing collection recipe page with server-side data fetching:
+Enhance existing collection recipe page with household-aware server-side data fetching:
 ```typescript
-// src/app/recipes/[collection_slug]/page.tsx - Update existing collection recipe page
+// src/app/recipes/[collection_slug]/page.tsx - Enhance existing collection recipe page
 import { getCollectionBySlug, getRecipesInCollection } from '@/lib/queries/collections';
 import { validateSession } from '@/lib/auth';
 
@@ -276,7 +392,7 @@ export default async function CollectionRecipesPage({ params }: CollectionRecipe
     <div>
       <h1>{collection?.title || params.collection_slug}</h1>
       {recipes.map(recipe => (
-        <RecipeCard
+        <RecipeCard  {/* EXISTING component - preserve drag-drop functionality */}
           key={recipe.id}
           recipe={recipe}
           showStatus={true} // Show customized/original/referenced status
@@ -291,9 +407,9 @@ export default async function CollectionRecipesPage({ params }: CollectionRecipe
 ### Phase 4: Copy-on-Write UI Integration (Days 8-10)
 
 #### Task 4.1: Edit Flow Integration
-Update existing recipe details page to include copy-on-write logic for editing:
+Enhance existing recipe details page to include copy-on-write logic for editing:
 ```typescript
-// src/app/recipes/[collection_slug]/[recipe_slug]/page.tsx - Update existing recipe details page
+// src/app/recipes/[collection_slug]/[recipe_slug]/page.tsx - Enhance existing recipe details page
 import { getRecipeBySlug } from '@/lib/queries/recipes';
 import { validateSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -319,10 +435,12 @@ export default async function RecipeDetailsPage({ params }: RecipeDetailsPagePro
   return <RecipeDetailsClient recipe={recipe} params={params} />;
 }
 
-// Update existing client component to include copy-on-write logic
+// Enhance existing client component to include copy-on-write logic
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import RecipeEditor from './components/RecipeEditor'; // EXISTING component
+import RecipeView from './components/RecipeView';     // EXISTING component
 
 interface RecipeDetailsClientProps {
   recipe: Recipe;
@@ -387,15 +505,15 @@ function RecipeDetailsClient({ recipe, params }: RecipeDetailsClientProps) {
 
   return (
     <div>
-      {/* Recipe details view/edit toggle */}
+      {/* Recipe details view/edit toggle - using EXISTING components */}
       {isEditing ? (
-        <RecipeEditForm 
+        <RecipeEditor  {/* EXISTING component - preserve all form logic */}
           recipe={recipe} 
           onSave={handleSave}
           onCancel={() => setIsEditing(false)}
         />
       ) : (
-        <RecipeDetailsView 
+        <RecipeView  {/* EXISTING component */}
           recipe={recipe}
           onEdit={() => setIsEditing(true)}
           showEditButton={recipe.access_context?.user_owns_recipe || recipe.access_context?.user_owns_collection}
@@ -598,6 +716,159 @@ function PlanPageClient({ availableRecipes }: PlanPageClientProps) {
 };
 ```
 
+### Phase 7: Code Cleanup & Type Consolidation (Day 14)
+
+After implementing all household features, perform comprehensive cleanup to remove redundant code and ensure type consistency.
+
+#### Task 7.1: TypeScript Interface Cleanup
+Remove redundant type definitions that are superseded by Agent 2's enhanced types:
+
+```typescript
+// FILES TO CLEAN UP:
+
+// 1. src/types/auth.ts - Remove redundant interfaces
+// REMOVE: AuthenticatedUser interface (replaced by Agent 2's SessionUser)
+// REMOVE: SessionData interface (Agent 2 provides enhanced session handling)
+
+// 2. Consolidate Recipe interfaces - Multiple files define Recipe interfaces
+// src/types/menus.ts - Recipe interface (line 42-56)
+// src/types/shop.ts - Recipe interface (line 46-56) 
+// These will be superseded by household-aware Recipe interface from Agent 2
+
+// 3. Remove old authentication-related types that are no longer used
+```
+
+#### Task 7.2: Import Statement Cleanup
+Update all import statements across the codebase to use Agent 2's enhanced types:
+
+```typescript
+// SEARCH AND REPLACE across entire src/ directory:
+
+// Update AuthenticatedUser imports
+// FROM: import { AuthenticatedUser } from '@/types/auth';
+// TO:   import { SessionUser } from '@/lib/auth';
+
+// Update SessionData imports  
+// FROM: import { SessionData } from '@/types/auth';
+// TO:   import { SessionUser } from '@/lib/auth'; // Use SessionUser directly
+
+// Update Recipe interface imports to use Agent 2's enhanced version
+// Review and update imports in these key files:
+// - src/app/components/RecipeCard.tsx
+// - src/app/plan/plan-client.tsx  
+// - src/app/plan/plan-client-multiweek.tsx
+// - src/lib/queries/menus.ts
+```
+
+#### Task 7.3: Component Prop Interface Updates
+Ensure all component interfaces align with household-aware types:
+
+```typescript
+// UPDATE COMPONENT PROPS to use household-aware interfaces:
+
+// 1. AuthProvider component props
+// 2. RecipeCard component props (if Recipe interface changes)  
+// 3. CollectionCard component props (if Collection interface changes)
+// 4. Any component that accepts User/Session objects
+```
+
+#### Task 7.4: API Response Type Cleanup
+Remove duplicate ApiResponse types and ensure consistency:
+
+```typescript
+// CONSOLIDATE ApiResponse types:
+// - src/types/plan.ts has ApiResponse<T> 
+// - src/types/shop.ts has ApiResponse<T>
+// - Agent 2 may provide enhanced API response types
+// Choose one canonical definition and update all references
+```
+
+#### Task 7.5: Dead Code Removal  
+Remove any functions, utilities, or test fixtures that are no longer used:
+
+```typescript
+// AUDIT AND REMOVE:
+
+// 1. Old authentication utility functions that don't handle households
+// 2. Data fetching functions without household context
+// 3. Test fixtures using old type definitions
+// 4. Unused imports after type consolidation
+// 5. Commented-out code from development process
+```
+
+#### Task 7.6: TypeScript Compilation Verification
+Ensure the entire codebase compiles without errors after cleanup:
+
+```bash
+# RUN THESE COMMANDS to verify cleanup:
+
+# 1. TypeScript compilation check
+npx tsc --noEmit
+
+# 2. ESLint check for unused imports
+npm run lint
+
+# 3. Build check  
+npm run build
+
+# 4. Test compilation
+npm test -- --passWithNoTests
+```
+
+#### Task 7.7: Documentation Updates
+Update any inline documentation that references old types:
+
+```typescript
+// UPDATE DOCUMENTATION:
+// 1. JSDoc comments that reference old interfaces
+// 2. README files or inline comments mentioning AuthenticatedUser/SessionData
+// 3. Type documentation in component files
+// 4. API documentation that shows old response formats
+```
+
+## Existing Components to Preserve
+
+### Components That Must NOT Be Rebuilt
+The following existing components have sophisticated features that MUST be preserved:
+
+1. **CollectionCard.tsx** (`src/app/components/CollectionCard.tsx`)
+   - 3D card flip animations
+   - Complex hover states
+   - Image loading with fallbacks
+   - ENHANCE ONLY: Add subscription toggle prop handling
+
+2. **RecipeCard.tsx** (`src/app/components/RecipeCard.tsx`)
+   - Drag-and-drop functionality for meal planning
+   - Custom styling and animations
+   - ENHANCE ONLY: Add status indicator for owned/customized recipes
+
+3. **RecipeSearch.tsx** (`src/app/components/RecipeSearch.tsx`)
+   - **NO CHANGES NEEDED** - Agent 2 handles all scoping at API level
+   - Advanced search with debouncing
+   - Result count display
+
+4. **RecipeEditor.tsx** (`src/app/recipes/[collection-slug]/[recipe-slug]/components/RecipeEditor.tsx`)
+   - Complex form state management
+   - Image upload with cropping
+   - PDF upload handling
+   - Ingredient management
+   - ENHANCE ONLY: Add copy-on-write trigger to save handler
+
+5. **RecipeView.tsx** (`src/app/recipes/[collection-slug]/[recipe-slug]/components/RecipeView.tsx`)
+   - Recipe display layout
+   - Ingredient listing
+   - ENHANCE ONLY: Add conditional edit button based on permissions
+
+6. **IngredientsTable.tsx** (`src/app/recipes/[collection-slug]/[recipe-slug]/components/IngredientsTable.tsx`)
+   - Complex ingredient editing UI
+   - Quantity management
+   - PRESERVE AS-IS: No changes needed
+
+7. **RecipeForm.tsx** (`src/app/recipes/components/RecipeForm.tsx`)
+   - Shared form component for recipe details
+   - Validation logic
+   - PRESERVE AS-IS: No changes needed
+
 ## Dependencies
 
 ### Upstream Dependencies (Must Complete First)
@@ -610,6 +881,21 @@ function PlanPageClient({ availableRecipes }: PlanPageClientProps) {
 - None - this agent completes the household feature implementation
 
 ## Success Criteria
+
+### Git Workflow Requirements
+- [ ] Feature branch `feature/agent-3-frontend-integration` created and checked out before starting
+- [ ] Each task committed individually with descriptive commit messages
+- [ ] All commits pushed to remote branch after completion
+- [ ] Commit messages follow specified format with task numbers
+- [ ] Claude Code attribution included in all commit messages
+
+### Component Preservation Requirements
+- [ ] All existing components preserved with their current features
+- [ ] No unnecessary component rebuilding or replacement
+- [ ] 3D animations in CollectionCard maintained
+- [ ] Drag-drop functionality in RecipeCard preserved
+- [ ] RecipeEditor form logic kept intact
+- [ ] RecipeSearch component remains unchanged (API handles scoping)
 
 ### Frontend Context Requirements
 - [ ] AuthContext successfully consumes household context from Agent 2's SessionUser interface
@@ -642,6 +928,16 @@ function PlanPageClient({ availableRecipes }: PlanPageClientProps) {
 - [ ] All TypeScript interfaces updated with household context
 - [ ] No type errors in household-related code
 - [ ] Proper typing for enhanced copy-on-write API responses
+
+### Code Cleanup Requirements
+- [ ] All redundant TypeScript interfaces removed (AuthenticatedUser, SessionData)
+- [ ] Duplicate Recipe interface definitions consolidated  
+- [ ] All import statements updated to use Agent 2's enhanced types
+- [ ] Dead code and unused functions removed
+- [ ] ApiResponse types consolidated across files
+- [ ] TypeScript compilation passes without errors after cleanup
+- [ ] ESLint passes with no unused import warnings
+- [ ] All JSDoc and inline documentation updated for new types
 
 ## Risk Mitigation
 
