@@ -102,17 +102,21 @@ async function deleteHandler(request: NextRequest) {
 			await connection.beginTransaction();
 
 			if (hasShoppingListHistory) {
-				// Recipe has shopping list history - archive it instead of deleting
-				// Archive functionality removed - recipes can no longer be archived
-				await connection.rollback();
-				return NextResponse.json(
-					{
-						success: false,
-						error: 'Cannot delete recipe with existing shopping list history',
-						code: 'SHOPPING_HISTORY_EXISTS',
-					},
-					{ status: 400 }
-				);
+				// Recipe has shopping list history - archive it instead of deleting to preserve referential integrity
+
+				// Remove recipe from all collections since it's being archived
+				await connection.execute('DELETE FROM collection_recipes WHERE recipe_id = ?', [parseInt(recipeId as string)]);
+
+				await connection.execute('UPDATE recipes SET archived = 1 WHERE id = ?', [parseInt(recipeId as string)]);
+
+				await connection.commit();
+
+				return NextResponse.json({
+					success: true,
+					message: 'Recipe archived successfully due to shopping list references',
+					archived: true,
+					code: 'RECIPE_ARCHIVED',
+				});
 			} else {
 				// No shopping list history - safe to fully delete
 
@@ -122,6 +126,32 @@ async function deleteHandler(request: NextRequest) {
 				]);
 				const ingredientIds = recipeIngredients.map(row => row.ingredient_id);
 
+				// Final safety check: double-check for shopping list references before deletion
+				const [finalShoppingCheck] = await connection.execute<RowDataPacket[]>(
+					`SELECT COUNT(*) as count FROM shopping_lists sl 
+					 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
+					 WHERE ri.recipe_id = ?`,
+					[parseInt(recipeId as string)]
+				);
+
+				if (finalShoppingCheck[0].count > 0) {
+					// Last-minute safety: archive instead of delete
+
+					// Remove recipe from all collections since it's being archived
+					await connection.execute('DELETE FROM collection_recipes WHERE recipe_id = ?', [parseInt(recipeId as string)]);
+
+					await connection.execute('UPDATE recipes SET archived = 1 WHERE id = ?', [parseInt(recipeId as string)]);
+					await connection.commit();
+
+					return NextResponse.json({
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references detected during deletion',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
+					});
+				}
+
+				// Safe to proceed with actual deletion
 				// Delete recipe ingredients first (foreign key constraint)
 				await connection.execute('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [parseInt(recipeId as string)]);
 

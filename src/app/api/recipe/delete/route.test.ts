@@ -54,6 +54,7 @@ describe('/api/recipe/delete', () => {
 			mockConnection.execute = jest
 				.fn()
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }, { ingredient_id: 7 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 2 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 usage - not used
@@ -187,12 +188,16 @@ describe('/api/recipe/delete', () => {
 			expect(mockGetConnection).not.toHaveBeenCalled();
 		});
 
-		it('should return 400 if recipe has shopping list history', async () => {
+		it('should archive recipe instead of deleting when shopping list history exists', async () => {
 			// Mock recipe exists with shopping list history
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // No planned weeks
 				.mockResolvedValueOnce([[{ count: 5 }], []]); // Has shopping list history
+
+			mockConnection.execute
+				.mockResolvedValueOnce([{ affectedRows: 1 }]) // Delete from collection_recipes
+				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Archive recipe
 
 			await testApiHandler({
 				appHandler,
@@ -206,19 +211,75 @@ describe('/api/recipe/delete', () => {
 						body: JSON.stringify({ recipeId: 1 }),
 					});
 
-					expect(response.status).toBe(400);
+					expect(response.status).toBe(200);
 					const data = await response.json();
-					// Consistent error response format
+					// Recipe should be archived instead of deleted
 					expect(data).toEqual({
-						success: false,
-						error: 'Cannot delete recipe with existing shopping list history',
-						code: 'SHOPPING_HISTORY_EXISTS',
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
 					});
 
-					// Verify transaction was rolled back
+					// Verify archive UPDATE was called instead of DELETE
+					expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE recipes SET archived = 1 WHERE id = ?', [1]);
+
+					// Verify transaction was committed (not rolled back)
 					expect(mockConnection.beginTransaction).toHaveBeenCalled();
-					expect(mockConnection.rollback).toHaveBeenCalled();
+					expect(mockConnection.commit).toHaveBeenCalled();
+					expect(mockConnection.rollback).not.toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should archive recipe if shopping list references discovered during deletion process', async () => {
+			// Mock initial checks pass (no shopping history detected initially)
+			mockExecute
+				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // No planned weeks
+				.mockResolvedValueOnce([[{ count: 0 }], []]); // No shopping list history initially
+
+			// Mock transaction operations
+			mockConnection.execute
+				.mockResolvedValueOnce([[{ ingredient_id: 1 }, { ingredient_id: 2 }], []]) // Get recipe ingredients
+				.mockResolvedValueOnce([[{ count: 1 }], []]) // Final safety check finds shopping references
+				.mockResolvedValueOnce([{ affectedRows: 1 }]) // Delete from collection_recipes
+				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Archive UPDATE
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1 }),
+					});
+
+					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references detected during deletion',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
+					});
+
+					// Verify the safety check was performed
+					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('SELECT COUNT(*) as count FROM shopping_lists sl'), [1]);
+
+					// Verify collection_recipes cleanup was called
+					expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM collection_recipes WHERE recipe_id = ?', [1]);
+
+					// Verify archive UPDATE was called
+					expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE recipes SET archived = 1 WHERE id = ?', [1]);
+
+					// Verify transaction was committed
+					expect(mockConnection.commit).toHaveBeenCalled();
+					expect(mockConnection.rollback).not.toHaveBeenCalled();
 				},
 			});
 		});
@@ -233,6 +294,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations with failure
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockRejectedValueOnce(new Error('Database constraint violation')); // Fail on recipe deletion
 
@@ -274,6 +336,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 0 }, []]); // Recipe deletion fails (0 affected rows)
 
@@ -316,6 +379,7 @@ describe('/api/recipe/delete', () => {
 			mockConnection.execute = jest
 				.fn()
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }, { ingredient_id: 7 }, { ingredient_id: 9 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 3 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				// Check ingredient 5 - unused
@@ -369,6 +433,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 usage - not used
@@ -412,6 +477,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 usage - not used
@@ -473,6 +539,7 @@ describe('/api/recipe/delete', () => {
 			mockConnection.execute = jest
 				.fn()
 				.mockResolvedValueOnce([[], []]) // No recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 0 }, []]) // Delete recipe ingredients (no ingredients to delete)
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // Delete recipe successfully
 
@@ -542,6 +609,7 @@ describe('/api/recipe/delete', () => {
 			let callCount = 0;
 			const responses = [
 				[[], []], // No recipe ingredients
+				[[{ count: 0 }], []], // Safety check - no shopping list references
 				[{ affectedRows: 1 }, []], // Delete recipe ingredients
 				[{ affectedRows: 1 }, []], // Delete recipe
 			];
