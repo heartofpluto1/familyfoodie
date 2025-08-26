@@ -4,6 +4,14 @@
 **Agent Role:** Database Schema & Migration Specialist  
 **Assigned Sections:** Database Schema Changes (§1), Data Migration Strategy (§5)
 
+## Required reading
+
+Agent 1 must read these docs:
+- [schema.sql](../db/schema.sql)
+- [005-household-feature-spec.md](../specs/005-household-feature-spec.md)
+- [001-current-system-architecture-spec.md](../specs/001-current-system-architecture-spec.md)
+- Agent 1 must use existing migrations tool [run-migrations.mjs](../../migrations/run-migrations.mjs) without modifying it and add all changes to a new migration file in [migrations](../../migrations/) directory.
+
 ## Git Workflow Requirements
 
 ### Branch Management
