@@ -1,6 +1,13 @@
 // lib/auth-middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { addToast } from '@/lib/toast';
+import { SessionUser } from '@/types/auth';
+import { validateSessionWithHousehold } from '@/lib/auth';
+
+export interface AuthenticatedRequest extends NextRequest {
+	user: SessionUser;
+	household_id: number;
+}
 
 export async function getSessionFromRequest(request: NextRequest) {
 	try {
@@ -45,7 +52,51 @@ export async function requireAuth(request: NextRequest) {
 	};
 }
 
-// Higher-order function to protect API routes
+/**
+ * Enhanced authentication that includes household context
+ * Used by Agent 2 implementation for household-scoped API routes
+ */
+export async function requireAuthWithHousehold(request: NextRequest) {
+	const basicSession = await getSessionFromRequest(request);
+
+	if (!basicSession || !basicSession.id) {
+		return {
+			response: NextResponse.json(
+				{
+					success: false,
+					error: 'Authentication required',
+					code: 'UNAUTHORIZED',
+				},
+				{ status: 401 }
+			),
+			user: null,
+		};
+	}
+
+	// Get full user context with household information
+	const user = await validateSessionWithHousehold(basicSession.id);
+
+	if (!user) {
+		return {
+			response: NextResponse.json(
+				{
+					success: false,
+					error: 'Invalid session or user not found',
+					code: 'UNAUTHORIZED',
+				},
+				{ status: 401 }
+			),
+			user: null,
+		};
+	}
+
+	return {
+		response: null,
+		user,
+	};
+}
+
+// Legacy higher-order function to protect API routes (maintained for compatibility)
 export function withAuth(handler: (request: NextRequest, session: { username: string }) => Promise<NextResponse>) {
 	return async (request: NextRequest) => {
 		const { response, session } = await requireAuth(request);
@@ -55,5 +106,28 @@ export function withAuth(handler: (request: NextRequest, session: { username: st
 		}
 
 		return handler(request, session);
+	};
+}
+
+/**
+ * Enhanced higher-order function with household context for Agent 2 implementation
+ * Provides SessionUser with household_id directly on the request object
+ */
+export function withAuthHousehold<T = {}>(
+	handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
+) {
+	return async (request: NextRequest, context?: T) => {
+		const { response, user } = await requireAuthWithHousehold(request);
+
+		if (response) {
+			return response; // Return 401 response
+		}
+
+		// Add household context to request
+		const authenticatedRequest = request as AuthenticatedRequest;
+		authenticatedRequest.user = user!;
+		authenticatedRequest.household_id = user!.household_id;
+
+		return handler(authenticatedRequest, context);
 	};
 }
