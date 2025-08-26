@@ -39,7 +39,8 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
         c.url_slug as collection_url_slug
       FROM plans
       JOIN recipes ON plans.recipe_id = recipes.id
-      INNER JOIN collections c ON recipes.collection_id = c.id
+      INNER JOIN collection_recipes cr ON recipes.id = cr.recipe_id
+      INNER JOIN collections c ON cr.collection_id = c.id
       WHERE 
         ((plans.year = ${currentYear} AND plans.week <= ${currentWeek}) OR
         (plans.year = ${monthsAgoYear} AND plans.week >= ${monthsAgoWeek}))
@@ -117,18 +118,19 @@ export async function getAllRecipes(collectionId?: number): Promise<Recipe[]> {
 			r.prepTime,
 			r.cookTime,
 			r.url_slug,
-			r.collection_id,
+			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug
 		FROM recipes r
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		WHERE r.duplicate = 0
 	`;
 
 	const params: (string | number)[] = [];
 
 	if (collectionId) {
-		query += ` AND r.collection_id = ?`;
+		query += ` AND cr.collection_id = ?`;
 		params.push(collectionId);
 	}
 
@@ -169,13 +171,14 @@ export async function getAllRecipesWithDetails(collectionId?: number): Promise<R
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			r.collection_id,
+			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
 			s.name as seasonName,
 			GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
 		FROM recipes r
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN seasons s ON r.season_id = s.id
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
@@ -185,11 +188,11 @@ export async function getAllRecipesWithDetails(collectionId?: number): Promise<R
 	const params: (string | number)[] = [];
 
 	if (collectionId) {
-		query += ` AND r.collection_id = ?`;
+		query += ` AND cr.collection_id = ?`;
 		params.push(collectionId);
 	}
 
-	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.collection_id, c.title, c.url_slug, s.name
+	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, cr.collection_id, c.title, c.url_slug, s.name
 		ORDER BY r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);
@@ -273,7 +276,8 @@ export async function getCurrentWeekRecipes(): Promise<Recipe[]> {
 			c.url_slug as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		WHERE rw.week = ? AND rw.year = ? 
 		ORDER BY rw.id ASC
 	`;
@@ -301,7 +305,8 @@ export async function getNextWeekRecipes(): Promise<Recipe[]> {
 			c.url_slug as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		WHERE rw.week = ? AND rw.year = ? 
 		ORDER BY rw.id ASC
 	`;
@@ -372,7 +377,8 @@ export async function getRecipesForRandomization(): Promise<Recipe[]> {
 			c.url_slug as collection_url_slug,
 			GROUP_CONCAT(DISTINCT i.name ORDER BY ri.id ASC SEPARATOR ', ') as ingredients
 		FROM recipes r
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		WHERE r.duplicate = 0 
@@ -538,7 +544,7 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 			r.prepTime,
 			r.cookTime,
 			r.url_slug,
-			r.collection_id,
+			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
 			s.name as seasonName,
@@ -555,7 +561,8 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 			m.id as measure_id,
 			m.name as measure_name
 		FROM recipes r
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN seasons s ON r.season_id = s.id
 		LEFT JOIN type_proteins pt ON r.primaryType_id = pt.id
 		LEFT JOIN type_carbs st ON r.secondaryType_id = st.id
@@ -666,7 +673,8 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 					c.url_slug as collection_url_slug
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id
-				INNER JOIN collections c ON r.collection_id = c.id
+				INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+				INNER JOIN collections c ON cr.collection_id = c.id
 				WHERE rw.week = ? AND rw.year = ?
 				ORDER BY rw.id ASC
 			`;

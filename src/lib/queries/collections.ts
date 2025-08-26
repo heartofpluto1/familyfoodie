@@ -26,9 +26,9 @@ export async function getAllCollections(): Promise<Collection[]> {
 			c.url_slug,
 			c.created_at,
 			c.updated_at,
-			COUNT(r.id) as recipe_count
+			COUNT(cr.recipe_id) as recipe_count
 		FROM collections c
-		LEFT JOIN recipes r ON c.id = r.collection_id
+		LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
 		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at
 		ORDER BY c.id ASC
 	`;
@@ -51,9 +51,9 @@ export async function getCollectionById(id: number): Promise<Collection | null> 
 			c.url_slug,
 			c.created_at,
 			c.updated_at,
-			COUNT(r.id) as recipe_count
+			COUNT(cr.recipe_id) as recipe_count
 		FROM collections c
-		LEFT JOIN recipes r ON c.id = r.collection_id
+		LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
 		WHERE c.id = ?
 		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at
 	`;

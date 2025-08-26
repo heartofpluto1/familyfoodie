@@ -29,7 +29,7 @@ async function deleteHandler(request: NextRequest) {
 		const { filename, filename_dark } = collection;
 
 		// Check if any recipes are using this collection
-		const [recipeRows] = await pool.execute('SELECT COUNT(*) as count FROM recipes WHERE collection_id = ?', [parsedCollectionId]);
+		const [recipeRows] = await pool.execute('SELECT COUNT(*) as count FROM collection_recipes WHERE collection_id = ?', [parsedCollectionId]);
 
 		const recipeCount = (recipeRows as Array<{ count: number }>)[0].count;
 		if (recipeCount > 0) {

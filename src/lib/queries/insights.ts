@@ -138,7 +138,8 @@ export async function getTopRecipes() {
 			COUNT(DISTINCT CONCAT(rw.year, '-', rw.week)) as times_planned
 		FROM plans rw
 		INNER JOIN recipes r ON rw.recipe_id = r.id
-		INNER JOIN collections c ON r.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		WHERE 1=1
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
 		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.url_slug, c.url_slug
@@ -283,12 +284,14 @@ export async function getRecipePairingSuggestions() {
 				@prev_ingredient := i.name
 			FROM recipe_ingredients ri1
 			JOIN recipes r1 ON ri1.recipe_id = r1.id
-			INNER JOIN collections c1 ON r1.collection_id = c1.id
+			INNER JOIN collection_recipes cr1 ON r1.id = cr1.recipe_id
+			INNER JOIN collections c1 ON cr1.collection_id = c1.id
 			JOIN ingredients i ON ri1.ingredient_id = i.id
 			LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
 			JOIN recipe_ingredients ri2 ON ri2.ingredient_id = i.id AND ri2.recipe_id != ri1.recipe_id
 			JOIN recipes r2 ON ri2.recipe_id = r2.id
-			INNER JOIN collections c2 ON r2.collection_id = c2.id
+			INNER JOIN collection_recipes cr2 ON r2.id = cr2.recipe_id
+			INNER JOIN collections c2 ON cr2.collection_id = c2.id
 			CROSS JOIN (SELECT @row_number := 0, @prev_ingredient := '') AS vars
 			WHERE r1.duplicate = 0 
 				AND r2.duplicate = 0

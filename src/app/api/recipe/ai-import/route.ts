@@ -178,8 +178,8 @@ async function importHandler(request: NextRequest) {
 			const placeholderSlug = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, collection_id, url_slug, duplicate, public) 
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, url_slug, duplicate, public, household_id) 
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 1)`,
 				[
 					recipe.title,
 					recipe.description,
@@ -188,7 +188,6 @@ async function importHandler(request: NextRequest) {
 					recipe.seasonId || null,
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
-					recipe.collectionId || null,
 					placeholderSlug,
 				]
 			);
@@ -253,6 +252,14 @@ async function importHandler(request: NextRequest) {
 					[recipeId, ingredientId, ingredient.quantity_2_servings, ingredient.quantity_4_servings, ingredient.measureId || null, 0]
 				);
 				addedIngredientsCount++;
+			}
+
+			// Add recipe to collection if specified
+			if (recipe.collectionId) {
+				await connection.execute(`INSERT INTO collection_recipes (collection_id, recipe_id, added_at) VALUES (?, ?, NOW())`, [
+					recipe.collectionId,
+					recipeId,
+				]);
 			}
 
 			await connection.commit();
