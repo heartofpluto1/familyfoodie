@@ -346,6 +346,105 @@ export async function saveWeekRecipes(week: number, year: number, recipeIds: num
 }
 
 /**
+ * Reset and rebuild shopping list from planned recipes for a given week with household scope (Agent 2)
+ */
+export async function resetShoppingListFromRecipesHousehold(week: number, year: number, householdId: number): Promise<void> {
+	const connection = await pool.getConnection();
+	try {
+		await connection.beginTransaction();
+		
+		// Delete existing shopping list items for the week and household
+		await connection.execute('DELETE FROM shopping_lists WHERE week = ? AND year = ? AND household_id = ?', [week, year, householdId]);
+		
+		// Get all ingredients from recipes planned for this week by this household
+		const ingredientsQuery = `
+			SELECT 
+				ri.id as recipeIngredient_id,
+				ri.ingredient_id,
+				ri.quantity,
+				ri.quantity4,
+				ri.quantityMeasure_id,
+				i.name as ingredient_name,
+				i.pantryCategory_id,
+				i.supermarketCategory_id,
+				i.fresh,
+				i.cost,
+				i.stockcode,
+				m.name as measure_name
+			FROM plans rw
+			JOIN recipe_ingredients ri ON rw.recipe_id = ri.recipe_id
+			JOIN recipes r ON rw.recipe_id = r.id
+			JOIN ingredients i ON ri.ingredient_id = i.id
+			LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
+			WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
+			ORDER BY 
+				CASE 
+					WHEN i.fresh = 1 THEN i.supermarketCategory_id
+					WHEN i.fresh = 0 THEN i.pantryCategory_id
+					ELSE 999
+				END,
+				i.name
+		`;
+		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, householdId]);
+		const ingredients = ingredientRows as ShoppingIngredientRow[];
+		
+		// Group ingredients by ingredient_id AND quantityMeasure_id (only group if same ingredient with same measurement)
+		const groupedIngredients = ingredients.reduce((acc: Record<string, GroupedIngredient>, ingredient) => {
+			// Create composite key from ingredient_id and quantityMeasure_id to ensure we only group same ingredients with same measurements
+			const key = `${ingredient.ingredient_id}-${ingredient.quantityMeasure_id || 'null'}`;
+			if (!acc[key]) {
+				acc[key] = {
+					recipeIngredient_id: ingredient.recipeIngredient_id,
+					ingredient_id: ingredient.ingredient_id,
+					ingredient_name: ingredient.ingredient_name,
+					quantity: 0,
+					quantity4: 0,
+					quantityMeasure_id: ingredient.quantityMeasure_id,
+					pantryCategory_id: ingredient.pantryCategory_id,
+					supermarketCategory_id: ingredient.supermarketCategory_id,
+					fresh: ingredient.fresh,
+					cost: ingredient.cost,
+					stockcode: ingredient.stockcode,
+					measure_name: ingredient.measure_name,
+				};
+			}
+			acc[key].quantity += parseFloat(ingredient.quantity || '');
+			acc[key].quantity4 += parseFloat(ingredient.quantity4 || '');
+			return acc;
+		}, {});
+		
+		// Insert grouped ingredients into shopping list with household_id
+		if (Object.keys(groupedIngredients).length > 0) {
+			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient, index: number) => [
+				week,
+				year,
+				householdId, // Add household_id
+				ingredient.fresh, // Use fresh value from ingredients table
+				ingredient.ingredient_name,
+				index, // sort = increasing integer
+				ingredient.cost, // cost from ingredients table
+				ingredient.recipeIngredient_id,
+				0, // purchased = false
+				ingredient.stockcode, // stockcode from ingredients table
+			]);
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const flatValues = insertValues.flat();
+			await connection.execute(
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) VALUES ${placeholders}`,
+				flatValues
+			);
+		}
+		
+		await connection.commit();
+	} catch (error) {
+		await connection.rollback();
+		throw error;
+	} finally {
+		connection.release();
+	}
+}
+
+/**
  * Delete all recipes for a specific week
  */
 export async function deleteWeekRecipes(week: number, year: number): Promise<void> {
