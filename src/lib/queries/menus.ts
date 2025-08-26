@@ -711,3 +711,282 @@ export async function getCurrentAndPlannedWeeks(): Promise<Array<{ week: number;
 		return [{ week: currentWeek, year: currentYear, recipes: currentWeekRecipes }, ...plannedWeeks];
 	}
 }
+
+// ========================================================================
+// AGENT 2 HOUSEHOLD-AWARE RECIPE FUNCTIONS
+// ========================================================================
+
+/**
+ * Get recipes with household precedence for collection browsing (Agent 2)
+ * Shows household's customized version preferentially over original
+ */
+export async function getRecipesInCollection(collectionId: number, householdId: number): Promise<Recipe[]> {
+	const query = `
+		SELECT DISTINCT r.*, cr.added_at, cr.display_order,
+		       CASE WHEN r.household_id = ? THEN 'customized'
+		            WHEN r.household_id = c.household_id THEN 'original'
+		            ELSE 'referenced' END as status,
+		       c.household_id as collection_household_id,
+		       c.url_slug as current_collection_slug,
+		       ? as current_collection_id,
+		       (r.household_id = ?) as user_owns_recipe,
+		       (c.household_id = ?) as user_owns_collection
+		FROM collection_recipes cr
+		JOIN recipes r ON cr.recipe_id = r.id
+		JOIN collections c ON cr.collection_id = c.id
+		WHERE cr.collection_id = ? AND r.archived = 0
+		AND (
+		    r.household_id = ? 
+		    OR 
+		    (r.household_id != ?
+		     AND NOT EXISTS (
+		        SELECT 1 FROM recipes r2 
+		        WHERE r2.household_id = ? 
+		        AND r2.parent_id = r.id
+		    ))
+		)
+		ORDER BY cr.display_order ASC, cr.added_at ASC
+	`;
+	
+	const [rows] = await pool.execute(query, [
+		householdId, collectionId, householdId, householdId, collectionId, 
+		householdId, householdId, householdId
+	]);
+	
+	// Transform rows to include access_context
+	return (rows as any[]).map(row => ({
+		...row,
+		current_collection_id: row.current_collection_id,
+		current_collection_slug: row.current_collection_slug,
+		access_context: {
+			collection_household_id: row.collection_household_id,
+			recipe_household_id: row.household_id,
+			user_owns_collection: !!row.user_owns_collection,
+			user_owns_recipe: !!row.user_owns_recipe
+		}
+	}));
+}
+
+/**
+ * Get recipes accessible to household for meal planning (Agent 2)
+ * Includes owned + subscribed collections with household precedence
+ */
+export async function getMyRecipes(householdId: number): Promise<Recipe[]> {
+	const query = `
+		SELECT DISTINCT r.*, 
+		       CASE WHEN r.household_id = ? THEN 'owned' ELSE 'subscribed' END as access_type,
+		       r.household_id = ? as can_edit,
+		       c.url_slug as collection_url_slug
+		FROM recipes r
+		LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+		LEFT JOIN collections c ON cr.collection_id = c.id
+		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+		WHERE r.archived = 0 AND (
+		  r.household_id = ? OR  -- Owned recipes
+		  (c.household_id = ? OR cs.household_id IS NOT NULL) -- Recipes from owned/subscribed collections
+		)
+		AND NOT EXISTS (
+		  SELECT 1 FROM recipes r2 
+		  WHERE r2.household_id = ? 
+		  AND r2.parent_id = r.id
+		  AND r.household_id != ?  -- Only check for household copies when recipe is not already owned
+		)
+		ORDER BY access_type ASC, r.name ASC  -- Prioritize owned recipes
+	`;
+	
+	const [rows] = await pool.execute(query, [
+		householdId, householdId, householdId, householdId, householdId, 
+		householdId, householdId
+	]);
+	return rows as Recipe[];
+}
+
+/**
+ * Get all recipes with details and household precedence for search (Agent 2)
+ * Enhanced for search with household precedence
+ */
+export async function getAllRecipesWithDetailsHousehold(householdId: number, collectionId?: number): Promise<Recipe[]> {
+	let query = `
+		SELECT DISTINCT r.*,
+		       CASE WHEN r.household_id = ? THEN 'customized'
+		            WHEN EXISTS (SELECT 1 FROM collections c WHERE c.id = cr.collection_id AND c.household_id = r.household_id) THEN 'original'
+		            ELSE 'referenced' END as status,
+		       GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections,
+		       r.household_id = ? as can_edit,
+		       s.name as seasonName,
+		       GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
+		FROM recipes r
+		LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id  
+		LEFT JOIN collections c ON cr.collection_id = c.id
+		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+		LEFT JOIN seasons s ON r.season_id = s.id
+		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+		WHERE r.archived = 0 AND (
+		  r.household_id = ? OR  -- Household's own recipes
+		  c.public = 1 OR        -- Recipes in public collections  
+		  cs.household_id IS NOT NULL  -- Recipes in subscribed collections
+		)
+		AND NOT EXISTS (
+		  SELECT 1 FROM recipes r2 
+		  WHERE r2.household_id = ? 
+		  AND r2.parent_id = r.id
+		  AND r.household_id != ?
+		)
+	`;
+	
+	const params = [householdId, householdId, householdId, householdId, householdId, householdId];
+	
+	if (collectionId) {
+		query += ` AND cr.collection_id = ?`;
+		params.push(collectionId);
+	}
+	
+	query += ` GROUP BY r.id ORDER BY status ASC, r.name ASC`;
+	
+	const [rows] = await pool.execute(query, params);
+	return (rows as any[]).map(row => ({
+		...row,
+		ingredients: row.ingredients ? row.ingredients.split(', ') : []
+	}));
+}
+
+/**
+ * Get recipe details with household context (Agent 2)
+ * Single recipe with household precedence and access validation
+ */
+export async function getRecipeDetailsHousehold(id: string, householdId: number): Promise<RecipeDetail | null> {
+	const query = `
+		SELECT r.*,
+		       CASE WHEN r.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
+		       r.household_id = ? as can_edit,
+		       GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections,
+		       cr.collection_id,
+		       c.title as collection_title,
+		       c.url_slug as collection_url_slug,
+		       s.name as seasonName,
+		       pt.name as primaryTypeName,
+		       st.name as secondaryTypeName,
+		       ri.id as ingredient_id,
+		       ri.quantity,
+		       ri.quantity4,
+		       i.id as ingredient_table_id,
+		       i.name as ingredient_name,
+		       pc.id as pantry_category_id,
+		       pc.name as pantry_category_name,
+		       p.name as preperation_name,
+		       m.id as measure_id,
+		       m.name as measure_name
+		FROM recipes r
+		LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+		LEFT JOIN collections c ON cr.collection_id = c.id  
+		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+		LEFT JOIN seasons s ON r.season_id = s.id
+		LEFT JOIN type_proteins pt ON r.primaryType_id = pt.id
+		LEFT JOIN type_carbs st ON r.secondaryType_id = st.id
+		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
+		LEFT JOIN preparations p ON ri.preperation_id = p.id
+		LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
+		WHERE r.id = ? AND r.archived = 0
+		AND (
+		  r.household_id = ? OR  -- User owns recipe
+		  c.public = 1 OR        -- Recipe in public collection
+		  cs.household_id IS NOT NULL  -- Recipe in subscribed collection
+		)
+		ORDER BY pc.id ASC, i.name ASC
+	`;
+	
+	const [rows] = await pool.execute(query, [householdId, householdId, householdId, id, householdId]);
+	const results = rows as RecipeDetailRow[];
+	
+	if (results.length === 0) {
+		return null;
+	}
+	
+	// Process results same as original getRecipeDetails function
+	const recipe = results[0];
+	const ingredients: any[] = [];
+	const ingredientMap = new Map();
+	
+	results.forEach(row => {
+		if (row.ingredient_id && !ingredientMap.has(row.ingredient_id)) {
+			ingredientMap.set(row.ingredient_id, {
+				id: row.ingredient_id,
+				quantity: row.quantity,
+				quantity4: row.quantity4,
+				ingredient: {
+					id: row.ingredient_table_id,
+					name: row.ingredient_name,
+					pantryCategory: row.pantry_category_id ? {
+						id: row.pantry_category_id,
+						name: row.pantry_category_name
+					} : null
+				},
+				preperation: row.preperation_name ? {
+					name: row.preperation_name
+				} : null,
+				quantityMeasure: row.measure_id ? {
+					id: row.measure_id,
+					name: row.measure_name
+				} : null
+			});
+			ingredients.push(ingredientMap.get(row.ingredient_id));
+		}
+	});
+
+	return {
+		id: recipe.id,
+		name: recipe.name,
+		image_filename: recipe.image_filename,
+		pdf_filename: recipe.pdf_filename,
+		description: recipe.description,
+		prepTime: recipe.prepTime,
+		cookTime: recipe.cookTime,
+		url_slug: recipe.url_slug || `${recipe.id}-fallback`,
+		collection_id: recipe.collection_id,
+		collection_title: recipe.collection_title,
+		collection_url_slug: recipe.collection_url_slug || `${recipe.collection_id}-fallback`,
+		season: recipe.seasonName ? { name: recipe.seasonName } : null,
+		primaryType: recipe.primaryTypeName ? { name: recipe.primaryTypeName } : null,
+		secondaryType: recipe.secondaryTypeName ? { name: recipe.secondaryTypeName } : null,
+		ingredients: ingredients
+	};
+}
+
+/**
+ * Get ingredients accessible to household with enhanced discovery access (Agent 2)
+ * Household + collection_id=1 (Spencer's essentials) + subscribed collections
+ */
+export async function getMyIngredients(householdId: number): Promise<any[]> {
+	const query = `
+		SELECT DISTINCT i.*,
+		       CASE WHEN i.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
+		       i.household_id = ? as can_edit
+		FROM ingredients i
+		LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
+		LEFT JOIN recipes r ON ri.recipe_id = r.id
+		LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+		LEFT JOIN collections c ON cr.collection_id = c.id
+		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+		WHERE (
+		  i.household_id = ? OR  -- Household's own ingredients
+		  c.id = 1 OR           -- Always include Spencer's essentials (collection_id=1)
+		  cs.household_id IS NOT NULL  -- Ingredients from subscribed collections
+		)
+		AND NOT EXISTS (
+		  SELECT 1 FROM ingredients i2 
+		  WHERE i2.household_id = ? 
+		  AND i2.parent_id = i.id
+		  AND i.household_id != ?
+		)
+		ORDER BY access_type ASC, i.name ASC  -- Prioritize owned ingredients
+	`;
+	
+	const [rows] = await pool.execute(query, [
+		householdId, householdId, householdId, householdId, 
+		householdId, householdId
+	]);
+	return rows as any[];
+}
