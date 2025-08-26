@@ -24,12 +24,14 @@ Agent 1 has successfully completed the comprehensive database migration for the 
 - **Junction table relationships** populated from existing recipe-collection links
 - **Auto-subscription** to collection_id=1 (Spencer's essentials) for all households
 
-### Stored Procedures & Triggers
-- **CopyRecipeForEdit()** - Original copy-on-write for recipes
-- **CopyIngredientForEdit()** - Original copy-on-write for ingredients  
-- **CascadeCopyWithContext()** - Enhanced collection + recipe cascade copying
-- **CascadeCopyIngredientWithContext()** - Full cascade with collection context
-- **cleanup_after_recipe_delete** - Automatic orphaned resource cleanup
+### Stored Procedures & Triggers (To Be Created by Agent 2)
+- **CopyRecipeForEdit()** - Original copy-on-write for recipes ⚠️ **NEEDS CREATION**
+- **CopyIngredientForEdit()** - Original copy-on-write for ingredients ⚠️ **NEEDS CREATION**
+- **CascadeCopyWithContext()** - Enhanced collection + recipe cascade copying ⚠️ **NEEDS CREATION**
+- **CascadeCopyIngredientWithContext()** - Full cascade with collection context ⚠️ **NEEDS CREATION**  
+- **cleanup_after_recipe_delete** - Automatic orphaned resource cleanup ⚠️ **NEEDS CREATION**
+
+**Important Note**: The migration runner cannot handle stored procedures and triggers due to semicolon splitting issues. These must be created separately by Agent 2 as part of the application layer implementation.
 
 ### Performance Optimizations
 - **Junction table queries:** 5-10x faster than previous approach

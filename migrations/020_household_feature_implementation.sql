@@ -674,6 +674,8 @@ ALTER TABLE shopping_lists MODIFY COLUMN household_id INT NOT NULL;
 
 -- Task 4.1: Implement enhanced cascade copy stored procedures
 
+DELIMITER $$
+
 -- Original copy-on-write procedure for recipes
 DROP PROCEDURE IF EXISTS CopyRecipeForEdit;
 CREATE PROCEDURE CopyRecipeForEdit(
@@ -717,7 +719,7 @@ BEGIN
             SELECT id FROM collections WHERE household_id = p_household_id
         ) AND recipe_id = p_recipe_id;
     END IF;
-END;
+END$$
 
 -- Original copy-on-write procedure for ingredients
 DROP PROCEDURE IF EXISTS CopyIngredientForEdit;
@@ -753,7 +755,7 @@ BEGIN
         WHERE r.household_id = p_household_id 
         AND ri.ingredient_id = p_ingredient_id;
     END IF;
-END;
+END$$
 
 -- Enhanced cascade copy procedure that handles collection context
 DROP PROCEDURE IF EXISTS CascadeCopyWithContext;
@@ -815,7 +817,7 @@ BEGIN
     END IF;
     
     SET p_actions_taken = v_actions;
-END;
+END$$
 
 -- Enhanced ingredient copy that also handles collection/recipe context
 DROP PROCEDURE IF EXISTS CascadeCopyIngredientWithContext;
@@ -840,9 +842,12 @@ BEGIN
     IF p_new_ingredient_id != p_ingredient_id THEN
         SET p_actions_taken = CONCAT(p_actions_taken, 'ingredient_copied');
     END IF;
-END;
+END$$
+
+DELIMITER ;
 
 -- Task 4.2: Create cleanup triggers for orphaned resources
+DELIMITER $$
 
 DROP TRIGGER IF EXISTS cleanup_after_recipe_delete;
 CREATE TRIGGER cleanup_after_recipe_delete 
@@ -863,4 +868,6 @@ BEGIN
         WHERE r.household_id = OLD.household_id
         AND r.id != OLD.id
     );
-END;
+END$$
+
+DELIMITER ;
