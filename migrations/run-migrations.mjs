@@ -38,8 +38,8 @@ function parseSQLStatements(sql) {
 			continue; // Don't include DELIMITER statements in output
 		}
 		
-		// Handle DROP statements separately when not in procedure mode
-		if (!inProcedure && line.endsWith(';') && (line.startsWith('DROP PROCEDURE') || line.startsWith('DROP TRIGGER'))) {
+		// Handle DROP statements separately (even in procedure mode)
+		if (line.endsWith(';') && (line.startsWith('DROP PROCEDURE') || line.startsWith('DROP TRIGGER'))) {
 			// Add any pending statement first
 			if (currentStatement.trim()) {
 				statements.push(currentStatement.trim());
