@@ -678,11 +678,12 @@ DELIMITER $$
 
 -- Original copy-on-write procedure for recipes
 DROP PROCEDURE IF EXISTS CopyRecipeForEdit;
-CREATE PROCEDURE CopyRecipeForEdit(
+CREATE DEFINER=CURRENT_USER PROCEDURE CopyRecipeForEdit(
     IN p_recipe_id INT,
     IN p_household_id INT,
     OUT p_new_recipe_id INT
 )
+SQL SECURITY INVOKER
 BEGIN
     DECLARE v_recipe_household INT;
     
@@ -723,11 +724,12 @@ END$$
 
 -- Original copy-on-write procedure for ingredients
 DROP PROCEDURE IF EXISTS CopyIngredientForEdit;
-CREATE PROCEDURE CopyIngredientForEdit(
+CREATE DEFINER=CURRENT_USER PROCEDURE CopyIngredientForEdit(
     IN p_ingredient_id INT,
     IN p_household_id INT,
     OUT p_new_ingredient_id INT
 )
+SQL SECURITY INVOKER
 BEGIN
     DECLARE v_ingredient_household INT;
     
@@ -759,7 +761,7 @@ END$$
 
 -- Enhanced cascade copy procedure that handles collection context
 DROP PROCEDURE IF EXISTS CascadeCopyWithContext;
-CREATE PROCEDURE CascadeCopyWithContext(
+CREATE DEFINER=CURRENT_USER PROCEDURE CascadeCopyWithContext(
     IN p_user_household_id INT,
     IN p_collection_id INT, 
     IN p_recipe_id INT,
@@ -767,6 +769,7 @@ CREATE PROCEDURE CascadeCopyWithContext(
     OUT p_new_recipe_id INT,
     OUT p_actions_taken VARCHAR(255)
 )
+SQL SECURITY INVOKER
 BEGIN
     DECLARE v_collection_household INT;
     DECLARE v_recipe_household INT;
@@ -821,7 +824,7 @@ END$$
 
 -- Enhanced ingredient copy that also handles collection/recipe context
 DROP PROCEDURE IF EXISTS CascadeCopyIngredientWithContext;
-CREATE PROCEDURE CascadeCopyIngredientWithContext(
+CREATE DEFINER=CURRENT_USER PROCEDURE CascadeCopyIngredientWithContext(
     IN p_user_household_id INT,
     IN p_collection_id INT,
     IN p_recipe_id INT, 
@@ -831,6 +834,7 @@ CREATE PROCEDURE CascadeCopyIngredientWithContext(
     OUT p_new_ingredient_id INT,
     OUT p_actions_taken VARCHAR(255)
 )
+SQL SECURITY INVOKER
 BEGIN
     -- First ensure collection and recipe are owned/copied
     CALL CascadeCopyWithContext(p_user_household_id, p_collection_id, p_recipe_id, 
@@ -850,7 +854,7 @@ DELIMITER ;
 DELIMITER $$
 
 DROP TRIGGER IF EXISTS cleanup_after_recipe_delete;
-CREATE TRIGGER cleanup_after_recipe_delete 
+CREATE DEFINER=CURRENT_USER TRIGGER cleanup_after_recipe_delete 
 AFTER DELETE ON recipes FOR EACH ROW
 BEGIN
     -- Clean up recipe_ingredients for this recipe
