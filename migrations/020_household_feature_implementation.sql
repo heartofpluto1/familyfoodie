@@ -672,6 +672,10 @@ ALTER TABLE shopping_lists MODIFY COLUMN household_id INT NOT NULL;
 -- PHASE 7: STORED PROCEDURES & TRIGGERS (Tasks 4.1, 4.2)
 -- =============================================================================
 
+-- Temporarily enable log_bin_trust_function_creators for stored procedures/triggers
+SET @original_log_bin_trust_function_creators = @@log_bin_trust_function_creators;
+SET GLOBAL log_bin_trust_function_creators = 1;
+
 -- Task 4.1: Implement enhanced cascade copy stored procedures
 
 DELIMITER $$
@@ -875,3 +879,6 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+-- Restore original log_bin_trust_function_creators setting
+SET GLOBAL log_bin_trust_function_creators = @original_log_bin_trust_function_creators;
