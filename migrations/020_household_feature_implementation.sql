@@ -7,7 +7,7 @@
 -- =============================================================================
 
 -- Task 1.1: Create core household infrastructure tables
-CREATE TABLE households (
+CREATE TABLE IF NOT EXISTS households (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -16,7 +16,7 @@ CREATE TABLE households (
 );
 
 -- Task 1.2: Create collection_recipes junction table (key optimization)
-CREATE TABLE collection_recipes (
+CREATE TABLE IF NOT EXISTS collection_recipes (
     collection_id INT NOT NULL,
     recipe_id INT NOT NULL,
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -29,7 +29,7 @@ CREATE TABLE collection_recipes (
 );
 
 -- Task 1.3: Create collection subscription system tables
-CREATE TABLE collection_subscriptions (
+CREATE TABLE IF NOT EXISTS collection_subscriptions (
     household_id INT NOT NULL,
     collection_id INT NOT NULL,
     subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -45,78 +45,91 @@ CREATE TABLE collection_subscriptions (
 -- =============================================================================
 
 -- Task 2.1: Add user-household relationship column
-ALTER TABLE users ADD COLUMN household_id INT;
-ALTER TABLE users ADD INDEX idx_household_id (household_id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS household_id INT;
+ALTER TABLE users ADD INDEX IF NOT EXISTS idx_household_id (household_id);
 
 -- Task 2.2: Add collection ownership and parent tracking
-ALTER TABLE collections ADD COLUMN household_id INT;
-ALTER TABLE collections ADD COLUMN public TINYINT(1) DEFAULT 0;
-ALTER TABLE collections ADD COLUMN parent_id INT NULL;
-ALTER TABLE collections ADD INDEX idx_household_id (household_id);
-ALTER TABLE collections ADD INDEX idx_parent_id (parent_id);
-ALTER TABLE collections ADD INDEX idx_public (public);
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS household_id INT;
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS public TINYINT(1) DEFAULT 0;
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS parent_id INT NULL;
+ALTER TABLE collections ADD INDEX IF NOT EXISTS idx_household_id (household_id);
+ALTER TABLE collections ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
+ALTER TABLE collections ADD INDEX IF NOT EXISTS idx_public (public);
 
 -- Task 2.3: Add recipe copy-on-write setup columns
 -- NOTE: Keep collection_id for now - we'll drop it after data migration
-ALTER TABLE recipes ADD COLUMN household_id INT;
-ALTER TABLE recipes ADD COLUMN parent_id INT NULL;
-ALTER TABLE recipes ADD INDEX idx_household_id (household_id);
-ALTER TABLE recipes ADD INDEX idx_parent_id (parent_id);
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS household_id INT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS parent_id INT NULL;
+ALTER TABLE recipes ADD INDEX IF NOT EXISTS idx_household_id (household_id);
+ALTER TABLE recipes ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
 
 -- Task 2.4: Add household ownership to ingredients and recipe_ingredients
 -- Add parent tracking to recipe_ingredients (no household_id needed - ownership flows from recipes)
-ALTER TABLE recipe_ingredients ADD COLUMN parent_id INT NULL;
-ALTER TABLE recipe_ingredients ADD INDEX idx_parent_id (parent_id);
+ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS parent_id INT NULL;
+ALTER TABLE recipe_ingredients ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
 
 -- Add household ownership to ingredients
-ALTER TABLE ingredients ADD COLUMN household_id INT;
-ALTER TABLE ingredients ADD COLUMN parent_id INT NULL;
-ALTER TABLE ingredients ADD INDEX idx_household_id (household_id);
-ALTER TABLE ingredients ADD INDEX idx_parent_id (parent_id);
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS household_id INT;
+ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS parent_id INT NULL;
+ALTER TABLE ingredients ADD INDEX IF NOT EXISTS idx_household_id (household_id);
+ALTER TABLE ingredients ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
 
 -- Task 2.5: Add household scope to private data tables
 -- Add household scope to plans (meal planning)
-ALTER TABLE plans ADD COLUMN household_id INT;
-ALTER TABLE plans ADD INDEX idx_household_id (household_id);
-ALTER TABLE plans ADD INDEX idx_household_week_year (household_id, week, year);
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS household_id INT;
+ALTER TABLE plans ADD INDEX IF NOT EXISTS idx_household_id (household_id);
+ALTER TABLE plans ADD INDEX IF NOT EXISTS idx_household_week_year (household_id, week, year);
 
 -- Add household scope to shopping_lists
-ALTER TABLE shopping_lists ADD COLUMN household_id INT;
-ALTER TABLE shopping_lists ADD INDEX idx_household_id (household_id);
-ALTER TABLE shopping_lists ADD INDEX idx_household_week_year (household_id, week, year);
+ALTER TABLE shopping_lists ADD COLUMN IF NOT EXISTS household_id INT;
+ALTER TABLE shopping_lists ADD INDEX IF NOT EXISTS idx_household_id (household_id);
+ALTER TABLE shopping_lists ADD INDEX IF NOT EXISTS idx_household_week_year (household_id, week, year);
 
 -- =============================================================================
 -- PHASE 3: DATA MIGRATION (Tasks 3.1, 3.2, 3.3)
 -- =============================================================================
 
 -- Task 3.1: Create Spencer household and assign users
-INSERT INTO households (name) VALUES ('Spencer');
-SET @spencer_household_id = LAST_INSERT_ID();
+-- Only create Spencer household if it doesn't exist
+INSERT INTO households (name) 
+SELECT 'Spencer' WHERE NOT EXISTS (SELECT 1 FROM households WHERE name = 'Spencer');
 
--- Assign all existing users to Spencer household
-UPDATE users SET household_id = @spencer_household_id;
+-- Get Spencer household ID (whether just created or already exists)
+SET @spencer_household_id = (SELECT id FROM households WHERE name = 'Spencer');
+
+-- Assign all existing users to Spencer household (only if they don't have one)
+UPDATE users SET household_id = @spencer_household_id WHERE household_id IS NULL;
 
 -- Task 3.2: Assign household ownership to all resources
--- Spencer owns all existing collections, recipes, and ingredients
-UPDATE collections SET household_id = @spencer_household_id, public = 0;
+-- Spencer owns all existing collections, recipes, and ingredients (only if not already assigned)
+UPDATE collections SET household_id = @spencer_household_id, public = 0 WHERE household_id IS NULL;
 -- Make collection_id=1 public by default (Spencer's essentials)
 UPDATE collections SET public = 1 WHERE id = 1;
-UPDATE recipes SET household_id = @spencer_household_id;
-UPDATE ingredients SET household_id = @spencer_household_id;
-UPDATE plans SET household_id = @spencer_household_id;
-UPDATE shopping_lists SET household_id = @spencer_household_id;
+UPDATE recipes SET household_id = @spencer_household_id WHERE household_id IS NULL;
+UPDATE ingredients SET household_id = @spencer_household_id WHERE household_id IS NULL;
+UPDATE plans SET household_id = @spencer_household_id WHERE household_id IS NULL;
+UPDATE shopping_lists SET household_id = @spencer_household_id WHERE household_id IS NULL;
 
 -- Task 3.3: Populate junction tables with existing relationships
--- Migrate existing recipe-collection relationships to junction table
+-- Migrate existing recipe-collection relationships to junction table (avoid duplicates)
 INSERT INTO collection_recipes (collection_id, recipe_id, added_at)
 SELECT collection_id, id, NOW() 
 FROM recipes 
-WHERE collection_id IS NOT NULL;
+WHERE collection_id IS NOT NULL
+AND NOT EXISTS (
+    SELECT 1 FROM collection_recipes cr 
+    WHERE cr.collection_id = recipes.collection_id 
+    AND cr.recipe_id = recipes.id
+);
 
--- Auto-subscribe all households to collection_id=1 (Spencer's essentials)
+-- Auto-subscribe all households to collection_id=1 (Spencer's essentials) - avoid duplicates
 INSERT INTO collection_subscriptions (household_id, collection_id)
 SELECT h.id, 1 FROM households h
-WHERE 1 IN (SELECT id FROM collections WHERE id = 1);
+WHERE 1 IN (SELECT id FROM collections WHERE id = 1)
+AND NOT EXISTS (
+    SELECT 1 FROM collection_subscriptions cs 
+    WHERE cs.household_id = h.id AND cs.collection_id = 1
+);
 
 -- =============================================================================
 -- PHASE 4: REMOVE OLD SCHEMA (After Data Migration)
@@ -130,43 +143,157 @@ ALTER TABLE recipes DROP COLUMN collection_id;
 -- PHASE 5: ADD FOREIGN KEY CONSTRAINTS
 -- =============================================================================
 
--- Add foreign key constraints after data migration
-ALTER TABLE users ADD CONSTRAINT fk_users_household 
-    FOREIGN KEY (household_id) REFERENCES households(id) 
-    ON DELETE RESTRICT ON UPDATE CASCADE;
+-- Add foreign key constraints after data migration (only if they don't exist)
 
-ALTER TABLE collections ADD CONSTRAINT fk_collections_household 
-    FOREIGN KEY (household_id) REFERENCES households(id) 
-    ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE collections ADD CONSTRAINT fk_collections_parent 
-    FOREIGN KEY (parent_id) REFERENCES collections(id) 
-    ON DELETE SET NULL ON UPDATE CASCADE;
+-- Check and add users household constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'users' 
+    AND CONSTRAINT_NAME = 'fk_users_household'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE users ADD CONSTRAINT fk_users_household FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT ON UPDATE CASCADE', 
+    'SELECT "fk_users_household already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE recipes ADD CONSTRAINT fk_recipes_household 
-    FOREIGN KEY (household_id) REFERENCES households(id) 
-    ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE recipes ADD CONSTRAINT fk_recipes_parent 
-    FOREIGN KEY (parent_id) REFERENCES recipes(id) 
-    ON DELETE SET NULL ON UPDATE CASCADE;
+-- Check and add collections household constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND CONSTRAINT_NAME = 'fk_collections_household'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE collections ADD CONSTRAINT fk_collections_household FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE ON UPDATE CASCADE', 
+    'SELECT "fk_collections_household already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE recipe_ingredients ADD CONSTRAINT fk_recipe_ingredients_parent 
-    FOREIGN KEY (parent_id) REFERENCES recipe_ingredients(id) 
-    ON DELETE SET NULL ON UPDATE CASCADE;
+-- Check and add collections parent constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND CONSTRAINT_NAME = 'fk_collections_parent'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE collections ADD CONSTRAINT fk_collections_parent FOREIGN KEY (parent_id) REFERENCES collections(id) ON DELETE SET NULL ON UPDATE CASCADE', 
+    'SELECT "fk_collections_parent already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE ingredients ADD CONSTRAINT fk_ingredients_household 
-    FOREIGN KEY (household_id) REFERENCES households(id) 
-    ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE ingredients ADD CONSTRAINT fk_ingredients_parent 
-    FOREIGN KEY (parent_id) REFERENCES ingredients(id) 
-    ON DELETE SET NULL ON UPDATE CASCADE;
+-- Check and add recipes household constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND CONSTRAINT_NAME = 'fk_recipes_household'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE recipes ADD CONSTRAINT fk_recipes_household FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE ON UPDATE CASCADE', 
+    'SELECT "fk_recipes_household already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE plans ADD CONSTRAINT fk_plans_household 
-    FOREIGN KEY (household_id) REFERENCES households(id) 
-    ON DELETE CASCADE ON UPDATE CASCADE;
+-- Check and add recipes parent constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND CONSTRAINT_NAME = 'fk_recipes_parent'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE recipes ADD CONSTRAINT fk_recipes_parent FOREIGN KEY (parent_id) REFERENCES recipes(id) ON DELETE SET NULL ON UPDATE CASCADE', 
+    'SELECT "fk_recipes_parent already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE shopping_lists ADD CONSTRAINT fk_shopping_lists_household 
-    FOREIGN KEY (household_id) REFERENCES households(id) 
-    ON DELETE CASCADE ON UPDATE CASCADE;
+-- Check and add recipe_ingredients parent constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipe_ingredients' 
+    AND CONSTRAINT_NAME = 'fk_recipe_ingredients_parent'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE recipe_ingredients ADD CONSTRAINT fk_recipe_ingredients_parent FOREIGN KEY (parent_id) REFERENCES recipe_ingredients(id) ON DELETE SET NULL ON UPDATE CASCADE', 
+    'SELECT "fk_recipe_ingredients_parent already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Check and add ingredients household constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'ingredients' 
+    AND CONSTRAINT_NAME = 'fk_ingredients_household'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE ingredients ADD CONSTRAINT fk_ingredients_household FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE ON UPDATE CASCADE', 
+    'SELECT "fk_ingredients_household already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Check and add ingredients parent constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'ingredients' 
+    AND CONSTRAINT_NAME = 'fk_ingredients_parent'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE ingredients ADD CONSTRAINT fk_ingredients_parent FOREIGN KEY (parent_id) REFERENCES ingredients(id) ON DELETE SET NULL ON UPDATE CASCADE', 
+    'SELECT "fk_ingredients_parent already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Check and add plans household constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'plans' 
+    AND CONSTRAINT_NAME = 'fk_plans_household'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE plans ADD CONSTRAINT fk_plans_household FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE ON UPDATE CASCADE', 
+    'SELECT "fk_plans_household already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Check and add shopping_lists household constraint
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'shopping_lists' 
+    AND CONSTRAINT_NAME = 'fk_shopping_lists_household'
+);
+SET @sql = IF(@constraint_exists = 0, 
+    'ALTER TABLE shopping_lists ADD CONSTRAINT fk_shopping_lists_household FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE ON UPDATE CASCADE', 
+    'SELECT "fk_shopping_lists_household already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- =============================================================================
 -- PHASE 6: MAKE COLUMNS NOT NULL AFTER DATA MIGRATION
@@ -189,6 +316,7 @@ ALTER TABLE shopping_lists MODIFY COLUMN household_id INT NOT NULL;
 DELIMITER $$
 
 -- Original copy-on-write procedure for recipes
+DROP PROCEDURE IF EXISTS CopyRecipeForEdit;
 CREATE PROCEDURE CopyRecipeForEdit(
     IN p_recipe_id INT,
     IN p_household_id INT,
@@ -233,6 +361,7 @@ BEGIN
 END$$
 
 -- Original copy-on-write procedure for ingredients
+DROP PROCEDURE IF EXISTS CopyIngredientForEdit;
 CREATE PROCEDURE CopyIngredientForEdit(
     IN p_ingredient_id INT,
     IN p_household_id INT,
@@ -268,6 +397,7 @@ BEGIN
 END$$
 
 -- Enhanced cascade copy procedure that handles collection context
+DROP PROCEDURE IF EXISTS CascadeCopyWithContext;
 CREATE PROCEDURE CascadeCopyWithContext(
     IN p_user_household_id INT,
     IN p_collection_id INT, 
@@ -329,6 +459,7 @@ BEGIN
 END$$
 
 -- Enhanced ingredient copy that also handles collection/recipe context
+DROP PROCEDURE IF EXISTS CascadeCopyIngredientWithContext;
 CREATE PROCEDURE CascadeCopyIngredientWithContext(
     IN p_user_household_id INT,
     IN p_collection_id INT,
@@ -357,6 +488,7 @@ DELIMITER ;
 -- Task 4.2: Create cleanup triggers for orphaned resources
 DELIMITER $$
 
+DROP TRIGGER IF EXISTS cleanup_after_recipe_delete;
 CREATE TRIGGER cleanup_after_recipe_delete 
 AFTER DELETE ON recipes FOR EACH ROW
 BEGIN
