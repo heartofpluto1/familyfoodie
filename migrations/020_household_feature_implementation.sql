@@ -45,45 +45,350 @@ CREATE TABLE IF NOT EXISTS collection_subscriptions (
 -- =============================================================================
 
 -- Task 2.1: Add user-household relationship column
-ALTER TABLE users ADD COLUMN IF NOT EXISTS household_id INT;
-ALTER TABLE users ADD INDEX IF NOT EXISTS idx_household_id (household_id);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'users' 
+    AND COLUMN_NAME = 'household_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE users ADD COLUMN household_id INT', 
+    'SELECT "users.household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'users' 
+    AND INDEX_NAME = 'idx_household_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE users ADD INDEX idx_household_id (household_id)', 
+    'SELECT "users.idx_household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Task 2.2: Add collection ownership and parent tracking
-ALTER TABLE collections ADD COLUMN IF NOT EXISTS household_id INT;
-ALTER TABLE collections ADD COLUMN IF NOT EXISTS public TINYINT(1) DEFAULT 0;
-ALTER TABLE collections ADD COLUMN IF NOT EXISTS parent_id INT NULL;
-ALTER TABLE collections ADD INDEX IF NOT EXISTS idx_household_id (household_id);
-ALTER TABLE collections ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
-ALTER TABLE collections ADD INDEX IF NOT EXISTS idx_public (public);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND COLUMN_NAME = 'household_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE collections ADD COLUMN household_id INT', 
+    'SELECT "collections.household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND COLUMN_NAME = 'public'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE collections ADD COLUMN public TINYINT(1) DEFAULT 0', 
+    'SELECT "collections.public already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND COLUMN_NAME = 'parent_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE collections ADD COLUMN parent_id INT NULL', 
+    'SELECT "collections.parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND INDEX_NAME = 'idx_household_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE collections ADD INDEX idx_household_id (household_id)', 
+    'SELECT "collections.idx_household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND INDEX_NAME = 'idx_parent_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE collections ADD INDEX idx_parent_id (parent_id)', 
+    'SELECT "collections.idx_parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'collections' 
+    AND INDEX_NAME = 'idx_public'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE collections ADD INDEX idx_public (public)', 
+    'SELECT "collections.idx_public already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Task 2.3: Add recipe copy-on-write setup columns
 -- NOTE: Keep collection_id for now - we'll drop it after data migration
-ALTER TABLE recipes ADD COLUMN IF NOT EXISTS household_id INT;
-ALTER TABLE recipes ADD COLUMN IF NOT EXISTS parent_id INT NULL;
-ALTER TABLE recipes ADD INDEX IF NOT EXISTS idx_household_id (household_id);
-ALTER TABLE recipes ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND COLUMN_NAME = 'household_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE recipes ADD COLUMN household_id INT', 
+    'SELECT "recipes.household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND COLUMN_NAME = 'parent_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE recipes ADD COLUMN parent_id INT NULL', 
+    'SELECT "recipes.parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND INDEX_NAME = 'idx_household_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE recipes ADD INDEX idx_household_id (household_id)', 
+    'SELECT "recipes.idx_household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipes' 
+    AND INDEX_NAME = 'idx_parent_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE recipes ADD INDEX idx_parent_id (parent_id)', 
+    'SELECT "recipes.idx_parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Task 2.4: Add household ownership to ingredients and recipe_ingredients
 -- Add parent tracking to recipe_ingredients (no household_id needed - ownership flows from recipes)
-ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS parent_id INT NULL;
-ALTER TABLE recipe_ingredients ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipe_ingredients' 
+    AND COLUMN_NAME = 'parent_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE recipe_ingredients ADD COLUMN parent_id INT NULL', 
+    'SELECT "recipe_ingredients.parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'recipe_ingredients' 
+    AND INDEX_NAME = 'idx_parent_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE recipe_ingredients ADD INDEX idx_parent_id (parent_id)', 
+    'SELECT "recipe_ingredients.idx_parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Add household ownership to ingredients
-ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS household_id INT;
-ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS parent_id INT NULL;
-ALTER TABLE ingredients ADD INDEX IF NOT EXISTS idx_household_id (household_id);
-ALTER TABLE ingredients ADD INDEX IF NOT EXISTS idx_parent_id (parent_id);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'ingredients' 
+    AND COLUMN_NAME = 'household_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE ingredients ADD COLUMN household_id INT', 
+    'SELECT "ingredients.household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'ingredients' 
+    AND COLUMN_NAME = 'parent_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE ingredients ADD COLUMN parent_id INT NULL', 
+    'SELECT "ingredients.parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'ingredients' 
+    AND INDEX_NAME = 'idx_household_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE ingredients ADD INDEX idx_household_id (household_id)', 
+    'SELECT "ingredients.idx_household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'ingredients' 
+    AND INDEX_NAME = 'idx_parent_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE ingredients ADD INDEX idx_parent_id (parent_id)', 
+    'SELECT "ingredients.idx_parent_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Task 2.5: Add household scope to private data tables
 -- Add household scope to plans (meal planning)
-ALTER TABLE plans ADD COLUMN IF NOT EXISTS household_id INT;
-ALTER TABLE plans ADD INDEX IF NOT EXISTS idx_household_id (household_id);
-ALTER TABLE plans ADD INDEX IF NOT EXISTS idx_household_week_year (household_id, week, year);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'plans' 
+    AND COLUMN_NAME = 'household_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE plans ADD COLUMN household_id INT', 
+    'SELECT "plans.household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'plans' 
+    AND INDEX_NAME = 'idx_household_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE plans ADD INDEX idx_household_id (household_id)', 
+    'SELECT "plans.idx_household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'plans' 
+    AND INDEX_NAME = 'idx_household_week_year'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE plans ADD INDEX idx_household_week_year (household_id, week, year)', 
+    'SELECT "plans.idx_household_week_year already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Add household scope to shopping_lists
-ALTER TABLE shopping_lists ADD COLUMN IF NOT EXISTS household_id INT;
-ALTER TABLE shopping_lists ADD INDEX IF NOT EXISTS idx_household_id (household_id);
-ALTER TABLE shopping_lists ADD INDEX IF NOT EXISTS idx_household_week_year (household_id, week, year);
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'shopping_lists' 
+    AND COLUMN_NAME = 'household_id'
+);
+SET @sql = IF(@column_exists = 0, 
+    'ALTER TABLE shopping_lists ADD COLUMN household_id INT', 
+    'SELECT "shopping_lists.household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'shopping_lists' 
+    AND INDEX_NAME = 'idx_household_id'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE shopping_lists ADD INDEX idx_household_id (household_id)', 
+    'SELECT "shopping_lists.idx_household_id already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'shopping_lists' 
+    AND INDEX_NAME = 'idx_household_week_year'
+);
+SET @sql = IF(@index_exists = 0, 
+    'ALTER TABLE shopping_lists ADD INDEX idx_household_week_year (household_id, week, year)', 
+    'SELECT "shopping_lists.idx_household_week_year already exists" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- =============================================================================
 -- PHASE 3: DATA MIGRATION (Tasks 3.1, 3.2, 3.3)
