@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { canEditResource } from '@/lib/permissions';
 import { deleteFile, getStorageMode } from '@/lib/storage';
 
@@ -107,4 +107,4 @@ async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
 	}
 }
 
-export const DELETE = withAuthHousehold(deleteHandler);
+export const DELETE = withAuth(deleteHandler);

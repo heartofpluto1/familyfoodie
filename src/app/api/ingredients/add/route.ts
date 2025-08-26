@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { RowDataPacket } from 'mysql2';
 
 interface AddIngredientRequest {
@@ -53,4 +53,4 @@ async function addIngredientHandler(request: AuthenticatedRequest, context?: unk
 	}
 }
 
-export const POST = withAuthHousehold(addIngredientHandler);
+export const POST = withAuth(addIngredientHandler);

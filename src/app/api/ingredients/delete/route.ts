@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { canEditResource } from '@/lib/permissions';
 
@@ -64,4 +64,4 @@ async function deleteIngredientHandler(request: AuthenticatedRequest, context?: 
 	}
 }
 
-export const DELETE = withAuthHousehold(deleteIngredientHandler);
+export const DELETE = withAuth(deleteIngredientHandler);

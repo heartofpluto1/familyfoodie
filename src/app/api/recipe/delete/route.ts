@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { cleanupRecipeFiles } from '@/lib/utils/secureFilename.server';
 import { canEditResource } from '@/lib/permissions';
 import { performCompleteCleanupAfterRecipeDelete } from '@/lib/copy-on-write';
@@ -210,4 +210,4 @@ async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
 	}
 }
 
-export const DELETE = withAuthHousehold(deleteHandler);
+export const DELETE = withAuth(deleteHandler);

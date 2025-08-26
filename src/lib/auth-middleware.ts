@@ -96,24 +96,11 @@ export async function requireAuthWithHousehold(request: NextRequest) {
 	};
 }
 
-// Legacy higher-order function to protect API routes (maintained for compatibility)
-export function withAuth(handler: (request: NextRequest, session: { username: string }) => Promise<NextResponse>) {
-	return async (request: NextRequest) => {
-		const { response, session } = await requireAuth(request);
-
-		if (response) {
-			return response; // Return 401 response
-		}
-
-		return handler(request, session);
-	};
-}
-
 /**
  * Enhanced higher-order function with household context for Agent 2 implementation
  * Provides SessionUser with household_id directly on the request object
  */
-export function withAuthHousehold<T = Record<string, unknown>>(handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>) {
+export function withAuth<T = Record<string, unknown>>(handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>) {
 	return async (request: NextRequest, context?: T) => {
 		const { response, user } = await requireAuthWithHousehold(request);
 

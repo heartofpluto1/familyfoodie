@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { triggerCascadeCopyIfNeeded } from '@/lib/copy-on-write';
 
 interface UpdateRecipeDetailsRequest {
@@ -135,4 +135,4 @@ async function updateDetailsHandler(request: AuthenticatedRequest, context?: unk
 	}
 }
 
-export const PUT = withAuthHousehold(updateDetailsHandler);
+export const PUT = withAuth(updateDetailsHandler);

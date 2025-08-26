@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
@@ -122,4 +122,4 @@ async function createCollectionHandler(request: AuthenticatedRequest, context?: 
 	}
 }
 
-export const POST = withAuthHousehold(createCollectionHandler);
+export const POST = withAuth(createCollectionHandler);

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuthHousehold, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { triggerCascadeCopyIfNeededForIngredient } from '@/lib/copy-on-write';
 
 interface UpdateIngredientRequest {
@@ -46,4 +46,4 @@ async function updateIngredientHandler(request: AuthenticatedRequest, context?: 
 	}
 }
 
-export const PUT = withAuthHousehold(updateIngredientHandler);
+export const PUT = withAuth(updateIngredientHandler);
