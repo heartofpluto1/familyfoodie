@@ -38,6 +38,18 @@ function parseSQLStatements(sql) {
 			continue; // Don't include DELIMITER statements in output
 		}
 		
+		// Handle DROP statements separately when not in procedure mode
+		if (!inProcedure && line.endsWith(';') && (line.startsWith('DROP PROCEDURE') || line.startsWith('DROP TRIGGER'))) {
+			// Add any pending statement first
+			if (currentStatement.trim()) {
+				statements.push(currentStatement.trim());
+				currentStatement = '';
+			}
+			// Add the DROP statement
+			statements.push(line.slice(0, -1).trim()); // Remove semicolon
+			continue;
+		}
+		
 		// Add line to current statement
 		currentStatement += (currentStatement ? '\n' : '') + line;
 		
