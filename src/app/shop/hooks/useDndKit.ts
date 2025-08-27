@@ -166,13 +166,13 @@ export function useDndKit(ingredients: ShoppingListData, setIngredients: (value:
 					// Update backend
 					const targetList = originalActiveList === 'fresh' ? originalState?.fresh || ingredients.fresh : originalState?.pantry || ingredients.pantry;
 					const newIndex = targetList.findIndex(item => item.id.toString() === over.id.toString());
-					const newFresh = originalActiveList === 'fresh' ? 1 : 0;
+					const newFresh = originalActiveList === 'fresh';
 
 					await ShoppingListService.moveItem(Number(active.id), newFresh, newIndex, datestamp.week, datestamp.year);
 				}
 			} else if (overList) {
 				// Moving between lists - state has already been updated during dragOver, just need to persist to backend
-				const newFresh = overList === 'fresh' ? 1 : 0;
+				const newFresh = overList === 'fresh';
 
 				// Find the actual position where the item was inserted
 				let targetIndex = 0;

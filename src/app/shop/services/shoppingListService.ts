@@ -32,7 +32,7 @@ export class ShoppingListService {
 		return response.json();
 	}
 
-	static async moveItem(id: number, fresh: number, sort: number, week: number, year: number) {
+	static async moveItem(id: number, fresh: boolean, sort: number, week: number, year: number) {
 		const response = await fetch('/api/shop/move', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
