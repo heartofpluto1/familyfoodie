@@ -1,4 +1,5 @@
 import pool from './db.js';
+import type { IngredientAccessResult } from '@/types/database';
 import { Collection } from './queries/collections.js';
 
 /**
@@ -17,7 +18,7 @@ export interface AccessContext {
 	can_subscribe: boolean;
 }
 
-interface CollectionAccessResult {
+interface CollectionValidationResult {
 	household_id: number;
 	public: number;
 	is_subscribed: number | null;
@@ -26,7 +27,7 @@ interface CollectionAccessResult {
 	can_subscribe: number;
 }
 
-interface RecipeAccessResult {
+interface RecipeValidationResult {
 	recipe_household_id: number;
 	collection_household_id: number;
 	collection_public: number;
@@ -35,7 +36,7 @@ interface RecipeAccessResult {
 	can_edit: number;
 }
 
-interface IngredientAccessResult {
+interface IngredientValidationResult {
 	ingredient_household_id: number;
 	recipe_household_id: number | null;
 	collection_household_id: number | null;
@@ -103,7 +104,7 @@ export async function getPlanningAccessCollections(household_id: number): Promis
  * Tier 3 - Ingredients Access
  * Enhanced access including Spencer's essentials + subscribed collections
  */
-export async function getIngredientsAccessIngredients(household_id: number): Promise<unknown[]> {
+export async function getIngredientsAccessIngredients(household_id: number): Promise<IngredientAccessResult[]> {
 	const query = `
     SELECT DISTINCT i.*,
            CASE WHEN i.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
@@ -129,7 +130,7 @@ export async function getIngredientsAccessIngredients(household_id: number): Pro
   `;
 
 	const [rows] = await pool.execute(query, [household_id, household_id, household_id, household_id, household_id, household_id]);
-	return rows as unknown[];
+	return rows as IngredientAccessResult[];
 }
 
 /**
@@ -222,21 +223,21 @@ export async function validateAccessTier(
 
 	try {
 		const [rows] = await pool.execute(query, params);
-		const results = rows as unknown[];
+		const results = rows as (CollectionValidationResult | RecipeValidationResult | IngredientValidationResult)[];
 
 		if (results.length === 0) return null;
 
-		let result: CollectionAccessResult | RecipeAccessResult | IngredientAccessResult;
+		let result: CollectionValidationResult | RecipeValidationResult | IngredientValidationResult;
 
 		switch (resource_type) {
 			case 'collection':
-				result = results[0] as CollectionAccessResult;
+				result = results[0] as CollectionValidationResult;
 				break;
 			case 'recipe':
-				result = results[0] as RecipeAccessResult;
+				result = results[0] as RecipeValidationResult;
 				break;
 			case 'ingredient':
-				result = results[0] as IngredientAccessResult;
+				result = results[0] as IngredientValidationResult;
 				break;
 			default:
 				return null;
@@ -251,7 +252,7 @@ export async function validateAccessTier(
 
 		if (accessTierIndex < requiredTierIndex) return null;
 
-		const canSubscribe = resource_type === 'collection' ? !!(result as CollectionAccessResult).can_subscribe : false;
+		const canSubscribe = resource_type === 'collection' ? !!(result as CollectionValidationResult).can_subscribe : false;
 
 		return {
 			tier: required_tier,

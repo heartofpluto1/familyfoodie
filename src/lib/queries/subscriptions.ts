@@ -1,4 +1,5 @@
 import pool from '@/lib/db.js';
+import type { RowDataPacket } from 'mysql2';
 import { Collection } from '@/lib/queries/collections.js';
 
 /**
@@ -50,7 +51,7 @@ export async function subscribeToCollection(household_id: number, collection_id:
 		`;
 		const [existsRows] = await connection.execute(existsQuery, [household_id, collection_id]);
 
-		if ((existsRows as unknown[]).length > 0) {
+		if ((existsRows as RowDataPacket[]).length > 0) {
 			await connection.rollback();
 			return false; // Already subscribed
 		}
@@ -139,7 +140,7 @@ export async function isSubscribed(household_id: number, collection_id: number):
 	`;
 
 	const [rows] = await pool.execute(query, [household_id, collection_id]);
-	return (rows as unknown[]).length > 0;
+	return (rows as RowDataPacket[]).length > 0;
 }
 
 /**

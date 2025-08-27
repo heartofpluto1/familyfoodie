@@ -1,4 +1,5 @@
 import pool from '@/lib/db.js';
+import type { CollectionSearchResult, IngredientSearchResult } from '@/types/database';
 import { Recipe } from '@/types/menus.js';
 
 /**
@@ -86,7 +87,7 @@ export async function searchCollectionsWithAccess(
 	searchTerm: string,
 	household_id: number,
 	accessType: 'owned' | 'subscribed' | 'public' | 'all' = 'all'
-): Promise<unknown[]> {
+): Promise<CollectionSearchResult[]> {
 	let whereClause = '';
 	const params: (number | string)[] = [household_id, household_id, household_id];
 
@@ -145,7 +146,7 @@ export async function searchCollectionsWithAccess(
 	params.push(searchPattern, searchPattern, searchPattern);
 
 	const [rows] = await pool.execute(query, params);
-	return rows as unknown[];
+	return rows as CollectionSearchResult[];
 }
 
 /**
@@ -154,7 +155,7 @@ export async function searchCollectionsWithAccess(
  * @param household_id - The household performing the search
  * @returns Array of ingredients matching search criteria with household precedence
  */
-export async function searchIngredientsWithPrecedence(searchTerm: string, household_id: number): Promise<unknown[]> {
+export async function searchIngredientsWithPrecedence(searchTerm: string, household_id: number): Promise<IngredientSearchResult[]> {
 	const searchPattern = `%${searchTerm}%`;
 	const query = `
 		SELECT DISTINCT i.*,
@@ -200,7 +201,7 @@ export async function searchIngredientsWithPrecedence(searchTerm: string, househ
 		searchPattern,
 		searchPattern,
 	]);
-	return rows as unknown[];
+	return rows as IngredientSearchResult[];
 }
 
 /**
