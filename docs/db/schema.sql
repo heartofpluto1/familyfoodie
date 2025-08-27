@@ -46,6 +46,45 @@ CREATE TABLE `category_supermarket` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `collection_recipes`
+--
+
+DROP TABLE IF EXISTS `collection_recipes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collection_recipes` (
+  `collection_id` int NOT NULL,
+  `recipe_id` int NOT NULL,
+  `added_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `display_order` int DEFAULT '0',
+  PRIMARY KEY (`collection_id`,`recipe_id`),
+  KEY `idx_recipe_collection` (`recipe_id`,`collection_id`),
+  KEY `idx_display_order` (`collection_id`,`display_order`),
+  CONSTRAINT `collection_recipes_ibfk_1` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `collection_recipes_ibfk_2` FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collection_subscriptions`
+--
+
+DROP TABLE IF EXISTS `collection_subscriptions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collection_subscriptions` (
+  `household_id` int NOT NULL,
+  `collection_id` int NOT NULL,
+  `subscribed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`household_id`,`collection_id`),
+  KEY `idx_household` (`household_id`),
+  KEY `idx_collection` (`collection_id`),
+  CONSTRAINT `collection_subscriptions_ibfk_1` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `collection_subscriptions_ibfk_2` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `collections`
 --
 
@@ -61,10 +100,35 @@ CREATE TABLE `collections` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `url_slug` varchar(255) NOT NULL DEFAULT '1-initial',
+  `household_id` int NOT NULL,
+  `public` tinyint(1) DEFAULT '0',
+  `parent_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_title` (`title`),
-  KEY `idx_url_slug` (`url_slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `idx_url_slug` (`url_slug`),
+  KEY `idx_household_id` (`household_id`),
+  KEY `idx_parent_id` (`parent_id`),
+  KEY `idx_public` (`public`),
+  CONSTRAINT `fk_collections_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_collections_parent` FOREIGN KEY (`parent_id`) REFERENCES `collections` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `households`
+--
+
+DROP TABLE IF EXISTS `households`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `households` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -83,13 +147,19 @@ CREATE TABLE `ingredients` (
   `stockcode` int DEFAULT NULL,
   `public` tinyint(1) NOT NULL,
   `pantryCategory_id` int NOT NULL,
+  `household_id` int NOT NULL,
+  `parent_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`),
   KEY `menus_ingredients_category_id_19b50d48_fk_menus_sup` (`supermarketCategory_id`),
   KEY `menus_ingredient_pantryCategory_id_5bedb1cc_fk_menus_pan` (`pantryCategory_id`),
+  KEY `idx_household_id` (`household_id`),
+  KEY `idx_parent_id` (`parent_id`),
+  CONSTRAINT `fk_ingredients_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_ingredients_parent` FOREIGN KEY (`parent_id`) REFERENCES `ingredients` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `menus_ingredient_pantryCategory_id_5bedb1cc_fk_menus_pan` FOREIGN KEY (`pantryCategory_id`) REFERENCES `category_pantry` (`id`),
   CONSTRAINT `menus_ingredient_supermarketCategory__d7fc947f_fk_menus_sup` FOREIGN KEY (`supermarketCategory_id`) REFERENCES `category_supermarket` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=410 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=404 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -119,10 +189,14 @@ CREATE TABLE `plans` (
   `week` smallint NOT NULL,
   `year` smallint NOT NULL,
   `recipe_id` int NOT NULL,
+  `household_id` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `menus_recipeweek_da50e9c3` (`recipe_id`),
+  KEY `idx_household_id` (`household_id`),
+  KEY `idx_household_week_year` (`household_id`,`week`,`year`),
+  CONSTRAINT `fk_plans_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `menus_recipeweek_recipe_id_4ff45663a2e8e49d_fk_menus_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1725 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=1663 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -156,16 +230,19 @@ CREATE TABLE `recipe_ingredients` (
   `primaryIngredient` tinyint(1) NOT NULL,
   `quantity4` varchar(16) NOT NULL,
   `quantityMeasure_id` int DEFAULT NULL,
+  `parent_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `menus_recipeingredients_7a06a9e2` (`ingredient_id`),
   KEY `menus_recipeingredients_da50e9c3` (`recipe_id`),
   KEY `menus_recipeingredients_2fac932d` (`preperation_id`),
   KEY `menus_recipeingredients_5071bd2a` (`quantityMeasure_id`),
+  KEY `idx_parent_id` (`parent_id`),
+  CONSTRAINT `fk_recipe_ingredients_parent` FOREIGN KEY (`parent_id`) REFERENCES `recipe_ingredients` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `menus_re_preperation_id_24f90a2206fa673e_fk_menus_preperation_id` FOREIGN KEY (`preperation_id`) REFERENCES `preparations` (`id`),
   CONSTRAINT `menus_re_quantityMeasure_id_22c6089332a864ec_fk_menus_measure_id` FOREIGN KEY (`quantityMeasure_id`) REFERENCES `measurements` (`id`),
   CONSTRAINT `menus_recipeingred_recipe_id_12e8587e0cec8eee_fk_menus_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`id`),
   CONSTRAINT `menus_recipeingredie_ingredient_id_23d8ab19_fk_menus_ing` FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4262 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=4131 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -181,28 +258,31 @@ CREATE TABLE `recipes` (
   `prepTime` smallint DEFAULT NULL,
   `cookTime` smallint NOT NULL,
   `description` longtext,
-  `duplicate` tinyint(1) NOT NULL,
+  `archived` tinyint(1) NOT NULL,
   `season_id` int DEFAULT NULL,
   `primaryType_id` int DEFAULT NULL,
   `secondaryType_id` int DEFAULT NULL,
   `public` tinyint(1) NOT NULL,
-  `collection_id` int DEFAULT NULL,
   `url_slug` varchar(255) NOT NULL,
   `image_filename` varchar(100) DEFAULT NULL,
   `pdf_filename` varchar(100) DEFAULT NULL,
+  `household_id` int NOT NULL,
+  `parent_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `menus_recipe_season_id_dafbec51_fk_menus_season_id` (`season_id`),
   KEY `menus_recipe_primaryType_id_2d656011_fk_menus_primarytype_id` (`primaryType_id`),
   KEY `menus_recipe_secondaryType_id_8ff8267b_fk_menus_secondarytype_id` (`secondaryType_id`),
-  KEY `idx_collection_id` (`collection_id`),
   KEY `idx_recipe_url_slug` (`url_slug`),
   KEY `idx_image_filename` (`image_filename`),
   KEY `idx_pdf_filename` (`pdf_filename`),
-  CONSTRAINT `fk_recipes_collection` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  KEY `idx_household_id` (`household_id`),
+  KEY `idx_parent_id` (`parent_id`),
+  CONSTRAINT `fk_recipes_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_recipes_parent` FOREIGN KEY (`parent_id`) REFERENCES `recipes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `menus_recipe_primaryType_id_2d656011_fk` FOREIGN KEY (`primaryType_id`) REFERENCES `type_proteins` (`id`),
   CONSTRAINT `menus_recipe_season_id_dafbec51_fk_menus_season_id` FOREIGN KEY (`season_id`) REFERENCES `seasons` (`id`),
   CONSTRAINT `menus_recipe_secondaryType_id_8ff8267b_fk` FOREIGN KEY (`secondaryType_id`) REFERENCES `type_carbs` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=298 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=275 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -213,7 +293,7 @@ DROP TABLE IF EXISTS `schema_migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `schema_migrations` (
-  `version` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `version` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `executed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `execution_time_ms` int DEFAULT NULL,
   PRIMARY KEY (`version`),
@@ -254,10 +334,14 @@ CREATE TABLE `shopping_lists` (
   `recipeIngredient_id` int DEFAULT NULL,
   `purchased` tinyint(1) NOT NULL,
   `stockcode` int DEFAULT NULL,
+  `household_id` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `menus_shoppinglist_recipeIngredient_id_1b4f44ab_fk_menus_rec` (`recipeIngredient_id`),
+  KEY `idx_household_id` (`household_id`),
+  KEY `idx_household_week_year` (`household_id`,`week`,`year`),
+  CONSTRAINT `fk_shopping_lists_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `menus_shoppinglist_recipeIngredient_id_1b4f44ab_fk_menus_rec` FOREIGN KEY (`recipeIngredient_id`) REFERENCES `recipe_ingredients` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=20042 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=18993 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -308,9 +392,12 @@ CREATE TABLE `users` (
   `is_admin` tinyint(1) NOT NULL DEFAULT '0',
   `is_active` tinyint(1) NOT NULL,
   `date_joined` datetime NOT NULL,
+  `household_id` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
-  KEY `idx_auth_user_is_admin` (`is_admin`)
+  KEY `idx_auth_user_is_admin` (`is_admin`),
+  KEY `idx_household_id` (`household_id`),
+  CONSTRAINT `fk_users_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -341,11 +428,12 @@ INSERT INTO `schema_migrations` (`version`, `executed_at`, `execution_time_ms`) 
 ('011_insert_initial_collections.sql', '2025-08-22 10:00:10', 75),
 ('012_assign_recipes_to_first_collection.sql', '2025-08-22 10:00:11', 500),
 ('013_add_url_slug_fields.sql', '2025-08-22 10:00:12', 150),
-('014_add_filename_dark_to_collections.sql', '2025-08-22 10:00:13', 100);
-('015_add_versioned_file_columns.sql', '2025-08-22 10:00:14', 100);
-('016_fix_url_slug_format_and_constraints.sql', '2025-08-22 10:00:15', 100);
-('017_set_default_values_collections_filenames.sql', '2025-08-22 10:00:16', 100);
-('018_set_default_value_url_slug.sql', '2025-08-22 10:00:17', 100);
-('019_remove_shopping_list_category_redundancy.sql', '2025-08-22 10:00:18', 100);
+('014_add_filename_dark_to_collections.sql', '2025-08-22 10:00:13', 100),
+('015_add_versioned_file_columns.sql', '2025-08-22 10:00:14', 100),
+('016_fix_url_slug_format_and_constraints.sql', '2025-08-22 10:00:15', 100),
+('017_set_default_values_collections_filenames.sql', '2025-08-22 10:00:16', 100),
+('018_set_default_value_url_slug.sql', '2025-08-22 10:00:17', 100),
+('019_remove_shopping_list_category_redundancy.sql', '2025-08-22 10:00:18', 100),
+('020_household_feature_implementation.sql', '2025-08-22 10:00:19', 100);
 
 -- Dump completed on [DATE]
