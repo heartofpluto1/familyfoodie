@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRecipesForRandomization } from '@/lib/queries/menus';
 import { Recipe } from '@/types/menus';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
 // Randomization logic with ingredient constraints
 function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Recipe[] {
@@ -41,14 +41,14 @@ function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Rec
 	return selected;
 }
 
-async function handler(request: Request) {
+async function handler(request: AuthenticatedRequest) {
 	try {
 		// Get the count from query params
 		const url = new URL(request.url);
 		const countParam = url.searchParams.get('count');
 		const count = countParam ? parseInt(countParam) : 3; // Default to 3 if not specified
 
-		const availableRecipes = await getRecipesForRandomization();
+		const availableRecipes = await getRecipesForRandomization(request.household_id);
 		const randomizedRecipes = selectRandomRecipes(availableRecipes, count);
 
 		return NextResponse.json({

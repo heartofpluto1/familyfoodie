@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getNextWeekRecipes } from '@/lib/queries/menus';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function getHandler(request: NextRequest) {
+async function getHandler(request: AuthenticatedRequest) {
 	try {
 		const searchParams = request.nextUrl.searchParams;
 		const week = parseInt(searchParams.get('week') || '0');
@@ -15,7 +15,7 @@ async function getHandler(request: NextRequest) {
 		// For now, we'll use the existing getNextWeekRecipes function
 		// In a real implementation, you might want to create a more specific function
 		// that can fetch recipes for any week/year combination
-		const recipes = await getNextWeekRecipes();
+		const recipes = await getNextWeekRecipes(request.household_id);
 
 		return NextResponse.json({
 			success: true,

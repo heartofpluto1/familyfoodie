@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getCurrentWeekRecipes, getCurrentWeek } from '@/lib/queries/menus';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function handler() {
+async function handler(req: AuthenticatedRequest) {
 	try {
 		const currentWeek = getCurrentWeek();
-		const recipes = await getCurrentWeekRecipes();
+		const recipes = await getCurrentWeekRecipes(req.household_id);
 
 		return NextResponse.json({
 			week: currentWeek.week,

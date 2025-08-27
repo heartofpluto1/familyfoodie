@@ -388,7 +388,7 @@ describe('/api/shop/remove', () => {
 
 						expect(response.status).toBe(200);
 
-						// Verify household_id is used in the query
+						// Verify household_id 42 is used in the query
 						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [1, 42]);
 					},
 					requestPatcher: customUserPatcher,

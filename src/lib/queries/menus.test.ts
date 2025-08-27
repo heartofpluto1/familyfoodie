@@ -1,10 +1,26 @@
-import { getRecipesInCollection, getMyRecipes, getAllRecipesWithDetailsHousehold, getRecipeDetailsHousehold, getMyIngredients } from './menus';
+import {
+	getRecipesInCollection,
+	getMyRecipes,
+	getAllRecipesWithDetailsHousehold,
+	getRecipeDetailsHousehold,
+	getMyIngredients,
+	getCurrentWeekRecipes,
+	getAllPlannedWeeks,
+	getCurrentAndPlannedWeeks,
+	getRecipeWeeks,
+	getNextWeekRecipes,
+	deleteWeekRecipes,
+	getRecipesForRandomization,
+	saveWeekRecipes,
+} from './menus';
 import pool from '@/lib/db.js';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // Mock the database pool
 jest.mock('@/lib/db.js');
-const mockPool = pool as jest.Mocked<typeof pool>;
+const mockPool = pool as jest.Mocked<typeof pool> & {
+	getConnection: jest.Mock;
+};
 
 describe('Household-Aware Recipe Queries', () => {
 	beforeEach(() => {
@@ -263,6 +279,314 @@ describe('Household-Aware Recipe Queries', () => {
 			await getMyIngredients(1);
 
 			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND NOT EXISTS ('), [1, 1, 1, 1, 1, 1]);
+		});
+	});
+
+	describe('Planning Functions with Household Isolation', () => {
+		describe('getCurrentWeekRecipes', () => {
+			it('should return current week recipes filtered by household_id', async () => {
+				const mockRecipes = [
+					{
+						id: 1,
+						name: 'Current Week Recipe',
+						household_id: 1,
+						image_filename: 'recipe1.jpg',
+						pdf_filename: 'recipe1.pdf',
+						url_slug: 'current-recipe',
+						collection_url_slug: 'collection-slug',
+					},
+				];
+
+				mockPool.execute.mockResolvedValueOnce([mockRecipes as RowDataPacket[], []]);
+
+				const result = await getCurrentWeekRecipes(1);
+
+				expect(result).toEqual(mockRecipes);
+				expect(mockPool.execute).toHaveBeenCalledWith(
+					expect.stringContaining('WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?'),
+					expect.arrayContaining([expect.any(Number), expect.any(Number), 1])
+				);
+			});
+
+			it('should only return recipes from the specified household', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getCurrentWeekRecipes(2);
+
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND rw.household_id = ?'), expect.arrayContaining([2]));
+			});
+		});
+
+		describe('getNextWeekRecipes', () => {
+			it('should return next week recipes filtered by household_id', async () => {
+				const mockRecipes = [
+					{
+						id: 2,
+						name: 'Next Week Recipe',
+						household_id: 1,
+						url_slug: 'next-recipe',
+						collection_url_slug: 'collection-slug',
+					},
+				];
+
+				mockPool.execute.mockResolvedValueOnce([mockRecipes as RowDataPacket[], []]);
+
+				const result = await getNextWeekRecipes(1);
+
+				expect(result).toEqual(mockRecipes);
+				expect(mockPool.execute).toHaveBeenCalledWith(
+					expect.stringContaining('WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?'),
+					expect.arrayContaining([expect.any(Number), expect.any(Number), 1])
+				);
+			});
+
+			it('should isolate next week recipes by household', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getNextWeekRecipes(3);
+
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND rw.household_id = ?'), expect.arrayContaining([3]));
+			});
+		});
+
+		describe('getAllPlannedWeeks', () => {
+			it('should return planned weeks filtered by household_id', async () => {
+				const mockWeeks = [
+					{ week: 45, year: 2024 },
+					{ week: 46, year: 2024 },
+				];
+				const mockRecipes = [
+					{
+						id: 1,
+						name: 'Planned Recipe',
+						url_slug: 'planned-recipe',
+						collection_url_slug: 'collection-slug',
+					},
+				];
+
+				// First call for weeks list
+				mockPool.execute.mockResolvedValueOnce([mockWeeks as RowDataPacket[], []]);
+				// Subsequent calls for recipes in each week
+				mockPool.execute.mockResolvedValue([mockRecipes as RowDataPacket[], []]);
+
+				const result = await getAllPlannedWeeks(1);
+
+				expect(result).toHaveLength(2);
+				expect(result[0]).toMatchObject({ week: 45, year: 2024, recipes: mockRecipes });
+
+				// Check first call includes household_id filter
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE rw.household_id = ?'), expect.arrayContaining([1]));
+
+				// Check recipe queries include household_id filter
+				expect(mockPool.execute).toHaveBeenCalledWith(
+					expect.stringContaining('WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?'),
+					expect.arrayContaining([45, 2024, 1])
+				);
+			});
+
+			it('should only return weeks for the specified household', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getAllPlannedWeeks(2);
+
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE rw.household_id = ?'), expect.arrayContaining([2]));
+			});
+		});
+
+		describe('getCurrentAndPlannedWeeks', () => {
+			it('should combine current and planned weeks for household', async () => {
+				const currentWeekRecipes = [{ id: 1, name: 'Current Recipe' }];
+
+				// Mock getCurrentWeekRecipes call
+				mockPool.execute.mockResolvedValueOnce([currentWeekRecipes as RowDataPacket[], []]);
+				// Mock getAllPlannedWeeks calls
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]); // planned weeks query
+
+				const result = await getCurrentAndPlannedWeeks(1);
+
+				expect(result).toHaveLength(1); // Current week only since no planned weeks
+				expect(result[0].recipes).toEqual(currentWeekRecipes);
+			});
+
+			it('should pass household_id to both getCurrentWeekRecipes and getAllPlannedWeeks', async () => {
+				// Mock current week recipes
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+				// Mock planned weeks
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getCurrentAndPlannedWeeks(2);
+
+				// Should call both functions with household_id = 2
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND rw.household_id = ?'), expect.arrayContaining([2]));
+			});
+		});
+
+		describe('getRecipeWeeks', () => {
+			it('should return recipe weeks filtered by household_id', async () => {
+				const mockPlannedMeals = [
+					{
+						id: 1,
+						week: 44,
+						year: 2024,
+						recipe_id: 1,
+						recipe_name: 'Test Recipe',
+						image_filename: 'test.jpg',
+						pdf_filename: 'test.pdf',
+						url_slug: 'test-recipe',
+						collection_url_slug: 'test-collection',
+					},
+				];
+
+				mockPool.execute.mockResolvedValueOnce([mockPlannedMeals as RowDataPacket[], []]);
+
+				const result = await getRecipeWeeks(1, 6);
+
+				expect(result.data).toBeDefined();
+				expect(result.stats).toBeDefined();
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE \n        plans.household_id = ? AND'), expect.arrayContaining([1]));
+			});
+
+			it('should filter by household_id and date range', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getRecipeWeeks(3, 3);
+
+				expect(mockPool.execute).toHaveBeenCalledWith(
+					expect.stringContaining('plans.household_id = ?'),
+					expect.arrayContaining([3, expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)])
+				);
+			});
+
+			it('should use default months parameter when not provided', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getRecipeWeeks(1);
+
+				// Should still include household_id filter with default 6 months
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('plans.household_id = ?'), expect.arrayContaining([1]));
+			});
+		});
+
+		describe('deleteWeekRecipes', () => {
+			it('should delete week recipes only for specified household', async () => {
+				mockPool.execute.mockResolvedValueOnce([{ affectedRows: 2 } as ResultSetHeader, []]);
+
+				await deleteWeekRecipes(45, 2024, 1);
+
+				expect(mockPool.execute).toHaveBeenCalledWith('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [45, 2024, 1]);
+			});
+
+			it('should isolate deletions by household_id', async () => {
+				mockPool.execute.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]);
+
+				await deleteWeekRecipes(46, 2024, 3);
+
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND household_id = ?'), [46, 2024, 3]);
+			});
+
+			it('should not delete plans from other households', async () => {
+				mockPool.execute.mockResolvedValueOnce([{ affectedRows: 0 } as ResultSetHeader, []]);
+
+				await deleteWeekRecipes(47, 2024, 2);
+
+				// Verify the household filter is included
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('household_id = ?'), expect.arrayContaining([2]));
+			});
+		});
+
+		describe('getRecipesForRandomization', () => {
+			it('should return recipes only from the specified household', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getRecipesForRandomization(1);
+
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.household_id = ?'), expect.arrayContaining([1]));
+			});
+
+			it('should isolate randomization by household_id in both collections and plans filters', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getRecipesForRandomization(2);
+
+				// Should filter collections by household_id
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.household_id = ?'), expect.arrayContaining([2]));
+
+				// Should filter plans subquery by household_id
+				expect(mockPool.execute).toHaveBeenCalledWith(
+					expect.stringContaining('WHERE household_id = ? AND'),
+					expect.arrayContaining([2, 2]) // household_id appears twice in parameters
+				);
+			});
+
+			it('should not return recipes from other households', async () => {
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+				await getRecipesForRandomization(3);
+
+				// Verify household filtering is applied
+				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.household_id = ?'), expect.arrayContaining([3]));
+			});
+		});
+
+		describe('saveWeekRecipes', () => {
+			let mockConnection: {
+				beginTransaction: jest.Mock;
+				execute: jest.Mock;
+				commit: jest.Mock;
+				rollback: jest.Mock;
+				release: jest.Mock;
+			};
+
+			beforeEach(() => {
+				mockConnection = {
+					beginTransaction: jest.fn().mockResolvedValue(undefined),
+					execute: jest.fn().mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]),
+					commit: jest.fn().mockResolvedValue(undefined),
+					rollback: jest.fn().mockResolvedValue(undefined),
+					release: jest.fn().mockResolvedValue(undefined),
+				};
+				mockPool.getConnection.mockResolvedValue(mockConnection);
+			});
+
+			it('should delete existing plans only for specified household', async () => {
+				await saveWeekRecipes(45, 2024, [1, 2, 3], 1);
+
+				expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [45, 2024, 1]);
+			});
+
+			it('should insert new plans with household_id', async () => {
+				await saveWeekRecipes(46, 2024, [4, 5], 2);
+
+				// Should delete with household filter
+				expect(mockConnection.execute).toHaveBeenCalledWith(
+					expect.stringContaining('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?'),
+					[46, 2024, 2]
+				);
+
+				// Should insert with household_id included
+				expect(mockConnection.execute).toHaveBeenCalledWith(
+					expect.stringContaining('INSERT INTO plans (week, year, recipe_id, household_id) VALUES'),
+					[46, 2024, 4, 2, 46, 2024, 5, 2]
+				);
+			});
+
+			it('should isolate save operations by household_id', async () => {
+				await saveWeekRecipes(47, 2024, [6], 3);
+
+				// Verify household isolation in both DELETE and INSERT
+				expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('household_id = ?'), expect.arrayContaining([3]));
+				expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('household_id) VALUES'), expect.arrayContaining([47, 2024, 6, 3]));
+			});
+
+			it('should handle empty recipe list with household isolation', async () => {
+				await saveWeekRecipes(48, 2024, [], 1);
+
+				// Should still delete with household filter
+				expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [48, 2024, 1]);
+
+				// Should not call INSERT for empty array
+				expect(mockConnection.execute).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 });

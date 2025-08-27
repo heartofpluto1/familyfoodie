@@ -16,7 +16,7 @@ function getWeekNumber(date: Date): number {
 /**
  * Get recipe weeks from the last N months
  */
-export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
+export async function getRecipeWeeks(household_id: number, months: number = 6): Promise<QueryResult> {
 	// Calculate date range
 	const monthsAgo = new Date();
 	monthsAgo.setMonth(monthsAgo.getMonth() - months);
@@ -43,12 +43,13 @@ export async function getRecipeWeeks(months: number = 6): Promise<QueryResult> {
       INNER JOIN collection_recipes cr ON recipes.id = cr.recipe_id
       INNER JOIN collections c ON cr.collection_id = c.id
       WHERE 
-        ((plans.year = ${currentYear} AND plans.week <= ${currentWeek}) OR
-        (plans.year = ${monthsAgoYear} AND plans.week >= ${monthsAgoWeek}))
+        plans.household_id = ? AND
+        ((plans.year = ? AND plans.week <= ?) OR
+        (plans.year = ? AND plans.week >= ?))
       ORDER BY plans.year DESC, plans.week DESC
     `;
 
-	const [rows] = await pool.execute(query);
+	const [rows] = await pool.execute(query, [household_id, currentYear, currentWeek, monthsAgoYear, monthsAgoWeek]);
 	const groupedWeeks = groupRecipesByWeek(rows as PlannedMeal[]);
 
 	return {
@@ -261,7 +262,7 @@ export function getNextWeek(): { week: number; year: number } {
 /**
  * Get recipes for the current week
  */
-export async function getCurrentWeekRecipes(): Promise<Recipe[]> {
+export async function getCurrentWeekRecipes(household_id: number): Promise<Recipe[]> {
 	const { week, year } = getCurrentWeek();
 
 	const query = `
@@ -279,18 +280,18 @@ export async function getCurrentWeekRecipes(): Promise<Recipe[]> {
 		JOIN recipes r ON rw.recipe_id = r.id
 		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 		INNER JOIN collections c ON cr.collection_id = c.id
-		WHERE rw.week = ? AND rw.year = ? 
+		WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
 		ORDER BY rw.id ASC
 	`;
 
-	const [rows] = await pool.execute(query, [week, year]);
+	const [rows] = await pool.execute(query, [week, year, household_id]);
 	return rows as Recipe[];
 }
 
 /**
  * Get recipes for next week
  */
-export async function getNextWeekRecipes(): Promise<Recipe[]> {
+export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]> {
 	const { week, year } = getNextWeek();
 
 	const query = `
@@ -308,33 +309,33 @@ export async function getNextWeekRecipes(): Promise<Recipe[]> {
 		JOIN recipes r ON rw.recipe_id = r.id
 		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 		INNER JOIN collections c ON cr.collection_id = c.id
-		WHERE rw.week = ? AND rw.year = ? 
+		WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
 		ORDER BY rw.id ASC
 	`;
 
-	const [rows] = await pool.execute(query, [week, year]);
+	const [rows] = await pool.execute(query, [week, year, household_id]);
 	return rows as Recipe[];
 }
 
 /**
  * Save recipes for a specific week
  */
-export async function saveWeekRecipes(week: number, year: number, recipeIds: number[]): Promise<void> {
+export async function saveWeekRecipes(week: number, year: number, recipeIds: number[], household_id: number): Promise<void> {
 	const connection = await pool.getConnection();
 
 	try {
 		await connection.beginTransaction();
 
-		// Delete existing recipes for the week
-		await connection.execute('DELETE FROM plans WHERE week = ? AND year = ?', [week, year]);
+		// Delete existing recipes for the week and household
+		await connection.execute('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [week, year, household_id]);
 
-		// Insert new recipes
+		// Insert new recipes with household_id
 		if (recipeIds.length > 0) {
-			const values = recipeIds.map(id => [week, year, id]);
-			const placeholders = values.map(() => '(?, ?, ?)').join(', ');
+			const values = recipeIds.map(id => [week, year, id, household_id]);
+			const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
 			const flatValues = values.flat();
 
-			await connection.execute(`INSERT INTO plans (week, year, recipe_id) VALUES ${placeholders}`, flatValues);
+			await connection.execute(`INSERT INTO plans (week, year, recipe_id, household_id) VALUES ${placeholders}`, flatValues);
 		}
 
 		await connection.commit();
@@ -448,14 +449,14 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 /**
  * Delete all recipes for a specific week
  */
-export async function deleteWeekRecipes(week: number, year: number): Promise<void> {
-	await pool.execute('DELETE FROM plans WHERE week = ? AND year = ?', [week, year]);
+export async function deleteWeekRecipes(week: number, year: number, household_id: number): Promise<void> {
+	await pool.execute('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [week, year, household_id]);
 }
 
 /**
  * Get recipes for randomization (excluding recent weeks and with ingredient constraints)
  */
-export async function getRecipesForRandomization(): Promise<Recipe[]> {
+export async function getRecipesForRandomization(household_id: number): Promise<Recipe[]> {
 	const { year: currentYear } = getCurrentWeek();
 
 	// Calculate 6 months ago
@@ -482,15 +483,16 @@ export async function getRecipesForRandomization(): Promise<Recipe[]> {
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		WHERE r.archived = 0 
+		  AND c.household_id = ?
 		  AND r.id NOT IN (
 			SELECT DISTINCT recipe_id 
 			FROM plans 
-			WHERE ((year = ? AND week >= ?) OR (year > ? AND year <= ?))		  )
+			WHERE household_id = ? AND ((year = ? AND week >= ?) OR (year > ? AND year <= ?))		  )
 		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, c.url_slug
 		ORDER BY r.name ASC
 	`;
 
-	const [rows] = await pool.execute(query, [sixMonthsAgoYear, sixMonthsAgoWeek, sixMonthsAgoYear, currentYear]);
+	const [rows] = await pool.execute(query, [household_id, household_id, sixMonthsAgoYear, sixMonthsAgoWeek, sixMonthsAgoYear, currentYear]);
 
 	const recipes = rows as (Recipe & { ingredients: string })[];
 	return recipes.map(row => ({
@@ -741,14 +743,14 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 /**
  * Get all planned weeks from current week forward
  */
-export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: number; recipes: Recipe[] }>> {
+export async function getAllPlannedWeeks(household_id: number): Promise<Array<{ week: number; year: number; recipes: Recipe[] }>> {
 	const { week: currentWeek, year: currentYear } = getCurrentWeek();
 
 	// Get all planned weeks from current week forward (including next year)
 	const query = `
 		SELECT DISTINCT rw.week, rw.year
 		FROM plans rw
-		WHERE 1=1
+		WHERE rw.household_id = ?
 		AND (
 			(rw.year = ? AND rw.week >= ?) OR
 			(rw.year > ?)
@@ -756,7 +758,7 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 		ORDER BY rw.year ASC, rw.week ASC
 	`;
 
-	const [weekRows] = await pool.execute(query, [currentYear, currentWeek, currentYear]);
+	const [weekRows] = await pool.execute(query, [household_id, currentYear, currentWeek, currentYear]);
 	const plannedWeeks = weekRows as Array<{ week: number; year: number }>;
 
 	// Fetch recipes for each planned week
@@ -777,11 +779,11 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 				JOIN recipes r ON rw.recipe_id = r.id
 				INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 				INNER JOIN collections c ON cr.collection_id = c.id
-				WHERE rw.week = ? AND rw.year = ?
+				WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
 				ORDER BY rw.id ASC
 			`;
 
-			const [recipeRows] = await pool.execute(recipesQuery, [week, year]);
+			const [recipeRows] = await pool.execute(recipesQuery, [week, year, household_id]);
 			const recipes = recipeRows as Recipe[];
 
 			return { week, year, recipes };
@@ -794,14 +796,14 @@ export async function getAllPlannedWeeks(): Promise<Array<{ week: number; year: 
 /**
  * Get current week recipes and all planned future weeks
  */
-export async function getCurrentAndPlannedWeeks(): Promise<Array<{ week: number; year: number; recipes: Recipe[] }>> {
+export async function getCurrentAndPlannedWeeks(household_id: number): Promise<Array<{ week: number; year: number; recipes: Recipe[] }>> {
 	const { week: currentWeek, year: currentYear } = getCurrentWeek();
 
 	// First get current week recipes
-	const currentWeekRecipes = await getCurrentWeekRecipes();
+	const currentWeekRecipes = await getCurrentWeekRecipes(household_id);
 
 	// Then get all planned weeks
-	const plannedWeeks = await getAllPlannedWeeks();
+	const plannedWeeks = await getAllPlannedWeeks(household_id);
 
 	// Check if current week is already in planned weeks
 	const currentWeekExists = plannedWeeks.some(w => w.week === currentWeek && w.year === currentYear);
