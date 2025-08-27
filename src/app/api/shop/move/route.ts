@@ -59,13 +59,13 @@ async function handler(request: AuthenticatedRequest) {
 			);
 		}
 
-		if (typeof year !== 'number' || year < 2020 || year > 2100) {
+		if (typeof year !== 'number' || year < 2015 || year > 2050) {
 			return NextResponse.json(
 				{
 					success: false,
 					error: 'Invalid year',
 					code: 'VALIDATION_ERROR',
-					details: 'Year must be between 2020 and 2100',
+					details: 'Year must be between 2015 and 2050',
 				},
 				{ status: 400 }
 			);
