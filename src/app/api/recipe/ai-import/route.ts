@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import OpenAI from 'openai';
 import { generateVersionedFilename } from '@/lib/utils/secureFilename';
 import { uploadFile, getStorageMode } from '@/lib/storage';
@@ -33,6 +33,13 @@ interface ExtractedRecipe {
 	primaryTypeId?: number; // For form data
 	secondaryTypeId?: number; // For form data
 	collectionId?: number; // For form data
+}
+
+interface CollectionInfo extends RowDataPacket {
+	id: number;
+	url_slug: string | null;
+	title: string;
+	household_id: number;
 }
 
 interface IngredientRow extends RowDataPacket {
@@ -133,7 +140,7 @@ Examples:
 		try {
 			const recipe = JSON.parse(content) as ExtractedRecipe;
 			return recipe;
-		} catch (parseError) {
+		} catch {
 			throw new Error('OPENAI_INVALID_JSON: Failed to parse OpenAI response as JSON');
 		}
 	} catch (error) {
@@ -146,24 +153,42 @@ Examples:
 	}
 };
 
-async function importHandler(request: NextRequest) {
+async function importHandler(request: AuthenticatedRequest) {
 	try {
 		const formData = await request.formData();
 		const pdfFile = formData.get('pdfFile') as File;
 		const heroImageFile = formData.get('heroImage') as File | null;
 		const structuredRecipeData = formData.get('structuredRecipe') as string | null;
+		const collectionIdFromForm = formData.get('collectionId') as string | null;
 
 		// Early validation: PDF file is required
 		if (!pdfFile) {
-			return NextResponse.json({
-				success: false,
-				error: 'PDF file is required for recipe import',
-				code: 'MISSING_PDF_FILE',
-				details: 'A PDF file containing the recipe must be provided to extract recipe data.'
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'PDF file is required for recipe import',
+					code: 'MISSING_PDF_FILE',
+					details: 'A PDF file containing the recipe must be provided to extract recipe data.',
+				},
+				{ status: 400 }
+			);
+		}
+
+		// Early validation: collection ID is required (from form field for AI path, or structured data)
+		if (!collectionIdFromForm && !structuredRecipeData) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Collection ID is required for recipe import',
+					code: 'MISSING_COLLECTION_ID',
+					details: 'A collection must be specified to organize the imported recipe.',
+				},
+				{ status: 400 }
+			);
 		}
 
 		let recipe: ExtractedRecipe;
+		let collectionInfo: CollectionInfo | null = null; // Will be set by validation in either AI or structured path
 
 		// Early validation: structured recipe data format if provided
 		if (structuredRecipeData) {
@@ -175,90 +200,154 @@ async function importHandler(request: NextRequest) {
 					throw new Error('Missing required fields');
 				}
 				recipe = parsedData;
+
+				// Early validation: collection ID is required (when structured data provided)
+				if (!recipe.collectionId) {
+					return NextResponse.json(
+						{
+							success: false,
+							error: 'Collection ID is required for recipe import',
+							code: 'MISSING_COLLECTION_ID',
+							details: 'A collection must be specified to organize the imported recipe.',
+						},
+						{ status: 400 }
+					);
+				}
 			} catch (error) {
 				console.error('Error parsing structured recipe data:', error);
-				return NextResponse.json({
-					success: false,
-					error: 'Invalid structured recipe data provided',
-					code: 'INVALID_RECIPE_DATA',
-					details: 'Structured recipe data must be valid JSON with required fields: title, ingredients, description.'
-				}, { status: 400 });
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'Invalid structured recipe data provided',
+						code: 'INVALID_RECIPE_DATA',
+						details: 'Structured recipe data must be valid JSON with required fields: title, ingredients, description.',
+					},
+					{ status: 400 }
+				);
 			}
 		} else {
 			// No structured data provided, use AI parsing
 			console.log(`Processing PDF: ${pdfFile.name}`);
+
+			// Early validation: validate collection exists before expensive OpenAI call
+			const tempConnection = await pool.getConnection();
+			try {
+				const [collectionRows] = await tempConnection.execute<RowDataPacket[]>(
+					'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
+					[parseInt(collectionIdFromForm!), request.household_id]
+				);
+
+				if (collectionRows.length === 0) {
+					tempConnection.release();
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Collection with ID ${collectionIdFromForm} not found in your household`,
+							code: 'COLLECTION_NOT_FOUND',
+							details: 'The specified collection does not exist or you do not have access to it.',
+						},
+						{ status: 400 }
+					);
+				}
+
+				collectionInfo = collectionRows[0] as CollectionInfo;
+				if (!collectionInfo.url_slug) {
+					tempConnection.release();
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Collection "${collectionInfo.title}" is missing URL slug`,
+							code: 'COLLECTION_INVALID',
+							details: 'The collection configuration is incomplete. Please contact support.',
+						},
+						{ status: 400 }
+					);
+				}
+			} finally {
+				tempConnection.release();
+			}
+
 			try {
 				recipe = await parseRecipeWithAI(pdfFile);
+				// Ensure recipe has collection ID from form field
+				recipe.collectionId = parseInt(collectionIdFromForm!);
 			} catch (error) {
 				console.error('Error parsing recipe with AI:', error);
 				if (error instanceof Error && error.message.includes('OPENAI_NO_RESPONSE')) {
-					return NextResponse.json({
-						success: false,
-						error: 'No recipe data extracted from PDF',
-						code: 'OPENAI_NO_RESPONSE',
-						details: 'The AI service returned no recipe data. The PDF may not contain a recognizable recipe format.'
-					}, { status: 500 });
+					return NextResponse.json(
+						{
+							success: false,
+							error: 'No recipe data extracted from PDF',
+							code: 'OPENAI_NO_RESPONSE',
+							details: 'The AI service returned no recipe data. The PDF may not contain a recognizable recipe format.',
+						},
+						{ status: 500 }
+					);
 				} else if (error instanceof Error && error.message.includes('OPENAI_INVALID_JSON')) {
-					return NextResponse.json({
-						success: false,
-						error: 'Invalid recipe data format received',
-						code: 'OPENAI_INVALID_JSON',
-						details: 'The AI service returned malformed data. Please try again or contact support if the problem persists.'
-					}, { status: 500 });
+					return NextResponse.json(
+						{
+							success: false,
+							error: 'Invalid recipe data format received',
+							code: 'OPENAI_INVALID_JSON',
+							details: 'The AI service returned malformed data. Please try again or contact support if the problem persists.',
+						},
+						{ status: 500 }
+					);
 				} else {
-					return NextResponse.json({
-						success: false,
-						error: 'Failed to extract recipe data from PDF',
-						code: 'OPENAI_EXTRACTION_ERROR',
-						details: 'Unable to process the PDF file. Please ensure the PDF contains a clear recipe and try again.'
-					}, { status: 500 });
+					return NextResponse.json(
+						{
+							success: false,
+							error: 'Failed to extract recipe data from PDF',
+							code: 'OPENAI_EXTRACTION_ERROR',
+							details: 'Unable to process the PDF file. Please ensure the PDF contains a clear recipe and try again.',
+						},
+						{ status: 500 }
+					);
 				}
 			}
-		}
-
-		// Early validation: collection ID is required
-		if (!recipe.collectionId) {
-			return NextResponse.json({
-				success: false,
-				error: 'Collection ID is required for recipe import',
-				code: 'MISSING_COLLECTION_ID',
-				details: 'A collection must be specified to organize the imported recipe.'
-			}, { status: 400 });
 		}
 
 		// Get a connection for transaction handling
 		const connection = await pool.getConnection();
 
-		// Early validation: verify collection exists and user has access
-		try {
-			const [collectionRows] = await connection.execute<RowDataPacket[]>(
-				'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
-				[recipe.collectionId, (request as any).household_id]
-			);
+		// Collection validation: for structured data path, validate here; for AI path, already validated
+		if (structuredRecipeData && recipe.collectionId && !collectionInfo) {
+			try {
+				const [collectionRows] = await connection.execute<RowDataPacket[]>(
+					'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
+					[recipe.collectionId, request.household_id]
+				);
 
-			if (collectionRows.length === 0) {
-				connection.release();
-				return NextResponse.json({
-					success: false,
-					error: `Collection with ID ${recipe.collectionId} not found in your household`,
-					code: 'COLLECTION_NOT_FOUND',
-					details: 'The specified collection does not exist or you do not have access to it.'
-				}, { status: 400 });
-			}
+				if (collectionRows.length === 0) {
+					connection.release();
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Collection with ID ${recipe.collectionId} not found in your household`,
+							code: 'COLLECTION_NOT_FOUND',
+							details: 'The specified collection does not exist or you do not have access to it.',
+						},
+						{ status: 400 }
+					);
+				}
 
-			const collectionInfo = collectionRows[0];
-			if (!collectionInfo.url_slug) {
+				collectionInfo = collectionRows[0] as CollectionInfo;
+				if (!collectionInfo.url_slug) {
+					connection.release();
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Collection "${collectionInfo.title}" is missing URL slug`,
+							code: 'COLLECTION_INVALID',
+							details: 'The collection configuration is incomplete. Please contact support.',
+						},
+						{ status: 400 }
+					);
+				}
+			} catch (validationError) {
 				connection.release();
-				return NextResponse.json({
-					success: false,
-					error: `Collection "${collectionInfo.title}" is missing URL slug`,
-					code: 'COLLECTION_INVALID',
-					details: 'The collection configuration is incomplete. Please contact support.'
-				}, { status: 400 });
+				throw validationError;
 			}
-		} catch (validationError) {
-			connection.release();
-			throw validationError;
 		}
 
 		try {
@@ -280,7 +369,7 @@ async function importHandler(request: NextRequest) {
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
 					placeholderSlug,
-					(request as any).household_id
+					request.household_id,
 				]
 			);
 
@@ -317,7 +406,7 @@ async function importHandler(request: NextRequest) {
 					// Check if ingredient already exists in user's household or is public
 					const [existingRows] = await connection.execute<IngredientRow[]>(
 						'SELECT id FROM ingredients WHERE LOWER(name) = LOWER(?) AND (household_id = ? OR public = 1)',
-						[ingredient.name, (request as any).household_id]
+						[ingredient.name, request.household_id]
 					);
 
 					if (existingRows.length > 0) {
@@ -332,7 +421,7 @@ async function importHandler(request: NextRequest) {
 						const [insertResult] = await connection.execute<ResultSetHeader>(
 							`INSERT INTO ingredients (name, fresh, pantryCategory_id, supermarketCategory_id, household_id, public) 
 							 VALUES (?, ?, ?, ?, ?, ?)`,
-							[ingredient.name, fresh ? 1 : 0, pantryCategory_id, supermarketCategory_id, (request as any).household_id, 0] // private by default
+							[ingredient.name, fresh ? 1 : 0, pantryCategory_id, supermarketCategory_id, request.household_id, 0] // private by default
 						);
 
 						ingredientId = insertResult.insertId;
@@ -427,18 +516,26 @@ async function importHandler(request: NextRequest) {
 				message += '. Warning: Some file uploads failed.';
 			}
 
-			// Get collection info for response (already validated earlier)
-			const [collectionRows] = await connection.execute<RowDataPacket[]>(
-				'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
-				[recipe.collectionId, (request as any).household_id]
-			);
-			const collectionInfo = collectionRows[0]; // Safe to access since validated earlier
+			// Collection info for response (use previously validated collectionInfo if available)
+			let collectionSlug = null;
+			if (recipe.collectionId && !collectionInfo) {
+				// If collectionId exists but we don't have info, query again (shouldn't happen but for safety)
+				const [collectionRows] = await connection.execute<RowDataPacket[]>(
+					'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
+					[recipe.collectionId, request.household_id]
+				);
+				collectionInfo = collectionRows[0] as CollectionInfo;
+			}
+
+			if (collectionInfo) {
+				collectionSlug = collectionInfo.url_slug;
+			}
 
 			return NextResponse.json({
 				success: true,
 				recipeId,
 				recipeSlug: urlSlug,
-				collectionSlug: collectionInfo.url_slug,
+				collectionSlug,
 				message,
 				recipe: {
 					title: recipe.title,
@@ -460,12 +557,15 @@ async function importHandler(request: NextRequest) {
 		} catch (dbError) {
 			await connection.rollback();
 			console.error('Database error during recipe import:', dbError);
-			return NextResponse.json({
-				success: false,
-				error: 'Failed to save recipe to database',
-				code: 'DATABASE_SAVE_ERROR',
-				details: 'A database error occurred while saving the recipe. No changes were made.'
-			}, { status: 500 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Failed to save recipe to database',
+					code: 'DATABASE_SAVE_ERROR',
+					details: 'A database error occurred while saving the recipe. No changes were made.',
+				},
+				{ status: 500 }
+			);
 		} finally {
 			connection.release();
 		}
@@ -473,12 +573,15 @@ async function importHandler(request: NextRequest) {
 		console.error('Error importing recipe from PDF:', error);
 		// If we reach here, it's likely a validation error that should have been caught earlier
 		// or an unexpected system error
-		return NextResponse.json({
-			success: false,
-			error: error instanceof Error ? error.message : 'Failed to import recipe from PDF',
-			code: 'IMPORT_ERROR',
-			details: 'An unexpected error occurred during recipe import.'
-		}, { status: 500 });
+		return NextResponse.json(
+			{
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to import recipe from PDF',
+				code: 'IMPORT_ERROR',
+				details: 'An unexpected error occurred during recipe import.',
+			},
+			{ status: 500 }
+		);
 	}
 }
 

@@ -1,8 +1,8 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import { mockRegularUser, mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, createMockFile, standardErrorScenarios, MockConnection } from '@/lib/test-utils';
-import type { NextRequest } from 'next/server';
+import * as appHandler from './route';
+import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, createMockFile, MockConnection } from '@/lib/test-utils';
 
 // Mock the auth middleware to properly handle authentication
 jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
@@ -35,9 +35,6 @@ jest.mock('openai', () => {
 	}));
 });
 
-// Now import the route handler after mocks are set up
-const appHandler = require('./route');
-
 // Mock storage utilities
 jest.mock('@/lib/storage', () => ({
 	uploadFile: jest.fn(),
@@ -61,24 +58,31 @@ const mockGenerateSlugFromTitle = jest.mocked(jest.requireMock('@/lib/utils/urlH
 describe('/api/recipe/ai-import', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
 
+	// Helper function to create a fresh mock setup for each test
+	const setupFreshMocks = () => {
+		// Completely reset all mocks to avoid any state leakage
+		jest.clearAllMocks();
+
+		// Reset database connection mocks - use mockReset to clear any queued values
+		mockConnection.beginTransaction.mockReset().mockResolvedValue();
+		mockConnection.commit.mockReset().mockResolvedValue();
+		mockConnection.rollback.mockReset().mockResolvedValue();
+		mockConnection.release.mockReset().mockImplementation(() => {});
+		mockConnection.execute.mockReset().mockResolvedValue([{ insertId: 123, affectedRows: 1 }, []]);
+
+		// Reset utility mocks
+		mockGenerateVersionedFilename.mockReset().mockImplementation(() => 'test-filename-abc123.jpg');
+		mockGenerateSlugFromTitle.mockReset().mockImplementation((id: number, title: string) => `${id}-${title.toLowerCase().replace(/\s+/g, '-')}`);
+		mockUploadFile.mockReset().mockResolvedValue({ success: true, url: 'https://example.com/file.jpg' });
+
+		// Reset OpenAI mock
+		mockOpenAICreate.mockReset();
+	};
+
 	beforeEach(() => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
-		
-		// Reset all mocks
-		mockConnection.beginTransaction.mockResolvedValue();
-		mockConnection.commit.mockResolvedValue();
-		mockConnection.rollback.mockResolvedValue();
-		mockConnection.release.mockImplementation(() => {});
-		mockConnection.execute.mockResolvedValue([{ insertId: 123, affectedRows: 1 }, []]);
-
-		// Setup utility mocks
-		mockGenerateVersionedFilename.mockImplementation(() => 'test-filename-abc123.jpg');
-		mockGenerateSlugFromTitle.mockImplementation((id, title) => `${id}-${title.toLowerCase().replace(/\s+/g, '-')}`);
-		mockUploadFile.mockResolvedValue({ success: true, url: 'https://example.com/file.jpg' });
-		
-		// Reset OpenAI mock
-		mockOpenAICreate.mockReset();
+		setupFreshMocks();
 	});
 
 	afterEach(() => {
@@ -129,6 +133,15 @@ describe('/api/recipe/ai-import', () => {
 		const formData = new FormData();
 		formData.append('pdfFile', createMockFile('recipe.pdf', 'application/pdf', 2048));
 		formData.append('heroImage', createMockFile('hero.jpg', 'image/jpeg', 1024));
+		formData.append('collectionId', '10'); // Add collection ID for AI path
+		return formData;
+	};
+
+	const validFormDataWithoutCollection = () => {
+		const formData = new FormData();
+		formData.append('pdfFile', createMockFile('recipe.pdf', 'application/pdf', 2048));
+		formData.append('heroImage', createMockFile('hero.jpg', 'image/jpeg', 1024));
+		// No collection ID - for testing early validation
 		return formData;
 	};
 
@@ -239,7 +252,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'PDF file is required for recipe import',
 							code: 'MISSING_PDF_FILE',
-							details: 'A PDF file containing the recipe must be provided to extract recipe data.'
+							details: 'A PDF file containing the recipe must be provided to extract recipe data.',
 						});
 
 						// Verify no database operations were attempted
@@ -268,7 +281,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Invalid structured recipe data provided',
 							code: 'INVALID_RECIPE_DATA',
-							details: 'Structured recipe data must be valid JSON with required fields: title, ingredients, description.'
+							details: 'Structured recipe data must be valid JSON with required fields: title, ingredients, description.',
 						});
 
 						// Verify no processing occurred
@@ -303,7 +316,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Failed to extract recipe data from PDF',
 							code: 'OPENAI_EXTRACTION_ERROR',
-							details: 'Unable to process the PDF file. Please ensure the PDF contains a clear recipe and try again.'
+							details: 'Unable to process the PDF file. Please ensure the PDF contains a clear recipe and try again.',
 						});
 					},
 					requestPatcher: mockAuthenticatedUser,
@@ -331,7 +344,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'No recipe data extracted from PDF',
 							code: 'OPENAI_NO_RESPONSE',
-							details: 'The AI service returned no recipe data. The PDF may not contain a recognizable recipe format.'
+							details: 'The AI service returned no recipe data. The PDF may not contain a recognizable recipe format.',
 						});
 					},
 					requestPatcher: mockAuthenticatedUser,
@@ -365,7 +378,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Invalid recipe data format received',
 							code: 'OPENAI_INVALID_JSON',
-							details: 'The AI service returned malformed data. Please try again or contact support if the problem persists.'
+							details: 'The AI service returned malformed data. Please try again or contact support if the problem persists.',
 						});
 					},
 					requestPatcher: mockAuthenticatedUser,
@@ -517,7 +530,7 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(response.status).toBe(200);
 						const data = await response.json();
-						
+
 						expect(data.success).toBe(true);
 						expect(data.recipeId).toBe(123);
 						expect(data.recipeSlug).toBe('123-delicious-pasta');
@@ -579,7 +592,7 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(response.status).toBe(200);
 						const data = await response.json();
-						
+
 						expect(data.success).toBe(true);
 						expect(data.newIngredients).toBe(0); // No new ingredients created
 						expect(data.existingIngredients).toBe(1);
@@ -603,7 +616,7 @@ describe('/api/recipe/ai-import', () => {
 				mockConnection.execute
 					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []]) // Recipe insert
-					.mockRejectedValueOnce(standardErrorScenarios.databaseError); // Failure on recipe update
+					.mockRejectedValueOnce(new Error('Database connection failed')); // Failure on recipe update
 
 				await testApiHandler({
 					appHandler,
@@ -619,7 +632,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Failed to save recipe to database',
 							code: 'DATABASE_SAVE_ERROR',
-							details: 'A database error occurred while saving the recipe. No changes were made.'
+							details: 'A database error occurred while saving the recipe. No changes were made.',
 						});
 
 						// Verify transaction was rolled back
@@ -704,25 +717,15 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(response.status).toBe(200);
 						const data = await response.json();
-						
+
 						expect(data.pdfSaved).toBe(true);
 						expect(data.heroImageSaved).toBe(true);
 						expect(data.fileErrors).toBeUndefined();
 
 						// Verify both files were uploaded
 						expect(mockUploadFile).toHaveBeenCalledTimes(2);
-						expect(mockUploadFile).toHaveBeenCalledWith(
-							expect.any(Buffer),
-							'test-filename-abc123',
-							'pdf',
-							'application/pdf'
-						);
-						expect(mockUploadFile).toHaveBeenCalledWith(
-							expect.any(Buffer),
-							'test-filename-abc123',
-							'jpg',
-							'image/jpeg'
-						);
+						expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'test-filename-abc123', 'pdf', 'application/pdf');
+						expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'test-filename-abc123', 'jpg', 'image/jpeg');
 					},
 					requestPatcher: mockAuthenticatedUser,
 				});
@@ -740,6 +743,7 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValue([{ affectedRows: 1 }, []]);
@@ -759,7 +763,7 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(response.status).toBe(500);
 						const data = await response.json();
-						
+
 						expect(data.success).toBe(false);
 						expect(data.error).toBe('Recipe created but PDF file upload failed. Please try uploading the PDF again.');
 						expect(data.recipeId).toBe(123);
@@ -781,6 +785,7 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValue([{ affectedRows: 1 }, []]);
@@ -800,7 +805,7 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(response.status).toBe(200);
 						const data = await response.json();
-						
+
 						expect(data.success).toBe(true);
 						expect(data.pdfSaved).toBe(true);
 						expect(data.heroImageSaved).toBe(false);
@@ -823,6 +828,7 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValue([{ affectedRows: 1 }, []]);
@@ -832,6 +838,7 @@ describe('/api/recipe/ai-import', () => {
 
 				const formData = new FormData();
 				formData.append('pdfFile', createMockFile('recipe.pdf', 'application/pdf', 2048));
+				formData.append('collectionId', '10'); // Add required collection ID
 				// No heroImage added
 
 				await testApiHandler({
@@ -844,11 +851,11 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(response.status).toBe(200);
 						const data = await response.json();
-						
+
 						expect(data.success).toBe(true);
 						expect(data.pdfSaved).toBe(true);
 						expect(data.heroImageSaved).toBe(false);
-						
+
 						// Only PDF should be uploaded
 						expect(mockUploadFile).toHaveBeenCalledTimes(1);
 					},
@@ -881,7 +888,7 @@ describe('/api/recipe/ai-import', () => {
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
-							body: validFormData(),
+							body: validFormDataWithoutCollection(),
 						});
 
 						expect(response.status).toBe(400);
@@ -890,7 +897,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Collection ID is required for recipe import',
 							code: 'MISSING_COLLECTION_ID',
-							details: 'A collection must be specified to organize the imported recipe.'
+							details: 'A collection must be specified to organize the imported recipe.',
 						});
 
 						// Verify no database operations were attempted at all
@@ -930,7 +937,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Collection with ID 10 not found in your household',
 							code: 'COLLECTION_NOT_FOUND',
-							details: 'The specified collection does not exist or you do not have access to it.'
+							details: 'The specified collection does not exist or you do not have access to it.',
 						});
 
 						// Verify collection was validated early with household context
@@ -976,7 +983,7 @@ describe('/api/recipe/ai-import', () => {
 							success: false,
 							error: 'Collection "Test Collection" is missing URL slug',
 							code: 'COLLECTION_INVALID',
-							details: 'The collection configuration is incomplete. Please contact support.'
+							details: 'The collection configuration is incomplete. Please contact support.',
 						});
 
 						// Verify no recipe creation occurred
@@ -1017,13 +1024,14 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([[], []]) // Ingredient not found
 					.mockResolvedValueOnce([{ insertId: 201, affectedRows: 1 }, []]) // Create ingredient
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add to recipe
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
-					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]); // Final collection lookup
 
 				await testApiHandler({
 					appHandler,
@@ -1038,7 +1046,7 @@ describe('/api/recipe/ai-import', () => {
 						expect(data.success).toBe(true);
 
 						// Verify ingredient was created with all properties including household ownership
-						const ingredientCreateCall = mockConnection.execute.mock.calls[2];
+						const ingredientCreateCall = mockConnection.execute.mock.calls[4];
 						expect(ingredientCreateCall[0]).toContain('household_id'); // Should include household_id in query
 						expect(ingredientCreateCall[1]).toEqual([
 							'complex-ingredient',
@@ -1050,7 +1058,7 @@ describe('/api/recipe/ai-import', () => {
 						]);
 
 						// Verify recipe_ingredient was created with measure
-						const recipeIngredientCall = mockConnection.execute.mock.calls[4];
+						const recipeIngredientCall = mockConnection.execute.mock.calls[5];
 						expect(recipeIngredientCall[1]).toEqual([
 							123, // recipe_id
 							201, // ingredient_id
@@ -1087,13 +1095,14 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([[], []])
 					.mockResolvedValueOnce([{ insertId: 201, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
-					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]); // Final collection lookup
 
 				await testApiHandler({
 					appHandler,
@@ -1106,7 +1115,7 @@ describe('/api/recipe/ai-import', () => {
 						expect(response.status).toBe(200);
 
 						// Verify defaults were used with household ownership
-						const ingredientCreateCall = mockConnection.execute.mock.calls[2];
+						const ingredientCreateCall = mockConnection.execute.mock.calls[4];
 						expect(ingredientCreateCall[0]).toContain('household_id'); // Should include household_id in query
 						expect(ingredientCreateCall[1]).toEqual([
 							'minimal-ingredient',
@@ -1118,7 +1127,7 @@ describe('/api/recipe/ai-import', () => {
 						]);
 
 						// Verify recipe_ingredient with nulls for missing values
-						const recipeIngredientCall = mockConnection.execute.mock.calls[4];
+						const recipeIngredientCall = mockConnection.execute.mock.calls[5];
 						expect(recipeIngredientCall[1]).toEqual([
 							123, // recipe_id
 							201, // ingredient_id
@@ -1199,6 +1208,7 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([[], []]) // pasta - new
@@ -1209,7 +1219,7 @@ describe('/api/recipe/ai-import', () => {
 					.mockResolvedValueOnce([{ insertId: 102, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
-					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]); // Final collection lookup
 
 				await testApiHandler({
 					appHandler,
