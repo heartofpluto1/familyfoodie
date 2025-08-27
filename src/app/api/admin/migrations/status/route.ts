@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth-middleware';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs/promises';
 import path from 'path';
+
+// Define the context type expected by Next.js App Router
+type RouteContext = {
+	params: Promise<Record<string, string | string[]>>;
+};
 
 interface MigrationRecord extends RowDataPacket {
 	version: string;
@@ -11,7 +16,7 @@ interface MigrationRecord extends RowDataPacket {
 	execution_time_ms: number | null;
 }
 
-async function getHandler() {
+async function getHandler(_request: NextRequest, _context: RouteContext) {
 	try {
 		// Get all migration files from the migrations directory
 		const migrationsPath = path.join(process.cwd(), 'migrations');

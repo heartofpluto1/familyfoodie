@@ -4,7 +4,12 @@ import { getAllUsers, getUserStats } from '@/lib/queries/admin/users';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import type { User } from '@/types/user';
 
-async function handler(request: NextRequest) {
+// Define the context type expected by Next.js App Router
+type RouteContext = {
+	params: Promise<Record<string, string | string[]>>;
+};
+
+async function handler(request: NextRequest, _context: RouteContext) {
 	try {
 		// Require admin permissions
 		const adminUser = await requireAdminUser(request);
