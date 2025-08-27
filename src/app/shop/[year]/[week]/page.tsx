@@ -4,6 +4,7 @@ import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import ShoppingListClient from '../../shop-client';
 import withAuth from '@/app/components/withAuth';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
+import { getSession } from '@/lib/session';
 
 interface PageProps {
 	params: Promise<{ year: string; week: string }>;
@@ -25,8 +26,15 @@ async function getShoppingData(
 	allIngredients: Ingredient[];
 }> {
 	try {
-		const shoppingData = await getShoppingList(week, year);
-		const allIngredients = await getIngredients();
+		const session = await getSession();
+		const household_id = session?.household_id;
+
+		if (!household_id) {
+			throw new Error('No household_id found in session');
+		}
+
+		const shoppingData = await getShoppingList(week, year, household_id);
+		const allIngredients = await getIngredients(household_id);
 		return { shoppingData, allIngredients };
 	} catch {
 		return {

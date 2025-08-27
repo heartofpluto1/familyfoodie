@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { resetShoppingListFromRecipes } from '@/lib/queries/menus';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function handler(request: NextRequest) {
+async function handler(request: AuthenticatedRequest) {
 	try {
 		const { week, year } = await request.json();
 
@@ -10,7 +10,7 @@ async function handler(request: NextRequest) {
 			return NextResponse.json({ error: 'Week and year are required' }, { status: 400 });
 		}
 
-		await resetShoppingListFromRecipes(week, year);
+		await resetShoppingListFromRecipes(week, year, request.household_id);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

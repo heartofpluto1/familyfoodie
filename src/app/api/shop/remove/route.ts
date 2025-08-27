@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function handler(request: NextRequest) {
+async function handler(request: AuthenticatedRequest) {
 	try {
 		const body = await request.json();
 		const { id } = body;
@@ -16,8 +16,8 @@ async function handler(request: NextRequest) {
 		try {
 			await connection.beginTransaction();
 
-			// Delete the shopping list item
-			const [result] = await connection.execute('DELETE FROM shopping_lists WHERE id = ?', [id]);
+			// Delete the shopping list item (household-scoped for security)
+			const [result] = await connection.execute('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [id, request.household_id]);
 
 			const deleteResult = result as { affectedRows: number };
 

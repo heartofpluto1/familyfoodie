@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function handler(request: NextRequest) {
+async function handler(request: AuthenticatedRequest) {
 	try {
 		const body = await request.json();
 		const { week, year, name, ingredient_id } = body;
@@ -43,14 +43,14 @@ async function handler(request: NextRequest) {
 				knownIngredient = ingredient.length > 0 ? ingredient[0] : null;
 			}
 
-			// Get the current max sort value for the shopping list
+			// Get the current max sort value for the shopping list (household-scoped)
 			const [sortRows] = await connection.execute(
 				`
 				SELECT COALESCE(MAX(sort), -1) as max_sort 
 				FROM shopping_lists 
-				WHERE week = ? AND year = ?
+				WHERE week = ? AND year = ? AND household_id = ?
 			`,
-				[week, year]
+				[week, year, request.household_id]
 			);
 
 			const maxSort = (sortRows as { max_sort: number }[])[0].max_sort;
@@ -63,20 +63,20 @@ async function handler(request: NextRequest) {
 				[insertResult] = await connection.execute(
 					`
 					INSERT INTO shopping_lists 
-					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
-					VALUES (?, ?, 1, ?, ?, ?, NULL, 0, ?)
+					(week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
+					VALUES (?, ?, ?, 1, ?, ?, ?, NULL, 0, ?)
 				`,
-					[week, year, name, newSort, knownIngredient.cost, knownIngredient.stockcode]
+					[week, year, request.household_id, name, newSort, knownIngredient.cost, knownIngredient.stockcode]
 				);
 			} else {
 				// Add unknown ingredient as text with null values
 				[insertResult] = await connection.execute(
 					`
 					INSERT INTO shopping_lists 
-					(week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
-					VALUES (?, ?, 1, ?, ?, NULL, NULL, 0, NULL)
+					(week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
+					VALUES (?, ?, ?, 1, ?, ?, NULL, NULL, 0, NULL)
 				`,
-					[week, year, name, newSort]
+					[week, year, request.household_id, name, newSort]
 				);
 			}
 

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function handler(request: NextRequest) {
+async function handler(request: AuthenticatedRequest) {
 	try {
 		const { id, purchased } = await request.json();
 
@@ -10,8 +10,8 @@ async function handler(request: NextRequest) {
 			return NextResponse.json({ error: 'ID and purchased status are required' }, { status: 400 });
 		}
 
-		// Update the shopping list item
-		await pool.execute('UPDATE shopping_lists SET purchased = ? WHERE id = ?', [purchased ? 1 : 0, id]);
+		// Update the shopping list item (household-scoped for security)
+		await pool.execute('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [purchased ? 1 : 0, id, request.household_id]);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

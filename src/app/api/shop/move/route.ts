@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-async function handler(request: NextRequest) {
+async function handler(request: AuthenticatedRequest) {
 	try {
 		const body = await request.json();
 		const { id, fresh, sort, week, year } = body;
@@ -16,13 +16,20 @@ async function handler(request: NextRequest) {
 		try {
 			await connection.beginTransaction();
 
-			// Update the moved item
-			await connection.execute('UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ?', [fresh, sort, id, week, year]);
+			// Update the moved item (household-scoped)
+			await connection.execute('UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ? AND household_id = ?', [
+				fresh,
+				sort,
+				id,
+				week,
+				year,
+				request.household_id,
+			]);
 
-			// Get all items in the target list (fresh or pantry) for this week/year
+			// Get all items in the target list (fresh or pantry) for this week/year/household
 			const [items] = await connection.execute(
-				'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND id != ? ORDER BY sort ASC',
-				[fresh, week, year, id]
+				'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id != ? ORDER BY sort ASC',
+				[fresh, week, year, request.household_id, id]
 			);
 
 			// Update sort values for items that need to be shifted

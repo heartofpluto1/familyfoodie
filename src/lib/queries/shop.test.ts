@@ -1,4 +1,4 @@
-import { getShoppingListHousehold } from './shop';
+import { getShoppingList } from './shop';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 
@@ -11,7 +11,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('getShoppingListHousehold', () => {
+	describe('getShoppingList', () => {
 		it('should return shopping list for specific household', async () => {
 			const mockFreshIngredients = [
 				{
@@ -55,7 +55,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 				.mockResolvedValueOnce([mockFreshIngredients as RowDataPacket[], []]) // Fresh ingredients call
 				.mockResolvedValueOnce([mockPantryIngredients as RowDataPacket[], []]); // Pantry ingredients call
 
-			const result = await getShoppingListHousehold('32', '2024', 1);
+			const result = await getShoppingList('32', '2024', 1);
 
 			expect(result).toEqual({
 				fresh: mockFreshIngredients,
@@ -82,7 +82,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Fresh ingredients call
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients call
 
-			const result = await getShoppingListHousehold('99', '2030', 1);
+			const result = await getShoppingList('99', '2030', 1);
 
 			expect(result).toEqual({
 				fresh: [],
@@ -95,7 +95,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Fresh ingredients call
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients call
 
-			await getShoppingListHousehold('32', '2024', 1);
+			await getShoppingList('32', '2024', 1);
 
 			// Verify household_id is selected in the query
 			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('sl.household_id'), ['32', '2024', 1]);
@@ -106,7 +106,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Fresh ingredients call
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients call
 
-			await getShoppingListHousehold('32', '2024', 1);
+			await getShoppingList('32', '2024', 1);
 
 			// Verify ordering is consistent
 			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY sl.sort, sl.id'), ['32', '2024', 1]);
@@ -115,7 +115,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 		it('should handle database errors gracefully', async () => {
 			mockPool.execute.mockRejectedValueOnce(new Error('Database connection failed'));
 
-			await expect(getShoppingListHousehold('32', '2024', 1)).rejects.toThrow('Database connection failed');
+			await expect(getShoppingList('32', '2024', 1)).rejects.toThrow('Database connection failed');
 		});
 
 		it('should include all necessary ingredient information', async () => {
@@ -140,7 +140,7 @@ describe('Household-Scoped Shopping List Functions', () => {
 				.mockResolvedValueOnce([[mockIngredient] as RowDataPacket[], []]) // Fresh ingredients
 				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients
 
-			const result = await getShoppingListHousehold('32', '2024', 2);
+			const result = await getShoppingList('32', '2024', 2);
 
 			expect(result.fresh[0]).toEqual(mockIngredient);
 			expect(result.fresh[0]).toHaveProperty('household_id', 2);

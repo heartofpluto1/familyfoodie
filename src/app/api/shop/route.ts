@@ -1,6 +1,6 @@
 // app/api/shop/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { getIngredients, getShoppingList } from '@/lib/queries/shop';
 
 function getWeekOfYear(date = new Date()) {
@@ -10,7 +10,7 @@ function getWeekOfYear(date = new Date()) {
 	return Math.ceil(days / 7);
 }
 
-async function handler(req: NextRequest) {
+async function handler(req: AuthenticatedRequest) {
 	const params = req.nextUrl.searchParams;
 	const endpoint = params.get('endpoint');
 	const week = params.get('week') || getWeekOfYear().toString();
@@ -19,10 +19,10 @@ async function handler(req: NextRequest) {
 	try {
 		switch (endpoint) {
 			case 'ingredients':
-				const ingredients = await getIngredients();
+				const ingredients = await getIngredients(req.household_id);
 				return NextResponse.json({ data: ingredients, success: true }, { status: 200 });
 			case 'week':
-				const listWeeks = await getShoppingList(week, year);
+				const listWeeks = await getShoppingList(week, year, req.household_id);
 				return NextResponse.json(
 					{
 						success: true,

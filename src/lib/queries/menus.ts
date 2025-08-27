@@ -532,16 +532,16 @@ interface GroupedIngredient {
 /**
  * Reset and rebuild shopping list from planned recipes for a given week
  */
-export async function resetShoppingListFromRecipes(week: number, year: number): Promise<void> {
+export async function resetShoppingListFromRecipes(week: number, year: number, household_id: number): Promise<void> {
 	const connection = await pool.getConnection();
 
 	try {
 		await connection.beginTransaction();
 
-		// Delete existing shopping list items for the week
-		await connection.execute('DELETE FROM shopping_lists WHERE week = ? AND year = ?', [week, year]);
+		// Delete existing shopping list items for the week and household
+		await connection.execute('DELETE FROM shopping_lists WHERE week = ? AND year = ? AND household_id = ?', [week, year, household_id]);
 
-		// Get all ingredients from recipes planned for this week
+		// Get all ingredients from recipes planned for this week by this household
 		const ingredientsQuery = `
 			SELECT 
 				ri.id as recipeIngredient_id,
@@ -561,7 +561,8 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 			JOIN recipes r ON rw.recipe_id = r.id
 			JOIN ingredients i ON ri.ingredient_id = i.id
 			LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
-			WHERE rw.week = ? AND rw.year = ?			ORDER BY 
+			WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
+			ORDER BY 
 				CASE 
 					WHEN i.fresh = 1 THEN i.supermarketCategory_id
 					WHEN i.fresh = 0 THEN i.pantryCategory_id
@@ -570,7 +571,7 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 				i.name
 		`;
 
-		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year]);
+		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, household_id]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
 
 		// Group ingredients by ingredient_id AND quantityMeasure_id (only group if same ingredient with same measurement)
@@ -603,6 +604,7 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient, index: number) => [
 				week,
 				year,
+				household_id, // household_id for isolation
 				ingredient.fresh, // Use fresh value from ingredients table
 				ingredient.ingredient_name,
 				index, // sort = increasing integer
@@ -612,11 +614,11 @@ export async function resetShoppingListFromRecipes(week: number, year: number): 
 				ingredient.stockcode, // stockcode from ingredients table
 			]);
 
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
