@@ -5,8 +5,7 @@ import * as appHandler from './route';
 import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
 
 // Mock the auth middleware to properly handle authentication
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({

@@ -11,8 +11,7 @@ jest.mock('@/lib/db.js', () => ({
 	end: jest.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 jest.mock('@/lib/utils/secureFilename.server', () => ({
 	cleanupRecipeFiles: jest.fn(),

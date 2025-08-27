@@ -12,8 +12,7 @@ jest.mock('@/lib/auth-helpers', () => ({
 }));
 
 // Mock the auth middleware to pass through for testing
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').passthroughAuthMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').passthroughAuthMock);
 
 // Mock the migration system
 jest.mock('../../../../../migrations/run-migrations.mjs', () => ({

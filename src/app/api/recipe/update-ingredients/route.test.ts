@@ -10,8 +10,7 @@ jest.mock('@/lib/db.js', () => ({
 	getConnection: jest.fn(),
 }));
 // Mock the auth middleware to properly handle authentication
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 // Get the mocked functions
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
