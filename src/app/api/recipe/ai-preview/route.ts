@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 import OpenAI from 'openai';
@@ -68,20 +68,49 @@ interface ExtractedRecipe {
 	difficulty?: string;
 }
 
-// Initialize OpenAI client
-const openai = process.env.OPENAI_API_KEY
-	? new OpenAI({
-			apiKey: process.env.OPENAI_API_KEY,
-		})
-	: null;
-
-async function previewHandler(request: NextRequest) {
+async function previewHandler(request: AuthenticatedRequest) {
 	try {
-		if (!openai) {
-			return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 });
+		// Initialize OpenAI client at runtime to allow for testing
+		if (!process.env.OPENAI_API_KEY) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'OpenAI API key not configured',
+					code: 'OPENAI_NOT_CONFIGURED',
+				},
+				{ status: 500 }
+			);
 		}
 
-		const formData = await request.formData();
+		let openai: OpenAI;
+		try {
+			openai = new OpenAI({
+				apiKey: process.env.OPENAI_API_KEY,
+			});
+		} catch (error) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: error instanceof Error ? error.message : 'Failed to initialize OpenAI client',
+					code: 'OPENAI_INITIALIZATION_ERROR',
+				},
+				{ status: 500 }
+			);
+		}
+
+		let formData: FormData;
+		try {
+			formData = await request.formData();
+		} catch {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Failed to parse form data',
+					code: 'INVALID_FORM_DATA',
+				},
+				{ status: 400 }
+			);
+		}
 
 		// Extract all image files from form data
 		const imageFiles: Blob[] = [];
@@ -92,7 +121,14 @@ async function previewHandler(request: NextRequest) {
 		}
 
 		if (imageFiles.length === 0) {
-			return NextResponse.json({ error: 'At least one image file is required' }, { status: 400 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'At least one image file is required',
+					code: 'MISSING_IMAGE_FILES',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Convert images to base64 for OpenAI
@@ -233,7 +269,14 @@ If the images don't contain a clear recipe, create the best recipe you can based
 		const content = completion.choices[0]?.message?.content;
 
 		if (!content) {
-			throw new Error('No content received from OpenAI');
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'No content received from OpenAI',
+					code: 'OPENAI_NO_CONTENT',
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Clean the content to extract JSON (remove markdown code blocks if present)
@@ -244,21 +287,56 @@ If the images don't contain a clear recipe, create the best recipe you can based
 			cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
 		}
 
-		const recipe = JSON.parse(cleanContent) as ExtractedRecipe;
+		let recipe: ExtractedRecipe;
+		try {
+			recipe = JSON.parse(cleanContent) as ExtractedRecipe;
+		} catch (error) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: error instanceof Error ? error.message : 'Failed to parse recipe data from OpenAI',
+					code: 'INVALID_JSON_RESPONSE',
+				},
+				{ status: 500 }
+			);
+		}
 
-		// Get all existing ingredients with complete data for both AI matching and processing
-		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(`
-			SELECT 
+		// Get household-scoped ingredients: household-owned + Spencer's essentials + subscribed ingredients
+		// Remove duplicates by name - prefer household-owned versions over external sources
+		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(
+			`
+			SELECT DISTINCT 
 				i.id, 
 				i.name, 
 				i.fresh, 
 				i.pantryCategory_id, 
 				i.supermarketCategory_id,
 				pc.name as pantryCategory_name
-			FROM ingredients i 
-			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id 
-			ORDER BY i.name
-		`);
+			FROM ingredients i
+			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
+			LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
+			LEFT JOIN recipes r ON ri.recipe_id = r.id
+			LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
+			LEFT JOIN collections c ON cr.collection_id = c.id
+			LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+			WHERE (
+				i.household_id = ? OR  -- Include household's own ingredients
+				(
+					(c.id = 1 OR cs.household_id IS NOT NULL) -- Include Spencer's essentials + subscribed ingredients
+					AND i.household_id != ? -- But only if not household-owned
+					AND NOT EXISTS (
+						SELECT 1 FROM ingredients i2 
+						WHERE i2.household_id = ? 
+						AND LOWER(i2.name) = LOWER(i.name)  -- Exclude if household has same ingredient name
+					)
+				)
+			)
+			ORDER BY 
+				CASE WHEN i.household_id = ? THEN 0 ELSE 1 END,  -- Household ingredients first
+				i.name ASC
+		`,
+			[request.household_id, request.household_id, request.household_id, request.household_id, request.household_id]
+		);
 
 		// Get categories for new ingredients
 		const [pantryCategories] = await pool.execute<PantryCategory[]>('SELECT id, name FROM category_pantry ORDER BY name');
@@ -385,12 +463,53 @@ Rules:
 		});
 	} catch (error) {
 		console.error('Error parsing recipe with AI:', error);
-		return NextResponse.json(
-			{
-				error: error instanceof Error ? error.message : 'Failed to parse recipe',
-			},
-			{ status: 500 }
-		);
+
+		// Handle different types of errors with appropriate codes
+		if (error instanceof Error) {
+			// Check for specific error types
+			if (error.message.includes('OpenAI') || error.message.includes('chat.completions')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'OPENAI_API_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Database errors
+			if (error.message.includes('execute') || error.message.includes('Database') || error.message.includes('connection')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'DATABASE_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Generic error with message
+			return NextResponse.json(
+				{
+					success: false,
+					error: error.message,
+					code: 'INTERNAL_SERVER_ERROR',
+				},
+				{ status: 500 }
+			);
+		} else {
+			// Non-Error objects
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Failed to parse recipe',
+					code: 'INTERNAL_SERVER_ERROR',
+				},
+				{ status: 500 }
+			);
+		}
 	}
 }
 
