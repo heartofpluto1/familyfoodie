@@ -4,7 +4,6 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { cleanupRecipeFiles } from '@/lib/utils/secureFilename.server';
 import { canEditResource } from '@/lib/permissions';
-import { performCompleteCleanupAfterRecipeDelete } from '@/lib/copy-on-write';
 
 interface RecipeRow extends RowDataPacket {
 	id: number;
@@ -14,6 +13,15 @@ interface RecipeRow extends RowDataPacket {
 
 interface PlanRow extends RowDataPacket {
 	count: number;
+}
+
+interface IngredientRow extends RowDataPacket {
+	ingredient_id: number;
+}
+
+interface IngredientInfoRow extends RowDataPacket {
+	id: number;
+	name: string;
 }
 
 function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { success: false; error: string; code: string } } {
@@ -144,17 +152,92 @@ async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
 				connection.release();
 			}
 		} else {
-			// No shopping list history - safe to fully delete
+			// No shopping list history - safe to fully delete with proper transaction management
+			const connection = await pool.getConnection();
 			try {
-				// Use the new cleanup system that handles household isolation
-				const cleanupResult = await performCompleteCleanupAfterRecipeDelete(numericRecipeId, request.household_id);
+				await connection.beginTransaction();
+
+				// Get recipe ingredients that will be deleted
+				const [recipeIngredients] = await connection.execute<IngredientRow[]>('SELECT ingredient_id FROM recipe_ingredients WHERE recipe_id = ?', [
+					numericRecipeId,
+				]);
+				const ingredientIds = recipeIngredients.map(row => row.ingredient_id);
+
+				// Final safety check - ensure no shopping list references exist
+				const [finalSafetyCheck] = await connection.execute<RowDataPacket[]>(
+					`SELECT COUNT(*) as count FROM shopping_lists sl 
+					 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
+					 WHERE ri.recipe_id = ?`,
+					[numericRecipeId]
+				);
+
+				if (finalSafetyCheck[0].count > 0) {
+					// Found shopping list references during deletion - archive instead
+					await connection.execute('DELETE FROM collection_recipes WHERE recipe_id = ?', [numericRecipeId]);
+					await connection.execute('UPDATE recipes SET archived = 1 WHERE id = ?', [numericRecipeId]);
+					await connection.commit();
+
+					return NextResponse.json({
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references detected during deletion',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
+					});
+				}
+
+				// Delete recipe_ingredients
+				await connection.execute<ResultSetHeader>('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [numericRecipeId]);
 
 				// Delete the recipe itself
-				const [deleteResult] = await pool.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [numericRecipeId]);
+				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [numericRecipeId]);
 
 				if (deleteResult.affectedRows === 0) {
 					throw new Error('Failed to delete recipe from database');
 				}
+
+				// Find and delete orphaned ingredients for this household
+				const deletedIngredientNames: string[] = [];
+				let deletedIngredientsCount = 0;
+
+				for (const ingredientId of ingredientIds) {
+					// Check if this ingredient is still used by other recipes in this household
+					const [usageCheck] = await connection.execute<RowDataPacket[]>(
+						`SELECT COUNT(*) as count FROM recipe_ingredients ri
+						 JOIN recipes r ON ri.recipe_id = r.id
+						 WHERE ri.ingredient_id = ? AND r.household_id = ?`,
+						[ingredientId, request.household_id]
+					);
+
+					// Also check if it's used in shopping lists
+					const [shoppingCheck] = await connection.execute<RowDataPacket[]>(
+						`SELECT COUNT(*) as count FROM shopping_lists sl
+						 WHERE sl.ingredient_id = ? AND sl.household_id = ?`,
+						[ingredientId, request.household_id]
+					);
+
+					if (usageCheck[0].count === 0 && shoppingCheck[0].count === 0) {
+						// Ingredient is orphaned - get its name before deleting
+						const [ingredientInfo] = await connection.execute<IngredientInfoRow[]>('SELECT name FROM ingredients WHERE id = ? AND household_id = ?', [
+							ingredientId,
+							request.household_id,
+						]);
+
+						if (ingredientInfo.length > 0) {
+							// Delete the orphaned ingredient
+							const [deleteIngResult] = await connection.execute<ResultSetHeader>('DELETE FROM ingredients WHERE id = ? AND household_id = ?', [
+								ingredientId,
+								request.household_id,
+							]);
+
+							if (deleteIngResult.affectedRows > 0) {
+								deletedIngredientNames.push(ingredientInfo[0].name);
+								deletedIngredientsCount++;
+							}
+						}
+					}
+				}
+
+				await connection.commit();
 
 				// Delete associated files after successful database deletion
 				let warning: string | undefined;
@@ -165,21 +248,25 @@ async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
 				}
 
 				let message = 'Recipe deleted successfully';
-				if (cleanupResult.deletedOrphanedIngredients.length > 0) {
-					message += ` and cleaned up ${cleanupResult.deletedOrphanedIngredients.length} unused household ingredient${
-						cleanupResult.deletedOrphanedIngredients.length === 1 ? '' : 's'
-					}`;
+				if (deletedIngredientsCount > 0) {
+					message += ` and cleaned up ${deletedIngredientsCount} unused ingredient${deletedIngredientsCount === 1 ? '' : 's'}`;
+					if (deletedIngredientNames.length > 0) {
+						message += ` (${deletedIngredientNames.join(', ')})`;
+					}
 				}
 
 				return NextResponse.json({
 					success: true,
 					message,
-					deletedIngredientsCount: cleanupResult.deletedOrphanedIngredients.length,
-					deletedRecipeIngredients: cleanupResult.deletedRecipeIngredients,
+					deletedIngredientsCount,
+					deletedIngredientNames,
 					...(warning && { warning }),
 				});
 			} catch (error) {
+				await connection.rollback();
 				throw error;
+			} finally {
+				connection.release();
 			}
 		}
 	} catch (error) {

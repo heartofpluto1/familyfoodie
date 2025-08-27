@@ -42,7 +42,7 @@ describe('/api/recipe/update-details', () => {
 		it('should successfully update recipe details with all fields when user owns recipe', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 1 }, // Successful update
 			]);
@@ -95,7 +95,7 @@ describe('/api/recipe/update-details', () => {
 		it('should successfully update recipe details with required fields only when user owns recipe', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(2);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -142,7 +142,7 @@ describe('/api/recipe/update-details', () => {
 			const originalRecipeId = 5;
 			const copiedRecipeId = 123;
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(copiedRecipeId);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -195,7 +195,7 @@ describe('/api/recipe/update-details', () => {
 		it('should convert zero values in time fields to null for backward compatibility', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -315,7 +315,7 @@ describe('/api/recipe/update-details', () => {
 		it('should return 404 if recipe not found', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(999);
-			
+
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 0 }, // No rows affected
 			]);
@@ -346,7 +346,7 @@ describe('/api/recipe/update-details', () => {
 		it('should return 500 on database error', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockRejectedValueOnce(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
@@ -417,7 +417,7 @@ describe('/api/recipe/update-details', () => {
 		it('should handle undefined description by converting to null', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -545,7 +545,7 @@ describe('/api/recipe/update-details', () => {
 		it('should properly parse string ID to integer', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(123);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -645,7 +645,7 @@ describe('/api/recipe/update-details', () => {
 
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -678,7 +678,7 @@ describe('/api/recipe/update-details', () => {
 
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -708,7 +708,7 @@ describe('/api/recipe/update-details', () => {
 		it('should handle explicit null values for optional fields', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			await testApiHandler({
@@ -781,7 +781,7 @@ describe('/api/recipe/update-details', () => {
 		it('should return 400 when foreign key references do not exist', async () => {
 			// Mock copy-on-write: recipe already owned, returns same ID
 			mockTriggerCascadeCopyIfNeeded.mockResolvedValueOnce(1);
-			
+
 			// Mock database to return foreign key constraint error
 			mockExecute.mockRejectedValueOnce({
 				code: 'ER_NO_REFERENCED_ROW_2',
@@ -838,13 +838,13 @@ describe('/api/recipe/update-details', () => {
 					expect(response.status).toBe(500);
 					const data = await response.json();
 					expect(data.error).toBe('Failed to update recipe details');
-					
+
 					// Verify copy-on-write was attempted
 					expect(mockTriggerCascadeCopyIfNeeded).toHaveBeenCalledWith(
 						expect.any(Number), // household_id from auth
 						10
 					);
-					
+
 					// Verify UPDATE was never called since copy failed
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
