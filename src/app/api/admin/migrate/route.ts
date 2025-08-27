@@ -7,6 +7,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import { RowDataPacket } from 'mysql2';
 
+// Define the context type expected by Next.js App Router
+type RouteContext = {
+	params: Promise<Record<string, string | string[]>>;
+};
+
 // Migration lock system for concurrency protection
 const migrationLock = {
 	isLocked: false,
@@ -120,7 +125,7 @@ async function getLastMigrationInfo() {
 	}
 }
 
-async function postHandler(request: NextRequest) {
+async function postHandler(request: NextRequest, _context: RouteContext) {
 	try {
 		// 1. Content-Type validation for requests with body
 		const contentLength = request.headers.get('content-length');
@@ -315,7 +320,7 @@ async function postHandler(request: NextRequest) {
 	}
 }
 
-async function getHandler(request: NextRequest) {
+async function getHandler(request: NextRequest, _context: RouteContext) {
 	try {
 		// 1. Admin authentication with enhanced error handling
 		let adminUser;
@@ -383,16 +388,16 @@ async function getHandler(request: NextRequest) {
 }
 
 // Generic handler for all HTTP methods to handle method validation
-async function handleRequest(request: NextRequest) {
+async function handleRequest(request: NextRequest, context: RouteContext) {
 	// 1. HTTP Method validation
 	const methodValidation = validateHttpMethod(request.method, ['GET', 'POST']);
 	if (methodValidation) return methodValidation;
 
 	// 2. Route to appropriate handler
 	if (request.method === 'GET') {
-		return getHandler(request);
+		return getHandler(request, context);
 	} else if (request.method === 'POST') {
-		return postHandler(request);
+		return postHandler(request, context);
 	}
 
 	// This shouldn't happen due to validation above, but just in case
