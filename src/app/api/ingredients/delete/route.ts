@@ -15,7 +15,14 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 
 		// Validate required fields
 		if (!id) {
-			return NextResponse.json({ error: 'Ingredient ID is required' }, { status: 400 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Ingredient ID is required',
+					code: 'MISSING_INGREDIENT_ID',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Check if user can delete this ingredient (household ownership)
@@ -23,6 +30,7 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 		if (!canEdit) {
 			return NextResponse.json(
 				{
+					success: false,
 					error: 'You can only delete ingredients owned by your household',
 					code: 'PERMISSION_DENIED',
 				},
@@ -42,8 +50,10 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 		if (recipeUsage[0].count > 0) {
 			return NextResponse.json(
 				{
-					error: 'Cannot delete ingredient',
-					message: `This ingredient is used in ${recipeUsage[0].count} recipe${recipeUsage[0].count > 1 ? 's' : ''}`,
+					success: false,
+					error: `Cannot delete ingredient: it is used in ${recipeUsage[0].count} recipe${recipeUsage[0].count > 1 ? 's' : ''}`,
+					code: 'INGREDIENT_IN_USE',
+					count: recipeUsage[0].count,
 				},
 				{ status: 400 }
 			);
@@ -54,12 +64,76 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 
 		// Check if deletion was successful
 		if (result.affectedRows === 0) {
-			return NextResponse.json({ error: 'Ingredient not found or cannot be deleted' }, { status: 404 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Ingredient not found',
+					code: 'INGREDIENT_NOT_FOUND',
+				},
+				{ status: 404 }
+			);
 		}
 
 		return NextResponse.json({ success: true, message: 'Ingredient deleted successfully' });
 	} catch (error) {
-		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete ingredient' }, { status: 500 });
+		// Handle different types of errors with appropriate codes
+		if (error instanceof Error) {
+			// Check for specific error types
+			if (error.message.includes('Permission check failed') || error.message.includes('canEditResource')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'PERMISSION_CHECK_FAILED',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Check for JSON parsing errors
+			if (error.message.includes('Unexpected') || error.message.includes('JSON')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'INVALID_JSON',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Database errors
+			if (error.message.includes('Database') || error.message.includes('connection') || error.message.includes('execute')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'DATABASE_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Generic error with message
+			return NextResponse.json(
+				{
+					success: false,
+					error: error.message,
+					code: 'DATABASE_ERROR', // Most errors in this context are likely database related
+				},
+				{ status: 500 }
+			);
+		} else {
+			// Non-Error objects
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Failed to delete ingredient',
+					code: 'INTERNAL_SERVER_ERROR',
+				},
+				{ status: 500 }
+			);
+		}
 	}
 }
 
