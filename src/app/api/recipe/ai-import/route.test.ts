@@ -383,8 +383,9 @@ describe('/api/recipe/ai-import', () => {
 					],
 				});
 
-				// Mock successful database operations
+				// Mock successful database operations with collection validation first
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation FIRST
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([[], []])
@@ -395,7 +396,7 @@ describe('/api/recipe/ai-import', () => {
 					.mockResolvedValueOnce([{ insertId: 102, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
-					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]); // Final collection lookup
 
 				await testApiHandler({
 					appHandler,
@@ -442,8 +443,9 @@ describe('/api/recipe/ai-import', () => {
 
 		describe('Structured Recipe Processing', () => {
 			it('should use structured recipe data when provided (preview editing flow)', async () => {
-				// Mock database operations
+				// Mock database operations with collection validation first
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation FIRST
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([[], []])
@@ -454,7 +456,7 @@ describe('/api/recipe/ai-import', () => {
 					.mockResolvedValueOnce([{ insertId: 102, affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
-					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]); // Final collection lookup
 
 				await testApiHandler({
 					appHandler,
@@ -560,11 +562,12 @@ describe('/api/recipe/ai-import', () => {
 				});
 
 				mockConnection.execute
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation FIRST
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []]) // Recipe insert
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Recipe update
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add existing ingredient to recipe
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add recipe to collection
-					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection' }], []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]); // Final collection lookup
 
 				await testApiHandler({
 					appHandler,
@@ -672,11 +675,20 @@ describe('/api/recipe/ai-import', () => {
 					],
 				});
 
-				// Mock successful database and file operations
+				// Mock successful database operations with full flow
 				mockConnection.execute
-					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []])
-					.mockResolvedValueOnce([{ affectedRows: 1 }, []])
-					.mockResolvedValue([{ affectedRows: 1 }, []]);
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]) // Collection validation FIRST
+					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []]) // Recipe insert
+					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Recipe update with filenames
+					.mockResolvedValueOnce([[], []]) // Check existing ingredient (pasta - not found)
+					.mockResolvedValueOnce([{ insertId: 101, affectedRows: 1 }, []]) // Create new pasta ingredient
+					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add pasta to recipe_ingredients
+					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add tomatoes (existing) to recipe_ingredients
+					.mockResolvedValueOnce([[], []]) // Check existing ingredient (basil - not found)
+					.mockResolvedValueOnce([{ insertId: 102, affectedRows: 1 }, []]) // Create new basil ingredient
+					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add basil to recipe_ingredients
+					.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Add recipe to collection
+					.mockResolvedValueOnce([[{ id: 10, url_slug: 'test-collection', title: 'Test Collection', household_id: 1 }], []]); // Final collection lookup
 
 				mockUploadFile
 					.mockResolvedValueOnce({ success: true, url: 'https://example.com/recipe.pdf' }) // PDF upload
