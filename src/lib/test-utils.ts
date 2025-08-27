@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
-import type { User } from '@/types/user';
+import type { SessionUser } from '@/types/auth';
 
 // Standard mock admin user data
-export const mockAdminUser: User & { household_id: number } = {
+export const mockAdminUser: SessionUser = {
 	id: 1,
 	username: 'admin',
 	first_name: 'Admin',
@@ -10,13 +10,12 @@ export const mockAdminUser: User & { household_id: number } = {
 	email: 'admin@example.com',
 	is_admin: true,
 	is_active: true,
-	date_joined: '2024-01-01T00:00:00Z',
-	last_login: '2024-08-01T00:00:00Z',
-	household_id: 1, // Added for household context
+	household_id: 1,
+	household_name: 'Test Household',
 };
 
 // Standard mock regular user data
-export const mockRegularUser: User & { household_id: number } = {
+export const mockRegularUser: SessionUser = {
 	id: 2,
 	username: 'user',
 	first_name: 'Regular',
@@ -24,9 +23,8 @@ export const mockRegularUser: User & { household_id: number } = {
 	email: 'user@example.com',
 	is_admin: false,
 	is_active: true,
-	date_joined: '2024-01-01T00:00:00Z',
-	last_login: '2024-08-01T00:00:00Z',
-	household_id: 1, // Added for household context
+	household_id: 1,
+	household_name: 'Test Household',
 };
 
 /**
@@ -41,8 +39,8 @@ export const clearAllMocks = () => {
  * Use this directly in jest.mock() calls via require
  */
 export const authMiddlewareMock = {
-	withAuth: (handler: (request: NextRequest & { user?: User; household_id?: number }, context?: unknown) => Promise<Response>) => {
-		return async (request: NextRequest & { user?: User; household_id?: number }, context?: unknown) => {
+	withAuth: (handler: (request: NextRequest & { user?: SessionUser; household_id?: number }, context?: unknown) => Promise<Response>) => {
+		return async (request: NextRequest & { user?: SessionUser; household_id?: number }, context?: unknown) => {
 			// Check if user is set by requestPatcher
 			if (!request.user) {
 				return new Response(
@@ -55,7 +53,7 @@ export const authMiddlewareMock = {
 				);
 			}
 			// Set household_id from user as the real middleware does
-			request.household_id = (request.user as User & { household_id: number }).household_id || 1; // Default to household_id 1 for testing
+			request.household_id = request.user.household_id || 1; // Default to household_id 1 for testing
 			return handler(request, context);
 		};
 	},
@@ -159,7 +157,7 @@ export const standardErrorScenarios = {
  * Request patcher for authenticated user requests
  * Use this with testApiHandler to simulate authenticated requests
  */
-export const mockAuthenticatedUser = (req: NextRequest & { user?: User }) => {
+export const mockAuthenticatedUser = (req: NextRequest & { user?: SessionUser }) => {
 	req.user = mockRegularUser;
 	return req;
 };
@@ -167,7 +165,7 @@ export const mockAuthenticatedUser = (req: NextRequest & { user?: User }) => {
 /**
  * Request patcher for non-authenticated requests
  */
-export const mockNonAuthenticatedUser = (req: NextRequest & { user?: User }) => {
+export const mockNonAuthenticatedUser = (req: NextRequest & { user?: SessionUser }) => {
 	req.user = undefined;
 	return req;
 };
