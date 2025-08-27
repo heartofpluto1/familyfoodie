@@ -125,8 +125,6 @@ export async function authenticateUserWithHousehold(username: string, password: 
 				email: user.email,
 				is_active: user.is_active,
 				is_admin: user.is_admin,
-				date_joined: user.date_joined,
-				last_login: user.last_login,
 				household_id: user.household_id,
 				household_name: user.household_name,
 			},
