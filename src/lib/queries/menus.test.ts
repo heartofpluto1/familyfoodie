@@ -47,8 +47,8 @@ describe('Household-Aware Recipe Queries', () => {
 			const result = await getRecipesInCollection(10, 1);
 
 			expect(result).toHaveLength(2);
-			expect((result[0] as typeof result[0] & { access_context: { user_owns_recipe: boolean } }).access_context.user_owns_recipe).toBe(true);
-			expect((result[1] as typeof result[1] & { access_context: { user_owns_recipe: boolean } }).access_context.user_owns_recipe).toBe(false);
+			expect((result[0] as (typeof result)[0] & { access_context: { user_owns_recipe: boolean } }).access_context.user_owns_recipe).toBe(true);
+			expect((result[1] as (typeof result)[1] & { access_context: { user_owns_recipe: boolean } }).access_context.user_owns_recipe).toBe(false);
 			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE cr.collection_id = ? AND r.archived = 0'), [1, 10, 1, 1, 10, 1, 1, 1]);
 		});
 

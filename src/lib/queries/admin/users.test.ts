@@ -73,7 +73,7 @@ describe('Admin Users Queries', () => {
 			await getAllUsers();
 
 			const queryArg = mockPool.execute.mock.calls[0][0];
-		const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
+			const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
 			expect(query).toContain('u.id');
 			expect(query).toContain('u.username');
 			expect(query).toContain('u.first_name');
@@ -239,7 +239,7 @@ describe('Admin Users Queries', () => {
 			await getUserStats();
 
 			const queryArg = mockPool.execute.mock.calls[0][0];
-		const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
+			const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
 			expect(query).toContain('COUNT(*) as total');
 			expect(query).toContain('SUM(is_active) as active');
 			expect(query).toContain('SUM(is_admin) as admins');
@@ -254,7 +254,7 @@ describe('Admin Users Queries', () => {
 						admins: 0,
 					},
 				] as RowDataPacket[],
-				[]
+				[],
 			]);
 
 			const result = await getUserStats();
