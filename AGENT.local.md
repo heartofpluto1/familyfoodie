@@ -636,3 +636,12 @@ The codebase has comprehensive API route testing using Jest with `next-test-api-
 - [ ] Verifies database calls with proper parameters
 - [ ] Tests transaction rollback scenarios where applicable
 
+## TypeScript Unknown Type Elimination (Updated 2025-08-27)
+
+### IMPORTANT: Avoid Using Unknown Types
+- **NEVER USE**: `unknown[]` or `Promise<unknown[]>` for function return types
+- **ALWAYS**: Create proper TypeScript interfaces for database query results and API responses
+- **PREFER**: Strongly typed interfaces over `unknown` casting
+- **DATABASE QUERIES**: Results should be typed with proper interfaces (see `src/types/database.ts` for examples)
+- **LEGITIMATE USES**: Only use `unknown` for error handling (`catch (error: unknown)`) and framework compatibility
+
