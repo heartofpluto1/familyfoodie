@@ -1,5 +1,6 @@
 import { canEditResource, validateHouseholdAccess, canAccessRecipe, canAccessIngredient, canEditMultipleResources, isAdmin } from './permissions';
 import pool from './db.js';
+import { RowDataPacket } from 'mysql2';
 
 // Mock the database pool
 jest.mock('./db.js');
@@ -17,7 +18,7 @@ describe('Permission System', () => {
 
 	describe('canEditResource', () => {
 		it('should return true for owned resources', async () => {
-			mockPool.execute.mockResolvedValueOnce([[{ household_id: 1 }], []]);
+			mockPool.execute.mockResolvedValueOnce([[{ household_id: 1 }] as RowDataPacket[], []]);
 
 			const result = await canEditResource(1, 'recipes', 123);
 
@@ -26,7 +27,7 @@ describe('Permission System', () => {
 		});
 
 		it('should return false for resources owned by other households', async () => {
-			mockPool.execute.mockResolvedValueOnce([[{ household_id: 2 }], []]);
+			mockPool.execute.mockResolvedValueOnce([[{ household_id: 2 }] as RowDataPacket[], []]);
 
 			const result = await canEditResource(1, 'recipes', 123);
 
@@ -34,7 +35,7 @@ describe('Permission System', () => {
 		});
 
 		it('should return false for non-existent resources', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await canEditResource(1, 'recipes', 999);
 
@@ -57,7 +58,7 @@ describe('Permission System', () => {
 				public: 0,
 				is_subscribed: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await validateHouseholdAccess(1, 123);
 
@@ -70,7 +71,7 @@ describe('Permission System', () => {
 				public: 1,
 				is_subscribed: 1,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await validateHouseholdAccess(1, 123);
 
@@ -83,7 +84,7 @@ describe('Permission System', () => {
 				public: 1,
 				is_subscribed: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await validateHouseholdAccess(1, 123);
 
@@ -96,7 +97,7 @@ describe('Permission System', () => {
 				public: 0,
 				is_subscribed: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await validateHouseholdAccess(1, 123);
 
@@ -104,7 +105,7 @@ describe('Permission System', () => {
 		});
 
 		it('should return null for non-existent collections', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await validateHouseholdAccess(1, 999);
 
@@ -120,7 +121,7 @@ describe('Permission System', () => {
 				collection_public: 0,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessRecipe(1, 123);
 
@@ -134,7 +135,7 @@ describe('Permission System', () => {
 				collection_public: 0,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessRecipe(1, 123);
 
@@ -148,7 +149,7 @@ describe('Permission System', () => {
 				collection_public: 0,
 				is_subscribed_to_collection: 1,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessRecipe(1, 123);
 
@@ -162,7 +163,7 @@ describe('Permission System', () => {
 				collection_public: 1,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessRecipe(1, 123);
 
@@ -176,7 +177,7 @@ describe('Permission System', () => {
 				collection_public: 0,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessRecipe(1, 123);
 
@@ -190,7 +191,7 @@ describe('Permission System', () => {
 				collection_public: 0,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessRecipe(1, 123, 456);
 
@@ -208,7 +209,7 @@ describe('Permission System', () => {
 				collection_public: null,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessIngredient(1, 123);
 
@@ -223,7 +224,7 @@ describe('Permission System', () => {
 				collection_public: null,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessIngredient(1, 123);
 
@@ -238,7 +239,7 @@ describe('Permission System', () => {
 				collection_public: 1,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessIngredient(1, 123);
 
@@ -253,7 +254,7 @@ describe('Permission System', () => {
 				collection_public: 0,
 				is_subscribed_to_collection: null,
 			};
-			mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 			const result = await canAccessIngredient(1, 123);
 
@@ -268,7 +269,7 @@ describe('Permission System', () => {
 				{ id: 2, household_id: 2 }, // Cannot edit
 				{ id: 3, household_id: 1 }, // Can edit
 			];
-			mockPool.execute.mockResolvedValueOnce([mockResources, []]);
+			mockPool.execute.mockResolvedValueOnce([mockResources as RowDataPacket[], []]);
 
 			const result = await canEditMultipleResources(1, 'recipes', [1, 2, 3, 4]);
 
@@ -302,7 +303,7 @@ describe('Permission System', () => {
 
 	describe('isAdmin', () => {
 		it('should return true for admin users', async () => {
-			mockPool.execute.mockResolvedValueOnce([[{ is_admin: 1 }], []]);
+			mockPool.execute.mockResolvedValueOnce([[{ is_admin: 1 }] as RowDataPacket[], []]);
 
 			const result = await isAdmin(1);
 
@@ -311,7 +312,7 @@ describe('Permission System', () => {
 		});
 
 		it('should return false for non-admin users', async () => {
-			mockPool.execute.mockResolvedValueOnce([[{ is_admin: 0 }], []]);
+			mockPool.execute.mockResolvedValueOnce([[{ is_admin: 0 }] as RowDataPacket[], []]);
 
 			const result = await isAdmin(1);
 
@@ -319,7 +320,7 @@ describe('Permission System', () => {
 		});
 
 		it('should return false for non-existent users', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await isAdmin(999);
 

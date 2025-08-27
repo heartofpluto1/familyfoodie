@@ -1,5 +1,6 @@
 import { getRecipesInCollection, getMyRecipes, getAllRecipesWithDetailsHousehold, getRecipeDetailsHousehold, getMyIngredients } from './menus';
 import pool from '@/lib/db.js';
+import { RowDataPacket } from 'mysql2';
 
 // Mock the database pool
 jest.mock('@/lib/db.js');
@@ -41,18 +42,18 @@ describe('Household-Aware Recipe Queries', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockRecipes, []]);
+			mockPool.execute.mockResolvedValueOnce([mockRecipes as RowDataPacket[], []]);
 
 			const result = await getRecipesInCollection(10, 1);
 
 			expect(result).toHaveLength(2);
-			expect(result[0].access_context.user_owns_recipe).toBe(true);
-			expect(result[1].access_context.user_owns_recipe).toBe(false);
+			expect((result[0] as typeof result[0] & { access_context: { user_owns_recipe: boolean } }).access_context.user_owns_recipe).toBe(true);
+			expect((result[1] as typeof result[1] & { access_context: { user_owns_recipe: boolean } }).access_context.user_owns_recipe).toBe(false);
 			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE cr.collection_id = ? AND r.archived = 0'), [1, 10, 1, 1, 10, 1, 1, 1]);
 		});
 
 		it('should prioritize household versions over originals', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getRecipesInCollection(10, 1);
 
@@ -60,7 +61,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should order by display_order and added_at', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getRecipesInCollection(10, 1);
 
@@ -89,7 +90,7 @@ describe('Household-Aware Recipe Queries', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockRecipes, []]);
+			mockPool.execute.mockResolvedValueOnce([mockRecipes as RowDataPacket[], []]);
 
 			const result = await getMyRecipes(1);
 
@@ -98,7 +99,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should prioritize owned recipes in ordering', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getMyRecipes(1);
 
@@ -106,7 +107,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should exclude household copies of other recipes', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getMyRecipes(1);
 
@@ -129,7 +130,7 @@ describe('Household-Aware Recipe Queries', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockRecipes, []]);
+			mockPool.execute.mockResolvedValueOnce([mockRecipes as RowDataPacket[], []]);
 
 			const result = await getAllRecipesWithDetailsHousehold(1);
 
@@ -139,7 +140,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should filter by collection when provided', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getAllRecipesWithDetailsHousehold(1, 10);
 
@@ -147,7 +148,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should include public and subscribed collections', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getAllRecipesWithDetailsHousehold(1);
 
@@ -190,7 +191,7 @@ describe('Household-Aware Recipe Queries', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockRecipeRows, []]);
+			mockPool.execute.mockResolvedValueOnce([mockRecipeRows as RowDataPacket[], []]);
 
 			const result = await getRecipeDetailsHousehold('1', 1);
 
@@ -202,7 +203,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should return null for non-existent or inaccessible recipe', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await getRecipeDetailsHousehold('999', 1);
 
@@ -210,7 +211,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should validate access permissions', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getRecipeDetailsHousehold('1', 1);
 
@@ -237,7 +238,7 @@ describe('Household-Aware Recipe Queries', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockIngredients, []]);
+			mockPool.execute.mockResolvedValueOnce([mockIngredients as RowDataPacket[], []]);
 
 			const result = await getMyIngredients(1);
 
@@ -249,7 +250,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should prioritize owned ingredients', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getMyIngredients(1);
 
@@ -257,7 +258,7 @@ describe('Household-Aware Recipe Queries', () => {
 		});
 
 		it('should exclude household copies of other ingredients', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getMyIngredients(1);
 

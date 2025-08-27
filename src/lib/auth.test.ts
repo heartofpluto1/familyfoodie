@@ -1,5 +1,6 @@
 import { authenticateUserWithHousehold, validateSessionWithHousehold } from './auth';
 import pool from './db.js';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // Mock the database pool
 jest.mock('./db.js');
@@ -16,7 +17,7 @@ jest.mock('crypto', () => ({
 }));
 
 import * as crypto from 'crypto';
-const mockCrypto = crypto;
+const mockPbkdf2Sync = crypto.pbkdf2Sync as jest.MockedFunction<typeof crypto.pbkdf2Sync>;
 
 describe('Authentication with Household Context', () => {
 	beforeEach(() => {
@@ -41,11 +42,11 @@ describe('Authentication with Household Context', () => {
 
 			// Mock database response
 			mockPool.execute
-				.mockResolvedValueOnce([[mockUser], []]) // User lookup with household
-				.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // Update last_login
+				.mockResolvedValueOnce([[mockUser] as RowDataPacket[], []]) // User lookup with household
+				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]); // Update last_login
 
 			// Mock password verification to succeed
-			mockCrypto.pbkdf2Sync.mockReturnValue(Buffer.from('aGFzaGVkUGFzc3dvcmQ=', 'base64'));
+			mockPbkdf2Sync.mockReturnValue(Buffer.from('aGFzaGVkUGFzc3dvcmQ=', 'base64'));
 
 			const result = await authenticateUserWithHousehold('testuser', 'password123');
 
@@ -67,7 +68,7 @@ describe('Authentication with Household Context', () => {
 		});
 
 		it('should reject authentication for invalid username', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await authenticateUserWithHousehold('invaliduser', 'password123');
 
@@ -86,10 +87,10 @@ describe('Authentication with Household Context', () => {
 				household_name: 'Spencer',
 			};
 
-			mockPool.execute.mockResolvedValueOnce([[mockUser], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockUser] as RowDataPacket[], []]);
 
 			// Mock password verification to fail
-			mockCrypto.pbkdf2Sync.mockReturnValue(Buffer.from('d3JvbmdIYXNo', 'base64')); // base64 of 'wrongHash'
+			mockPbkdf2Sync.mockReturnValue(Buffer.from('d3JvbmdIYXNo', 'base64')); // base64 of 'wrongHash'
 
 			const result = await authenticateUserWithHousehold('testuser', 'wrongpassword');
 
@@ -112,7 +113,7 @@ describe('Authentication with Household Context', () => {
 				household_name: 'Spencer',
 			};
 
-			mockPool.execute.mockResolvedValueOnce([[mockUser], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockUser] as RowDataPacket[], []]);
 
 			const result = await validateSessionWithHousehold(1);
 
@@ -121,7 +122,7 @@ describe('Authentication with Household Context', () => {
 		});
 
 		it('should return null for invalid user ID', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await validateSessionWithHousehold(999);
 
@@ -129,7 +130,7 @@ describe('Authentication with Household Context', () => {
 		});
 
 		it('should return null for inactive user', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await validateSessionWithHousehold(1);
 

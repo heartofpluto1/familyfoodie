@@ -33,7 +33,7 @@ describe('Copy-on-Write Functions', () => {
 			execute: jest.fn(),
 		};
 
-		mockPool.getConnection.mockResolvedValue(mockConnection);
+		mockPool.getConnection.mockResolvedValue(mockConnection as unknown as import('mysql2/promise').PoolConnection);
 
 		// Reset all copy operation mocks to default behavior
 		Object.values(mockCopyOperations).forEach(mockFn => {
@@ -693,8 +693,8 @@ describe('Copy-on-Write Functions', () => {
 
 		it('should handle ingredient not found', async () => {
 			// Provide valid collection and recipe so it reaches the ingredient check
-			mockCopyOperations.getCollectionById.mockResolvedValue({ id: 1, household_id: 2, name: 'Test Collection' });
-			mockCopyOperations.getRecipeById.mockResolvedValue({ id: 1, household_id: 2, name: 'Test Recipe' });
+			mockCopyOperations.getCollectionById.mockResolvedValue({ id: 1, household_id: 2, title: 'Test Collection', subtitle: '', filename: '', filename_dark: '', parent_id: null, public: 0, url_slug: 'test-collection' });
+			mockCopyOperations.getRecipeById.mockResolvedValue({ id: 1, household_id: 2, name: 'Test Recipe', prepTime: null, cookTime: null, description: null, archived: 0, season_id: null, primaryType_id: null, secondaryType_id: null, public: 0, url_slug: 'test-recipe', image_filename: null, pdf_filename: null, parent_id: null });
 			mockCopyOperations.getIngredientById.mockResolvedValue(null);
 
 			await expect(cascadeCopyIngredientWithContext(1, 1, 1, 999)).rejects.toThrow('Ingredient with ID 999 not found');

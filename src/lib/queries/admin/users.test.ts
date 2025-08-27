@@ -1,5 +1,6 @@
 import { getAllUsers, getUserById, updateUser, deleteUser, getUserStats } from './users';
 import pool from '../../db.js';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // Mock the database pool
 jest.mock('../../db.js', () => ({
@@ -43,7 +44,7 @@ describe('Admin Users Queries', () => {
 
 	describe('getAllUsers', () => {
 		it('returns all users ordered by date_joined DESC', async () => {
-			mockPool.execute.mockResolvedValue([mockUsers]);
+			mockPool.execute.mockResolvedValue([mockUsers as RowDataPacket[], []]);
 
 			const result = await getAllUsers();
 
@@ -53,7 +54,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('returns empty array when no users exist', async () => {
-			mockPool.execute.mockResolvedValue([[]]);
+			mockPool.execute.mockResolvedValue([[] as RowDataPacket[], []]);
 
 			const result = await getAllUsers();
 
@@ -67,11 +68,12 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('selects correct user fields', async () => {
-			mockPool.execute.mockResolvedValue([mockUsers]);
+			mockPool.execute.mockResolvedValue([mockUsers as RowDataPacket[], []]);
 
 			await getAllUsers();
 
-			const query = mockPool.execute.mock.calls[0][0] as string;
+			const queryArg = mockPool.execute.mock.calls[0][0];
+		const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
 			expect(query).toContain('u.id');
 			expect(query).toContain('u.username');
 			expect(query).toContain('u.first_name');
@@ -86,7 +88,7 @@ describe('Admin Users Queries', () => {
 
 	describe('getUserById', () => {
 		it('returns user when found', async () => {
-			mockPool.execute.mockResolvedValue([[mockUsers[0]]]);
+			mockPool.execute.mockResolvedValue([[mockUsers[0]] as RowDataPacket[], []]);
 
 			const result = await getUserById(1);
 
@@ -95,7 +97,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('returns null when user not found', async () => {
-			mockPool.execute.mockResolvedValue([[]]);
+			mockPool.execute.mockResolvedValue([[] as RowDataPacket[], []]);
 
 			const result = await getUserById(999);
 
@@ -109,7 +111,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('uses parameterized query to prevent SQL injection', async () => {
-			mockPool.execute.mockResolvedValue([[mockUsers[0]]]);
+			mockPool.execute.mockResolvedValue([[mockUsers[0]] as RowDataPacket[], []]);
 
 			await getUserById(1);
 
@@ -126,7 +128,7 @@ describe('Admin Users Queries', () => {
 		};
 
 		it('updates user successfully', async () => {
-			mockPool.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			const result = await updateUser(1, updateData);
 
@@ -135,7 +137,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('returns false when user not found', async () => {
-			mockPool.execute.mockResolvedValue([{ affectedRows: 0 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 0 } as ResultSetHeader, []]);
 
 			const result = await updateUser(999, updateData);
 
@@ -144,7 +146,7 @@ describe('Admin Users Queries', () => {
 
 		it('handles partial updates', async () => {
 			const partialUpdate = { username: 'newusername' };
-			mockPool.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			const result = await updateUser(1, partialUpdate);
 
@@ -166,7 +168,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('uses parameterized query to prevent SQL injection', async () => {
-			mockPool.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			await updateUser(1, { username: 'test' });
 
@@ -178,7 +180,7 @@ describe('Admin Users Queries', () => {
 
 	describe('deleteUser', () => {
 		it('deletes user successfully', async () => {
-			mockPool.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			const result = await deleteUser(1);
 
@@ -187,7 +189,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('returns false when user not found', async () => {
-			mockPool.execute.mockResolvedValue([{ affectedRows: 0 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 0 } as ResultSetHeader, []]);
 
 			const result = await deleteUser(999);
 
@@ -201,7 +203,7 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('uses parameterized query to prevent SQL injection', async () => {
-			mockPool.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			await deleteUser(1);
 
@@ -219,7 +221,7 @@ describe('Admin Users Queries', () => {
 		];
 
 		it('returns user statistics', async () => {
-			mockPool.execute.mockResolvedValue([mockStatsResult]);
+			mockPool.execute.mockResolvedValue([mockStatsResult as RowDataPacket[], []]);
 
 			const result = await getUserStats();
 
@@ -232,11 +234,12 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('calculates correct statistics', async () => {
-			mockPool.execute.mockResolvedValue([mockStatsResult]);
+			mockPool.execute.mockResolvedValue([mockStatsResult as RowDataPacket[], []]);
 
 			await getUserStats();
 
-			const query = mockPool.execute.mock.calls[0][0] as string;
+			const queryArg = mockPool.execute.mock.calls[0][0];
+		const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
 			expect(query).toContain('COUNT(*) as total');
 			expect(query).toContain('SUM(is_active) as active');
 			expect(query).toContain('SUM(is_admin) as admins');
@@ -250,7 +253,8 @@ describe('Admin Users Queries', () => {
 						active: 0,
 						admins: 0,
 					},
-				],
+				] as RowDataPacket[],
+				[]
 			]);
 
 			const result = await getUserStats();

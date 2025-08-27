@@ -14,6 +14,8 @@ import {
 	deleteOrphanedIngredients,
 	deleteRecipeIngredients,
 } from './copy-operations';
+import { PoolConnection } from 'mysql2/promise';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 describe('Copy Operations Database Queries', () => {
 	let mockConnection: jest.Mocked<PoolConnection>;
@@ -21,7 +23,7 @@ describe('Copy Operations Database Queries', () => {
 	beforeEach(() => {
 		mockConnection = {
 			execute: jest.fn(),
-		};
+		} as unknown as jest.Mocked<PoolConnection>;
 		jest.clearAllMocks();
 	});
 
@@ -45,7 +47,7 @@ describe('Copy Operations Database Queries', () => {
 				parent_id: null,
 			};
 
-			mockConnection.execute.mockResolvedValue([[mockRecipe]]);
+			mockConnection.execute.mockResolvedValue([[mockRecipe] as RowDataPacket[], []]);
 
 			const result = await getRecipeById(mockConnection, 1);
 
@@ -54,7 +56,7 @@ describe('Copy Operations Database Queries', () => {
 		});
 
 		it('should return null when recipe not found', async () => {
-			mockConnection.execute.mockResolvedValue([[]]);
+			mockConnection.execute.mockResolvedValue([[] as RowDataPacket[], []]);
 
 			const result = await getRecipeById(mockConnection, 999);
 
@@ -76,7 +78,7 @@ describe('Copy Operations Database Queries', () => {
 				url_slug: 'test-collection',
 			};
 
-			mockConnection.execute.mockResolvedValue([[mockCollection]]);
+			mockConnection.execute.mockResolvedValue([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await getCollectionById(mockConnection, 1);
 
@@ -85,7 +87,7 @@ describe('Copy Operations Database Queries', () => {
 		});
 
 		it('should return null when collection not found', async () => {
-			mockConnection.execute.mockResolvedValue([[]]);
+			mockConnection.execute.mockResolvedValue([[] as RowDataPacket[], []]);
 
 			const result = await getCollectionById(mockConnection, 999);
 
@@ -108,7 +110,7 @@ describe('Copy Operations Database Queries', () => {
 				parent_id: null,
 			};
 
-			mockConnection.execute.mockResolvedValue([[mockIngredient]]);
+			mockConnection.execute.mockResolvedValue([[mockIngredient] as RowDataPacket[], []]);
 
 			const result = await getIngredientById(mockConnection, 1);
 
@@ -117,7 +119,7 @@ describe('Copy Operations Database Queries', () => {
 		});
 
 		it('should return null when ingredient not found', async () => {
-			mockConnection.execute.mockResolvedValue([[]]);
+			mockConnection.execute.mockResolvedValue([[] as RowDataPacket[], []]);
 
 			const result = await getIngredientById(mockConnection, 999);
 
@@ -145,7 +147,7 @@ describe('Copy Operations Database Queries', () => {
 				parent_id: null,
 			};
 
-			mockConnection.execute.mockResolvedValue([{ insertId: 10 }]);
+			mockConnection.execute.mockResolvedValue([{ insertId: 10 } as ResultSetHeader, []]);
 
 			const result = await copyRecipe(mockConnection, mockRecipe, 2);
 
@@ -171,7 +173,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('copyRecipeIngredients', () => {
 		it('should copy all recipe ingredients', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 3 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 3 } as ResultSetHeader, []]);
 
 			await copyRecipeIngredients(mockConnection, 1, 10);
 
@@ -196,7 +198,7 @@ describe('Copy Operations Database Queries', () => {
 				url_slug: 'test-collection',
 			};
 
-			mockConnection.execute.mockResolvedValue([{ insertId: 20 }]);
+			mockConnection.execute.mockResolvedValue([{ insertId: 20 } as ResultSetHeader, []]);
 
 			const result = await copyCollection(mockConnection, mockCollection, 2);
 
@@ -216,7 +218,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('copyCollectionRecipes', () => {
 		it('should copy all collection recipes', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 5 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 5 } as ResultSetHeader, []]);
 
 			await copyCollectionRecipes(mockConnection, 1, 20);
 
@@ -242,7 +244,7 @@ describe('Copy Operations Database Queries', () => {
 				parent_id: null,
 			};
 
-			mockConnection.execute.mockResolvedValue([{ insertId: 30 }]);
+			mockConnection.execute.mockResolvedValue([{ insertId: 30 } as ResultSetHeader, []]);
 
 			const result = await copyIngredient(mockConnection, mockIngredient, 2);
 
@@ -263,7 +265,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('updateJunctionTableForRecipe', () => {
 		it('should update junction table for household collections', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 2 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 2 } as ResultSetHeader, []]);
 
 			await updateJunctionTableForRecipe(mockConnection, 1, 10, 2);
 
@@ -276,7 +278,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('updateJunctionTableForCollectionRecipe', () => {
 		it('should update junction table for specific collection-recipe pair', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			await updateJunctionTableForCollectionRecipe(mockConnection, 5, 1, 10);
 
@@ -289,7 +291,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('updateRecipeIngredientsForHousehold', () => {
 		it('should update recipe ingredients for household recipes', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 3 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 3 } as ResultSetHeader, []]);
 
 			await updateRecipeIngredientsForHousehold(mockConnection, 1, 30, 2);
 
@@ -302,7 +304,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('removeCollectionSubscription', () => {
 		it('should remove collection subscription', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 1 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			await removeCollectionSubscription(mockConnection, 2, 1);
 
@@ -317,8 +319,8 @@ describe('Copy Operations Database Queries', () => {
 		it('should find and delete orphaned ingredients', async () => {
 			// Mock finding orphaned ingredients
 			mockConnection.execute
-				.mockResolvedValueOnce([[{ id: 5 }, { id: 6 }, { id: 7 }]]) // find orphaned
-				.mockResolvedValueOnce([{ affectedRows: 3 }]); // delete them
+				.mockResolvedValueOnce([[{ id: 5 }, { id: 6 }, { id: 7 }] as RowDataPacket[], []]) // find orphaned
+				.mockResolvedValueOnce([{ affectedRows: 3 } as ResultSetHeader, []]); // delete them
 
 			const result = await deleteOrphanedIngredients(mockConnection, 2);
 
@@ -333,7 +335,7 @@ describe('Copy Operations Database Queries', () => {
 		});
 
 		it('should handle no orphaned ingredients', async () => {
-			mockConnection.execute.mockResolvedValueOnce([[]]); // no orphaned ingredients found
+			mockConnection.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]); // no orphaned ingredients found
 
 			const result = await deleteOrphanedIngredients(mockConnection, 2);
 
@@ -342,7 +344,7 @@ describe('Copy Operations Database Queries', () => {
 		});
 
 		it('should exclude specific recipe when provided', async () => {
-			mockConnection.execute.mockResolvedValueOnce([[{ id: 5 }]]);
+			mockConnection.execute.mockResolvedValueOnce([[{ id: 5 }] as RowDataPacket[], []]);
 
 			await deleteOrphanedIngredients(mockConnection, 2, 10);
 
@@ -355,7 +357,7 @@ describe('Copy Operations Database Queries', () => {
 
 	describe('deleteRecipeIngredients', () => {
 		it('should delete recipe ingredients and return count', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 5 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 5 } as ResultSetHeader, []]);
 
 			const result = await deleteRecipeIngredients(mockConnection, 10);
 
@@ -367,7 +369,7 @@ describe('Copy Operations Database Queries', () => {
 	describe('SQL Injection Protection', () => {
 		it('should use parameterized queries for all operations', async () => {
 			// Test a few key functions to ensure they use parameterized queries
-			mockConnection.execute.mockResolvedValue([[{ id: 1 }]]);
+			mockConnection.execute.mockResolvedValue([[{ id: 1 }] as RowDataPacket[], []]);
 
 			await getRecipeById(mockConnection, 1);
 			await getCollectionById(mockConnection, 1);
@@ -423,7 +425,7 @@ describe('Copy Operations Database Queries', () => {
 	describe('Performance Considerations', () => {
 		it('should use efficient queries with proper indexing hints', () => {
 			// Verify that queries are structured to use indexes effectively
-			mockConnection.execute.mockResolvedValue([[]]);
+			mockConnection.execute.mockResolvedValue([[] as RowDataPacket[], []]);
 
 			getRecipeById(mockConnection, 1);
 
@@ -432,7 +434,7 @@ describe('Copy Operations Database Queries', () => {
 		});
 
 		it('should batch operations where possible', async () => {
-			mockConnection.execute.mockResolvedValue([{ affectedRows: 5 }]);
+			mockConnection.execute.mockResolvedValue([{ affectedRows: 5 } as ResultSetHeader, []]);
 
 			await copyCollectionRecipes(mockConnection, 1, 20);
 

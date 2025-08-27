@@ -1,5 +1,6 @@
 import { getMyCollections, getPublicCollections, getCollectionByIdWithHousehold } from './collections';
 import pool from '@/lib/db.js';
+import { RowDataPacket } from 'mysql2';
 
 // Mock the database pool
 jest.mock('@/lib/db.js');
@@ -47,7 +48,7 @@ describe('Collections Queries with Household Context', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockCollections, []]);
+			mockPool.execute.mockResolvedValueOnce([mockCollections as RowDataPacket[], []]);
 
 			const result = await getMyCollections(1);
 
@@ -56,7 +57,7 @@ describe('Collections Queries with Household Context', () => {
 		});
 
 		it('should return empty array when no collections found', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await getMyCollections(1);
 
@@ -64,7 +65,7 @@ describe('Collections Queries with Household Context', () => {
 		});
 
 		it('should order results by access type and title', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getMyCollections(1);
 
@@ -109,7 +110,7 @@ describe('Collections Queries with Household Context', () => {
 				},
 			];
 
-			mockPool.execute.mockResolvedValueOnce([mockCollections, []]);
+			mockPool.execute.mockResolvedValueOnce([mockCollections as RowDataPacket[], []]);
 
 			const result = await getPublicCollections(1);
 
@@ -118,7 +119,7 @@ describe('Collections Queries with Household Context', () => {
 		});
 
 		it('should filter only public collections', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getPublicCollections(1);
 
@@ -145,7 +146,7 @@ describe('Collections Queries with Household Context', () => {
 				household_id: 1,
 			};
 
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await getCollectionByIdWithHousehold(1, 1);
 
@@ -171,7 +172,7 @@ describe('Collections Queries with Household Context', () => {
 				household_id: 2,
 			};
 
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await getCollectionByIdWithHousehold(2, 1);
 
@@ -196,7 +197,7 @@ describe('Collections Queries with Household Context', () => {
 				household_id: 3,
 			};
 
-			mockPool.execute.mockResolvedValueOnce([[mockCollection], []]);
+			mockPool.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]);
 
 			const result = await getCollectionByIdWithHousehold(3, 1);
 
@@ -204,7 +205,7 @@ describe('Collections Queries with Household Context', () => {
 		});
 
 		it('should return null for inaccessible collection', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await getCollectionByIdWithHousehold(999, 1);
 
@@ -212,7 +213,7 @@ describe('Collections Queries with Household Context', () => {
 		});
 
 		it('should validate access permissions in query', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getCollectionByIdWithHousehold(1, 1);
 
@@ -220,7 +221,7 @@ describe('Collections Queries with Household Context', () => {
 		});
 
 		it('should calculate can_subscribe correctly', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getCollectionByIdWithHousehold(1, 1);
 
@@ -233,7 +234,7 @@ describe('Collections Queries with Household Context', () => {
 
 	describe('recipe count calculation', () => {
 		it('should only count non-archived recipes', async () => {
-			mockPool.execute.mockResolvedValueOnce([[], []]);
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			await getMyCollections(1);
 
