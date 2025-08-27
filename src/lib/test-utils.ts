@@ -76,13 +76,16 @@ export const passthroughAuthMock = {
 export const setupConsoleMocks = () => {
 	const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
 	const mockConsoleError = jest.spyOn(console, 'error').mockImplementation();
+	const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation();
 
 	return {
 		mockConsoleLog,
 		mockConsoleError,
+		mockConsoleWarn,
 		cleanup: () => {
 			mockConsoleLog.mockRestore();
 			mockConsoleError.mockRestore();
+			mockConsoleWarn.mockRestore();
 		},
 	};
 };
