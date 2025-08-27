@@ -45,8 +45,7 @@ function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { succ
 	return { isValid: true };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
+async function deleteHandler(request: AuthenticatedRequest) {
 	let recipeId: unknown;
 
 	// Handle JSON parsing with proper error handling

@@ -8,8 +8,7 @@ interface DeleteIngredientRequest {
 	id: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function deleteIngredientHandler(request: AuthenticatedRequest, context?: unknown) {
+async function deleteIngredientHandler(request: AuthenticatedRequest) {
 	try {
 		const body: DeleteIngredientRequest = await request.json();
 		const { id } = body;

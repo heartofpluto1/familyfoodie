@@ -5,8 +5,7 @@ import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { canEditResource } from '@/lib/permissions';
 import { deleteFile, getStorageMode } from '@/lib/storage';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function deleteHandler(request: AuthenticatedRequest, context?: unknown) {
+async function deleteHandler(request: AuthenticatedRequest) {
 	try {
 		const { collectionId } = await request.json();
 

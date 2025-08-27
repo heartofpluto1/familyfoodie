@@ -6,8 +6,7 @@ import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.col
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function createCollectionHandler(request: AuthenticatedRequest, context?: unknown) {
+async function createCollectionHandler(request: AuthenticatedRequest) {
 	try {
 		const formData = await request.formData();
 

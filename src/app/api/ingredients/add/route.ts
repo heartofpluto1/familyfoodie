@@ -12,8 +12,7 @@ interface AddIngredientRequest {
 	pantryCategoryId: number | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function addIngredientHandler(request: AuthenticatedRequest, context?: unknown) {
+async function addIngredientHandler(request: AuthenticatedRequest) {
 	try {
 		const body: AddIngredientRequest = await request.json();
 		const { name, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId } = body;

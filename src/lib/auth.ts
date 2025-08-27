@@ -115,11 +115,21 @@ export async function authenticateUserWithHousehold(username: string, password: 
 		await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
 		// Return user without password
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { password: _, ...userWithoutPassword } = user;
 		return {
 			success: true,
-			user: userWithoutPassword,
+			user: {
+				id: user.id,
+				username: user.username,
+				first_name: user.first_name,
+				last_name: user.last_name,
+				email: user.email,
+				is_active: user.is_active,
+				is_admin: user.is_admin,
+				date_joined: user.date_joined,
+				last_login: user.last_login,
+				household_id: user.household_id,
+				household_name: user.household_name,
+			},
 		};
 	} catch (error) {
 		addToast('error', 'Authentication Error', 'Authentication with household context failed: ' + (error instanceof Error ? error.message : String(error)));

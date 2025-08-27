@@ -12,9 +12,37 @@ import { Collection } from './queries/collections.js';
 export interface AccessContext {
 	tier: 'browsing' | 'planning' | 'ingredients';
 	household_id: number;
-	access_type: 'owned' | 'subscribed' | 'public';
+	access_type: 'owned' | 'subscribed' | 'public' | 'accessible';
 	can_edit: boolean;
 	can_subscribe: boolean;
+}
+
+interface CollectionAccessResult {
+	household_id: number;
+	public: number;
+	is_subscribed: number | null;
+	access_type: 'owned' | 'subscribed' | 'public' | null;
+	can_edit: number;
+	can_subscribe: number;
+}
+
+interface RecipeAccessResult {
+	recipe_household_id: number;
+	collection_household_id: number;
+	collection_public: number;
+	is_subscribed_to_collection: number | null;
+	access_type: 'owned' | 'accessible' | 'public' | null;
+	can_edit: number;
+}
+
+interface IngredientAccessResult {
+	ingredient_household_id: number;
+	recipe_household_id: number | null;
+	collection_household_id: number | null;
+	collection_public: number | null;
+	is_subscribed_to_collection: number | null;
+	access_type: 'owned' | 'accessible' | null;
+	can_edit: number;
 }
 
 /**
@@ -198,8 +226,22 @@ export async function validateAccessTier(
 
 		if (results.length === 0) return null;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = results[0] as any;
+		let result: CollectionAccessResult | RecipeAccessResult | IngredientAccessResult;
+
+		switch (resource_type) {
+			case 'collection':
+				result = results[0] as CollectionAccessResult;
+				break;
+			case 'recipe':
+				result = results[0] as RecipeAccessResult;
+				break;
+			case 'ingredient':
+				result = results[0] as IngredientAccessResult;
+				break;
+			default:
+				return null;
+		}
+
 		if (!result.access_type) return null; // No access
 
 		// Validate tier access
@@ -209,12 +251,14 @@ export async function validateAccessTier(
 
 		if (accessTierIndex < requiredTierIndex) return null;
 
+		const canSubscribe = resource_type === 'collection' ? !!(result as CollectionAccessResult).can_subscribe : false;
+
 		return {
 			tier: required_tier,
 			household_id,
 			access_type: result.access_type,
 			can_edit: !!result.can_edit,
-			can_subscribe: result.can_subscribe !== undefined ? !!result.can_subscribe : false,
+			can_subscribe: canSubscribe,
 		};
 	} catch (error) {
 		console.error(`Error validating access tier:`, error);
