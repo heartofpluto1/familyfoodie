@@ -96,12 +96,23 @@ export async function requireAuthWithHousehold(request: NextRequest) {
 	};
 }
 
+// Define Next.js App Router context type
+type RouteContext = {
+	params: Promise<Record<string, string | string[]>>;
+};
+
 /**
  * Enhanced higher-order function with household context for Agent 2 implementation
  * Provides SessionUser with household_id directly on the request object
+ *
+ * Supports handlers with flexible signatures:
+ * - (request) => Promise<NextResponse>
+ * - (request, context) => Promise<NextResponse>
  */
-export function withAuth<T = Record<string, unknown>>(handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>) {
-	return async (request: NextRequest, context?: T) => {
+export function withAuth(
+	handler: ((request: AuthenticatedRequest) => Promise<NextResponse>) | ((request: AuthenticatedRequest, context: RouteContext) => Promise<NextResponse>)
+) {
+	return async (request: NextRequest, context: RouteContext) => {
 		const { response, user } = await requireAuthWithHousehold(request);
 
 		if (response) {
@@ -113,6 +124,13 @@ export function withAuth<T = Record<string, unknown>>(handler: (request: Authent
 		authenticatedRequest.user = user!;
 		authenticatedRequest.household_id = user!.household_id;
 
-		return handler(authenticatedRequest, context);
+		// Check if handler expects context parameter by checking its length
+		if (handler.length >= 2) {
+			// Handler expects context parameter
+			return (handler as (request: AuthenticatedRequest, context: RouteContext) => Promise<NextResponse>)(authenticatedRequest, context);
+		} else {
+			// Handler only expects request parameter
+			return (handler as (request: AuthenticatedRequest) => Promise<NextResponse>)(authenticatedRequest);
+		}
 	};
 }

@@ -7,11 +7,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import { RowDataPacket } from 'mysql2';
 
-// Define the context type expected by Next.js App Router
-type RouteContext = {
-	params: Promise<Record<string, string | string[]>>;
-};
-
 // Migration lock system for concurrency protection
 const migrationLock = {
 	isLocked: false,
@@ -388,7 +383,7 @@ async function getHandler(request: NextRequest) {
 }
 
 // Generic handler for all HTTP methods to handle method validation
-async function handleRequest(request: NextRequest, context: RouteContext) {
+async function handleRequest(request: NextRequest) {
 	// 1. HTTP Method validation
 	const methodValidation = validateHttpMethod(request.method, ['GET', 'POST']);
 	if (methodValidation) return methodValidation;

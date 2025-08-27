@@ -14,8 +14,15 @@ jest.mock('./db.js');
 const mockPool = pool as jest.Mocked<typeof pool>;
 
 describe('Three-Tier Access System', () => {
+	// Mock console.error to suppress expected error logs during testing
+	const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	afterAll(() => {
+		consoleErrorSpy.mockRestore();
 	});
 
 	describe('Tier 1 - Browsing Access', () => {

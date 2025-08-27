@@ -55,7 +55,7 @@ export const authMiddlewareMock = {
 				);
 			}
 			// Set household_id from user as the real middleware does
-			request.household_id = request.user.household_id || 1; // Default to household_id 1 for testing
+			request.household_id = (request.user as User & { household_id: number }).household_id || 1; // Default to household_id 1 for testing
 			return handler(request, context);
 		};
 	},
