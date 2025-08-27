@@ -1,13 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentWeekRecipes, getCurrentWeek } from '@/lib/queries/menus';
 import { withAuth } from '@/lib/auth-middleware';
 
-// Define the context type expected by Next.js App Router
-type RouteContext = {
-	params: Promise<Record<string, string | string[]>>;
-};
-
-async function handler(_request: NextRequest, _context: RouteContext) {
+async function handler() {
 	try {
 		const currentWeek = getCurrentWeek();
 		const recipes = await getCurrentWeekRecipes();

@@ -125,7 +125,7 @@ async function getLastMigrationInfo() {
 	}
 }
 
-async function postHandler(request: NextRequest, _context: RouteContext) {
+async function postHandler(request: NextRequest) {
 	try {
 		// 1. Content-Type validation for requests with body
 		const contentLength = request.headers.get('content-length');
@@ -320,7 +320,7 @@ async function postHandler(request: NextRequest, _context: RouteContext) {
 	}
 }
 
-async function getHandler(request: NextRequest, _context: RouteContext) {
+async function getHandler(request: NextRequest) {
 	try {
 		// 1. Admin authentication with enhanced error handling
 		let adminUser;
@@ -395,9 +395,9 @@ async function handleRequest(request: NextRequest, context: RouteContext) {
 
 	// 2. Route to appropriate handler
 	if (request.method === 'GET') {
-		return getHandler(request, context);
+		return getHandler(request);
 	} else if (request.method === 'POST') {
-		return postHandler(request, context);
+		return postHandler(request);
 	}
 
 	// This shouldn't happen due to validation above, but just in case
