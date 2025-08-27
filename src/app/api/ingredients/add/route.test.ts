@@ -324,17 +324,15 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Ingredient name is required',
-								details: [
-									{
-										field: 'name',
-										code: 'REQUIRED',
-										message: 'Ingredient name is required',
-									},
-								],
-							},
+							error: 'Ingredient name is required',
+							code: 'VALIDATION_ERROR',
+							details: [
+								{
+									field: 'name',
+									code: 'REQUIRED',
+									message: 'Ingredient name is required',
+								},
+							],
 						});
 
 						// Should not call database
@@ -366,17 +364,15 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Ingredient name is required',
-								details: [
-									{
-										field: 'name',
-										code: 'REQUIRED',
-										message: 'Ingredient name is required',
-									},
-								],
-							},
+							error: 'Ingredient name is required',
+							code: 'VALIDATION_ERROR',
+							details: [
+								{
+									field: 'name',
+									code: 'REQUIRED',
+									message: 'Ingredient name is required',
+								},
+							],
 						});
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
@@ -406,17 +402,15 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Ingredient name cannot be empty',
-								details: [
-									{
-										field: 'name',
-										code: 'REQUIRED',
-										message: 'Ingredient name cannot be empty',
-									},
-								],
-							},
+							error: 'Ingredient name cannot be empty',
+							code: 'VALIDATION_ERROR',
+							details: [
+								{
+									field: 'name',
+									code: 'REQUIRED',
+									message: 'Ingredient name cannot be empty',
+								},
+							],
 						});
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
@@ -444,14 +438,12 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'DUPLICATE_RESOURCE',
-								message: 'An ingredient with this name already exists in your household',
-								details: {
-									field: 'name',
-									value: 'Test Ingredient',
-									existingId: 555,
-								},
+							error: 'An ingredient with this name already exists in your household',
+							code: 'DUPLICATE_RESOURCE',
+							details: {
+								field: 'name',
+								value: 'Test Ingredient',
+								existingId: 555,
 							},
 						});
 
@@ -600,10 +592,8 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'INTERNAL_ERROR',
-								message: 'An internal server error occurred. Please try again later.',
-							},
+							error: 'An internal server error occurred. Please try again later.',
+							code: 'INTERNAL_ERROR',
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),
@@ -631,10 +621,8 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'INTERNAL_ERROR',
-								message: 'An internal server error occurred. Please try again later.',
-							},
+							error: 'An internal server error occurred. Please try again later.',
+							code: 'INTERNAL_ERROR',
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),
@@ -665,10 +653,8 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'INVALID_JSON',
-								message: 'Invalid JSON in request body',
-							},
+							error: 'Invalid JSON in request body',
+							code: 'INVALID_JSON',
 						});
 
 						// Should not call database on JSON parse error
@@ -697,10 +683,8 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'INTERNAL_ERROR',
-								message: 'An internal server error occurred. Please try again later.',
-							},
+							error: 'An internal server error occurred. Please try again later.',
+							code: 'INTERNAL_ERROR',
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),
@@ -726,10 +710,8 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'INTERNAL_ERROR',
-								message: 'An internal server error occurred. Please try again later.',
-							},
+							error: 'An internal server error occurred. Please try again later.',
+							code: 'INTERNAL_ERROR',
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),
@@ -850,27 +832,25 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Invalid input data',
-								details: expect.arrayContaining([
-									expect.objectContaining({
-										field: 'name',
-										code: 'INVALID_TYPE',
-										message: 'Name must be a string',
-									}),
-									expect.objectContaining({
-										field: 'fresh',
-										code: 'INVALID_TYPE',
-										message: 'Fresh must be a boolean',
-									}),
-									expect.objectContaining({
-										field: 'price',
-										code: 'INVALID_TYPE',
-										message: 'Price must be a number or null',
-									}),
-								]),
-							},
+							error: 'Invalid input data',
+							code: 'VALIDATION_ERROR',
+							details: expect.arrayContaining([
+								expect.objectContaining({
+									field: 'name',
+									code: 'INVALID_TYPE',
+									message: 'Name must be a string',
+								}),
+								expect.objectContaining({
+									field: 'fresh',
+									code: 'INVALID_TYPE',
+									message: 'Fresh must be a boolean',
+								}),
+								expect.objectContaining({
+									field: 'price',
+									code: 'INVALID_TYPE',
+									message: 'Price must be a number or null',
+								}),
+							]),
 						});
 
 						expect(mockExecute).not.toHaveBeenCalled();
@@ -901,19 +881,17 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Ingredient name cannot exceed 255 characters',
-								details: [
-									{
-										field: 'name',
-										code: 'MAX_LENGTH_EXCEEDED',
-										message: 'Ingredient name cannot exceed 255 characters',
-										maxLength: 255,
-										actualLength: 300,
-									},
-								],
-							},
+							error: 'Ingredient name cannot exceed 255 characters',
+							code: 'VALIDATION_ERROR',
+							details: [
+								{
+									field: 'name',
+									code: 'MAX_LENGTH_EXCEEDED',
+									message: 'Ingredient name cannot exceed 255 characters',
+									maxLength: 255,
+									actualLength: 300,
+								},
+							],
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),
@@ -944,27 +922,25 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Invalid input data',
-								details: expect.arrayContaining([
-									expect.objectContaining({
-										field: 'price',
-										code: 'OUT_OF_RANGE',
-										message: 'Price must be greater than or equal to 0',
-									}),
-									expect.objectContaining({
-										field: 'supermarketCategoryId',
-										code: 'OUT_OF_RANGE',
-										message: 'Supermarket category ID must be greater than 0',
-									}),
-									expect.objectContaining({
-										field: 'pantryCategoryId',
-										code: 'OUT_OF_RANGE',
-										message: 'Pantry category ID must be greater than 0',
-									}),
-								]),
-							},
+							error: 'Invalid input data',
+							code: 'VALIDATION_ERROR',
+							details: expect.arrayContaining([
+								expect.objectContaining({
+									field: 'price',
+									code: 'OUT_OF_RANGE',
+									message: 'Price must be greater than or equal to 0',
+								}),
+								expect.objectContaining({
+									field: 'supermarketCategoryId',
+									code: 'OUT_OF_RANGE',
+									message: 'Supermarket category ID must be greater than 0',
+								}),
+								expect.objectContaining({
+									field: 'pantryCategoryId',
+									code: 'OUT_OF_RANGE',
+									message: 'Pantry category ID must be greater than 0',
+								}),
+							]),
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),
@@ -994,17 +970,15 @@ describe('/api/ingredients/add', () => {
 
 						expect(data).toEqual({
 							success: false,
-							error: {
-								code: 'VALIDATION_ERROR',
-								message: 'Fresh status is required',
-								details: [
-									{
-										field: 'fresh',
-										code: 'REQUIRED',
-										message: 'Fresh status is required',
-									},
-								],
-							},
+							error: 'Fresh status is required',
+							code: 'VALIDATION_ERROR',
+							details: [
+								{
+									field: 'fresh',
+									code: 'REQUIRED',
+									message: 'Fresh status is required',
+								},
+							],
 						});
 					},
 					requestPatcher: req => Object.assign(req, request),

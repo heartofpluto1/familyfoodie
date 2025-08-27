@@ -23,11 +23,9 @@ interface ValidationError {
 
 interface ApiErrorResponse {
 	success: false;
-	error: {
-		code: string;
-		message: string;
-		details?: ValidationError[] | { field?: string; value?: unknown; existingId?: number };
-	};
+	error: string;
+	code?: string;
+	details?: ValidationError[] | { field?: string; value?: unknown; existingId?: number };
 }
 
 interface ApiSuccessResponse {
@@ -191,10 +189,8 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 		} catch {
 			const errorResponse: ApiErrorResponse = {
 				success: false,
-				error: {
-					code: 'INVALID_JSON',
-					message: 'Invalid JSON in request body',
-				},
+				error: 'Invalid JSON in request body',
+				code: 'INVALID_JSON',
 			};
 			return NextResponse.json(errorResponse, { status: 400 });
 		}
@@ -204,11 +200,9 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 		if (validationErrors.length > 0) {
 			const errorResponse: ApiErrorResponse = {
 				success: false,
-				error: {
-					code: 'VALIDATION_ERROR',
-					message: validationErrors.length === 1 ? validationErrors[0].message : 'Invalid input data',
-					details: validationErrors,
-				},
+				error: validationErrors.length === 1 ? validationErrors[0].message : 'Invalid input data',
+				code: 'VALIDATION_ERROR',
+				details: validationErrors,
 			};
 			return NextResponse.json(errorResponse, { status: 400 });
 		}
@@ -227,14 +221,12 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 		if (existingRows.length > 0) {
 			const errorResponse: ApiErrorResponse = {
 				success: false,
-				error: {
-					code: 'DUPLICATE_RESOURCE',
-					message: 'An ingredient with this name already exists in your household',
-					details: {
-						field: 'name',
-						value: trimmedName,
-						existingId: existingRows[0].id,
-					},
+				error: 'An ingredient with this name already exists in your household',
+				code: 'DUPLICATE_RESOURCE',
+				details: {
+					field: 'name',
+					value: trimmedName,
+					existingId: existingRows[0].id,
 				},
 			};
 			return NextResponse.json(errorResponse, { status: 409 });
@@ -287,10 +279,8 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 		// Sanitize error messages for security
 		const errorResponse: ApiErrorResponse = {
 			success: false,
-			error: {
-				code: 'INTERNAL_ERROR',
-				message: 'An internal server error occurred. Please try again later.',
-			},
+			error: 'An internal server error occurred. Please try again later.',
+			code: 'INTERNAL_ERROR',
 		};
 
 		// In development, you might want to log the actual error
