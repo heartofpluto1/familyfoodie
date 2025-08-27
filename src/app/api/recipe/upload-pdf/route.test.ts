@@ -101,6 +101,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1_123456.pdf',
+				filename: 'recipe_1_123456.pdf',
 			});
 
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_1_123456.pdf');
@@ -155,6 +156,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/existing_v2.pdf',
+				filename: 'existing_v2.pdf',
 			});
 
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/existing_v2.pdf');
@@ -190,6 +192,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_3_123456.pdf',
+				filename: 'recipe_3_123456.pdf',
 			});
 
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_3_123456.pdf');
@@ -242,6 +245,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_4_123456.pdf',
+				filename: 'recipe_4_123456.pdf',
 			});
 
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_4_123456.pdf');
@@ -494,6 +498,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1_123456.pdf',
+				filename: 'recipe_1_123456.pdf',
 			});
 
 			await testApiHandler({
@@ -525,6 +530,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1.pdf',
+				filename: 'recipe_1.pdf',
 			});
 
 			mockGetStorageMode.mockReturnValue('cloud');
@@ -655,6 +661,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_5_123456.pdf',
+				filename: 'recipe_5_123456.pdf',
 			});
 
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_5_123456.pdf');
@@ -702,6 +709,7 @@ describe('/api/recipe/upload-pdf', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_6_123456.pdf',
+				filename: 'recipe_6_123456.pdf',
 			});
 
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_6_123456.pdf');

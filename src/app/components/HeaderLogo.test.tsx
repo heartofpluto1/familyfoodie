@@ -27,7 +27,9 @@ describe('HeaderLogo Component', () => {
 			username: 'testuser',
 			email: 'test@example.com',
 			is_admin: false,
+			is_active: true,
 		},
+		loginTime: Date.now(),
 	};
 
 	const mockAdminSession: SessionData = {
@@ -36,7 +38,9 @@ describe('HeaderLogo Component', () => {
 			username: 'admin',
 			email: 'admin@example.com',
 			is_admin: true,
+			is_active: true,
 		},
+		loginTime: Date.now(),
 	};
 
 	beforeEach(() => {

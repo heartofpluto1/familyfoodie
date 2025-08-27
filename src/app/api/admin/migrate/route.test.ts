@@ -161,11 +161,6 @@ describe('/api/admin/migrate', () => {
 			mockRunMigrations.mockResolvedValue({
 				success: true,
 				migrationsRun: 3,
-				executions: [
-					{ file: '001_test.sql', duration: 50 },
-					{ file: '002_test.sql', duration: 75 },
-					{ file: '003_test.sql', duration: 100 },
-				],
 			});
 
 			try {

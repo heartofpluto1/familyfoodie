@@ -8,6 +8,7 @@ import {
 	AccessContext,
 } from './access-tiers';
 import pool from './db.js';
+import { RowDataPacket } from 'mysql2';
 
 // Mock the database pool
 jest.mock('./db.js');
@@ -63,7 +64,7 @@ describe('Three-Tier Access System', () => {
 					},
 				];
 
-				mockPool.execute.mockResolvedValueOnce([mockCollections, []]);
+				mockPool.execute.mockResolvedValueOnce([mockCollections as RowDataPacket[], []]);
 
 				const result = await getBrowsingAccessCollections(1);
 
@@ -72,7 +73,7 @@ describe('Three-Tier Access System', () => {
 			});
 
 			it('should order by title', async () => {
-				mockPool.execute.mockResolvedValueOnce([[], []]);
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 				await getBrowsingAccessCollections(1);
 
@@ -103,7 +104,7 @@ describe('Three-Tier Access System', () => {
 					},
 				];
 
-				mockPool.execute.mockResolvedValueOnce([mockCollections, []]);
+				mockPool.execute.mockResolvedValueOnce([mockCollections as RowDataPacket[], []]);
 
 				const result = await getPlanningAccessCollections(1);
 
@@ -112,7 +113,7 @@ describe('Three-Tier Access System', () => {
 			});
 
 			it('should prioritize owned collections in ordering', async () => {
-				mockPool.execute.mockResolvedValueOnce([[], []]);
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 				await getPlanningAccessCollections(1);
 
@@ -141,7 +142,7 @@ describe('Three-Tier Access System', () => {
 					},
 				];
 
-				mockPool.execute.mockResolvedValueOnce([mockIngredients, []]);
+				mockPool.execute.mockResolvedValueOnce([mockIngredients as RowDataPacket[], []]);
 
 				const result = await getIngredientsAccessIngredients(1);
 
@@ -153,7 +154,7 @@ describe('Three-Tier Access System', () => {
 			});
 
 			it('should exclude household copies of other ingredients', async () => {
-				mockPool.execute.mockResolvedValueOnce([[], []]);
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 				await getIngredientsAccessIngredients(1);
 
@@ -161,7 +162,7 @@ describe('Three-Tier Access System', () => {
 			});
 
 			it('should prioritize owned ingredients', async () => {
-				mockPool.execute.mockResolvedValueOnce([[], []]);
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 				await getIngredientsAccessIngredients(1);
 
@@ -181,7 +182,7 @@ describe('Three-Tier Access System', () => {
 					can_edit: true,
 					can_subscribe: false,
 				};
-				mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+				mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 				const result = await validateAccessTier(1, 'collection', 123, 'planning');
 
@@ -203,7 +204,7 @@ describe('Three-Tier Access System', () => {
 					can_edit: false,
 					can_subscribe: false,
 				};
-				mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+				mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 				const result = await validateAccessTier(1, 'collection', 123, 'browsing');
 
@@ -225,7 +226,7 @@ describe('Three-Tier Access System', () => {
 					can_edit: false,
 					can_subscribe: true,
 				};
-				mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+				mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 				const result = await validateAccessTier(1, 'collection', 123, 'browsing');
 
@@ -239,7 +240,7 @@ describe('Three-Tier Access System', () => {
 			});
 
 			it('should return null for inaccessible resources', async () => {
-				mockPool.execute.mockResolvedValueOnce([[], []]);
+				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 				const result = await validateAccessTier(1, 'collection', 999, 'planning');
 
@@ -263,7 +264,7 @@ describe('Three-Tier Access System', () => {
 					access_type: 'accessible',
 					can_edit: false,
 				};
-				mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+				mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 				const result = await validateAccessTier(1, 'recipe', 123, 'planning');
 
@@ -286,7 +287,7 @@ describe('Three-Tier Access System', () => {
 					access_type: 'accessible',
 					can_edit: false,
 				};
-				mockPool.execute.mockResolvedValueOnce([[mockResult], []]);
+				mockPool.execute.mockResolvedValueOnce([[mockResult] as RowDataPacket[], []]);
 
 				const result = await validateAccessTier(1, 'ingredient', 123, 'ingredients');
 
@@ -321,7 +322,7 @@ describe('Three-Tier Access System', () => {
 					},
 				];
 
-				mockPool.execute.mockResolvedValueOnce([[mockResults[0]], []]).mockResolvedValueOnce([[mockResults[1]], []]);
+				mockPool.execute.mockResolvedValueOnce([[mockResults[0]] as RowDataPacket[], []]).mockResolvedValueOnce([[mockResults[1]] as RowDataPacket[], []]);
 
 				const resources = [
 					{ type: 'collection' as const, id: 1, required_tier: 'planning' as const },

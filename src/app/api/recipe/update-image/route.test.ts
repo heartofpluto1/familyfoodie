@@ -87,6 +87,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_abc123_v3.jpg',
+				filename: 'recipe_abc123_v3.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.jpg');
@@ -137,6 +138,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_def456_v2.jpg',
+				filename: 'recipe_def456_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_def456_v2.jpg');
@@ -175,6 +177,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_ghi789_v2.jpg',
+				filename: 'recipe_ghi789_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_ghi789_v2.jpg');
@@ -214,6 +217,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_jkl012_v2.png',
+				filename: 'recipe_jkl012_v2.png',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_jkl012_v2.png');
@@ -252,6 +256,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_mno345_v2.webp',
+				filename: 'recipe_mno345_v2.webp',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_mno345_v2.webp');
@@ -290,6 +295,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_pqr678_v2.jpg',
+				filename: 'recipe_pqr678_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_pqr678_v2.jpg');
@@ -491,9 +497,10 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_abc_v2.jpg',
+				filename: 'recipe_abc_v2.jpg',
 			});
 
-			mockDeleteFile.mockResolvedValue({ success: true });
+			mockDeleteFile.mockResolvedValue(true);
 
 			await testApiHandler({
 				appHandler,
@@ -529,6 +536,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_xyz_v2.jpg',
+				filename: 'recipe_xyz_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_xyz_v2.jpg');
@@ -568,6 +576,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_original_v2.jpg',
+				filename: 'recipe_original_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_original_v2.jpg');
@@ -712,6 +721,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_new_abc123_v1.jpg',
+				filename: 'recipe_new_abc123_v1.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_new_abc123_v1.jpg');
@@ -814,6 +824,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValueOnce({
 				success: true,
 				url: '/uploads/recipe_abc123_v3.jpg',
+				filename: 'recipe_abc123_v3.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.jpg');

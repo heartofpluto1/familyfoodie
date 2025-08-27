@@ -1,5 +1,6 @@
 import { getShoppingListHousehold } from './shop';
 import pool from '@/lib/db.js';
+import { RowDataPacket } from 'mysql2';
 
 // Mock the database pool
 jest.mock('@/lib/db.js');
@@ -51,8 +52,8 @@ describe('Household-Scoped Shopping List Functions', () => {
 			];
 
 			mockPool.execute
-				.mockResolvedValueOnce([mockFreshIngredients, []]) // Fresh ingredients call
-				.mockResolvedValueOnce([mockPantryIngredients, []]); // Pantry ingredients call
+				.mockResolvedValueOnce([mockFreshIngredients as RowDataPacket[], []]) // Fresh ingredients call
+				.mockResolvedValueOnce([mockPantryIngredients as RowDataPacket[], []]); // Pantry ingredients call
 
 			const result = await getShoppingListHousehold('32', '2024', 1);
 
@@ -78,8 +79,8 @@ describe('Household-Scoped Shopping List Functions', () => {
 
 		it('should return empty lists when no shopping items found', async () => {
 			mockPool.execute
-				.mockResolvedValueOnce([[], []]) // Fresh ingredients call
-				.mockResolvedValueOnce([[], []]); // Pantry ingredients call
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Fresh ingredients call
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients call
 
 			const result = await getShoppingListHousehold('99', '2030', 1);
 
@@ -91,8 +92,8 @@ describe('Household-Scoped Shopping List Functions', () => {
 
 		it('should include household_id in select fields', async () => {
 			mockPool.execute
-				.mockResolvedValueOnce([[], []]) // Fresh ingredients call
-				.mockResolvedValueOnce([[], []]); // Pantry ingredients call
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Fresh ingredients call
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients call
 
 			await getShoppingListHousehold('32', '2024', 1);
 
@@ -102,8 +103,8 @@ describe('Household-Scoped Shopping List Functions', () => {
 
 		it('should order by sort and id for consistent results', async () => {
 			mockPool.execute
-				.mockResolvedValueOnce([[], []]) // Fresh ingredients call
-				.mockResolvedValueOnce([[], []]); // Pantry ingredients call
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Fresh ingredients call
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients call
 
 			await getShoppingListHousehold('32', '2024', 1);
 
@@ -136,8 +137,8 @@ describe('Household-Scoped Shopping List Functions', () => {
 			};
 
 			mockPool.execute
-				.mockResolvedValueOnce([[mockIngredient], []]) // Fresh ingredients
-				.mockResolvedValueOnce([[], []]); // Pantry ingredients
+				.mockResolvedValueOnce([[mockIngredient] as RowDataPacket[], []]) // Fresh ingredients
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Pantry ingredients
 
 			const result = await getShoppingListHousehold('32', '2024', 2);
 

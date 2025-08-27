@@ -79,6 +79,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1_123456.jpg',
+				filename: 'recipe_1_123456.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_1_123456.jpg');
@@ -119,6 +120,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/existing.png',
+				filename: 'existing.png',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/existing.png');
@@ -156,6 +158,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_3_123456.webp',
+				filename: 'recipe_3_123456.webp',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_3_123456.webp');
@@ -359,6 +362,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1_123456.jpg',
+				filename: 'recipe_1_123456.jpg',
 			});
 
 			await testApiHandler({
@@ -391,6 +395,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/existing.jpg',
+				filename: 'existing.jpg',
 			});
 
 			mockGetStorageMode.mockReturnValue('cloud');
@@ -425,6 +430,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1.jpg',
+				filename: 'recipe_1.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_1.jpg');
@@ -513,6 +519,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/old_image.jpg',
+				filename: 'old_image.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/old_image.jpg');
@@ -600,6 +607,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_1_123456.jpg',
+				filename: 'recipe_1_123456.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_1_123456.jpg');
@@ -632,6 +640,7 @@ describe('/api/recipe/upload-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/existing.jpg',
+				filename: 'existing.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/existing.jpg');

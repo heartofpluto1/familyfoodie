@@ -116,7 +116,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('abc123');
 			mockFindAndDeleteHashFiles.mockResolvedValue(['recipe_abc123_v1.pdf', 'recipe_abc123_v2.pdf']);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v3.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v3.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v3.pdf', filename: 'recipe_abc123_v3.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.pdf');
 
 			await testApiHandler({
@@ -162,7 +162,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('def456');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_def456_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_def456_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_def456_v2.pdf', filename: 'recipe_def456_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_def456_v2.pdf');
 
 			// Reset the mock before test to ensure clean state
@@ -233,7 +233,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('ghi789');
 			mockFindAndDeleteHashFiles.mockRejectedValue(new Error('Cleanup failed'));
 			mockGenerateVersionedFilename.mockReturnValue('recipe_ghi789_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_ghi789_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_ghi789_v2.pdf', filename: 'recipe_ghi789_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_ghi789_v2.pdf');
 
 			await testApiHandler({
@@ -502,8 +502,8 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf' });
-			mockDeleteFile.mockResolvedValue({ success: true }); // Rollback succeeds
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf', filename: 'recipe_abc_v2.pdf' });
+			mockDeleteFile.mockResolvedValue(true); // Rollback succeeds
 
 			await testApiHandler({
 				appHandler,
@@ -538,7 +538,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('original');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_original_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_original_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_original_v2.pdf', filename: 'recipe_original_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_original_v2.pdf');
 			mockGetStorageMode.mockReturnValue('cloud');
 
@@ -626,7 +626,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('test');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_test_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_test_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_test_v2.pdf', filename: 'recipe_test_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_test_v2.pdf');
 
 			await testApiHandler({
@@ -652,7 +652,7 @@ describe('/api/recipe/update-pdf', () => {
 
 			mockExtractBaseHash.mockReturnValue(null as unknown as string); // No base hash
 			mockGenerateVersionedFilename.mockReturnValue('recipe_xyz_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_xyz_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_xyz_v2.pdf', filename: 'recipe_xyz_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_xyz_v2.pdf');
 
 			await testApiHandler({
@@ -685,7 +685,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf', filename: 'recipe_abc_v2.pdf' });
 
 			await testApiHandler({
 				appHandler,
@@ -716,7 +716,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('abc123');
 			mockFindAndDeleteHashFiles.mockResolvedValue(['recipe_abc123_v1.pdf']);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v2.pdf', filename: 'recipe_abc123_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_abc123_v2.pdf');
 
 			await testApiHandler({
