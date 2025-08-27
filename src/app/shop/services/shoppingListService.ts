@@ -12,10 +12,13 @@ export class ShoppingListService {
 		});
 
 		if (!response.ok) {
-			throw new Error(`Failed to add item: ${response.statusText}`);
+			const errorResult = await response.json();
+			throw new Error(errorResult.error || `Failed to add item: ${response.statusText}`);
 		}
 
-		return response.json();
+		const result = await response.json();
+		// Extract just the data portion to maintain backward compatibility
+		return result.data;
 	}
 
 	static async removeItem(id: number) {
