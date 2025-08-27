@@ -41,8 +41,8 @@ export const clearAllMocks = () => {
  * Use this directly in jest.mock() calls via require
  */
 export const authMiddlewareMock = {
-	withAuth: (handler: (request: NextRequest & { user?: any; household_id?: number }, context?: unknown) => Promise<Response>) => {
-		return async (request: NextRequest & { user?: any; household_id?: number }, context?: unknown) => {
+	withAuth: (handler: (request: NextRequest & { user?: User; household_id?: number }, context?: unknown) => Promise<Response>) => {
+		return async (request: NextRequest & { user?: User; household_id?: number }, context?: unknown) => {
 			// Check if user is set by requestPatcher
 			if (!request.user) {
 				return new Response(

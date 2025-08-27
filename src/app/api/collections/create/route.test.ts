@@ -1,5 +1,6 @@
 /** @jest-environment node */
 
+import { NextRequest } from 'next/server';
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { SessionUser } from '@/types/auth';
@@ -26,7 +27,7 @@ jest.mock('@/lib/utils/urlHelpers', () => ({
 
 // Mock auth middleware to provide household context
 jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: jest.fn((handler) => handler),
+	withAuth: jest.fn(handler => handler),
 	requireAuthWithHousehold: jest.fn(),
 }));
 
@@ -60,7 +61,7 @@ function createMockAuthenticatedRequest(formData: FormData) {
 	const request = new Request('http://localhost:3000/api/collections/create', {
 		method: 'POST',
 		body: formData,
-	}) as any;
+	}) as NextRequest & { user: typeof mockSessionUser; household_id: number };
 
 	// Add household context (this is what withAuth middleware provides)
 	request.user = mockSessionUser;
@@ -78,7 +79,7 @@ function createMockFile(name: string, type: string, content = 'test content'): F
 describe('/api/collections/create', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Default mock implementations
 		mockGetStorageMode.mockReturnValue('local');
 		mockGenerateCollectionSecureFilename.mockReturnValue('secure_filename_123');
@@ -136,11 +137,11 @@ describe('/api/collections/create', () => {
 
 						// Verify file uploads were called
 						expect(mockUploadFile).toHaveBeenCalledTimes(2); // light and dark images
-						
+
 						// Verify slug generation
 						expect(mockGenerateSlugFromTitle).toHaveBeenCalledWith(123, 'Test Collection');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -175,20 +176,19 @@ describe('/api/collections/create', () => {
 						expect(mockUploadFile).toHaveBeenCalledTimes(1);
 
 						// Both filename and filename_dark should be set to same value
-						expect(mockExecute).toHaveBeenCalledWith(
-							expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'),
-							['secure_filename_123', 'secure_filename_123', 456]
-						);
+						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'), [
+							'secure_filename_123',
+							'secure_filename_123',
+							456,
+						]);
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should create collection with default images when no files provided', async () => {
 				const mockInsertResult = { insertId: 789, affectedRows: 1 };
-				mockExecute
-					.mockResolvedValueOnce([mockInsertResult, []])
-					.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+				mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
 				const formData = new FormData();
 				formData.append('title', 'Default Images Collection');
@@ -211,29 +211,24 @@ describe('/api/collections/create', () => {
 						expect(data.filename).toBe('custom_collection_004');
 
 						// Should use default filenames with household_id
-						expect(mockExecute).toHaveBeenCalledWith(
-							expect.stringContaining('INSERT INTO collections'),
-							[
-								'Default Images Collection',
-								'No custom images',
-								'custom_collection_004',
-								'custom_collection_004_dark',
-								42, // household_id
-							]
-						);
+						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
+							'Default Images Collection',
+							'No custom images',
+							'custom_collection_004',
+							'custom_collection_004_dark',
+							42, // household_id
+						]);
 
 						// No file uploads should occur
 						expect(mockUploadFile).not.toHaveBeenCalled();
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should handle missing subtitle (null value)', async () => {
 				const mockInsertResult = { insertId: 999, affectedRows: 1 };
-				mockExecute
-					.mockResolvedValueOnce([mockInsertResult, []])
-					.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+				mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
 				const formData = new FormData();
 				formData.append('title', 'No Subtitle Collection');
@@ -252,12 +247,15 @@ describe('/api/collections/create', () => {
 						expect(response.status).toBe(200);
 
 						// Verify null is passed for subtitle and household_id is included
-						expect(mockExecute).toHaveBeenCalledWith(
-							expect.stringContaining('INSERT INTO collections'),
-							['No Subtitle Collection', null, 'custom_collection_004', 'custom_collection_004_dark', 42]
-						);
+						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
+							'No Subtitle Collection',
+							null,
+							'custom_collection_004',
+							'custom_collection_004_dark',
+							42,
+						]);
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -294,17 +292,16 @@ describe('/api/collections/create', () => {
 						expect(data.success).toBe(true);
 
 						// Should fallback to using light image for dark mode
-						expect(mockExecute).toHaveBeenCalledWith(
-							expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'),
-							['secure_filename_123', 'secure_filename_123', 111]
-						);
+						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'), [
+							'secure_filename_123',
+							'secure_filename_123',
+							111,
+						]);
 
 						// Should log warning about fallback
-						expect(consoleWarnSpy).toHaveBeenCalledWith(
-							'Dark mode image upload failed, using light image as fallback'
-						);
+						expect(consoleWarnSpy).toHaveBeenCalledWith('Dark mode image upload failed, using light image as fallback');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -335,7 +332,7 @@ describe('/api/collections/create', () => {
 						// Should not call database
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -359,7 +356,7 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Title is required');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -383,7 +380,7 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Light mode file must be a JPG image');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -408,7 +405,7 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Dark mode file must be a JPG image');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -434,14 +431,11 @@ describe('/api/collections/create', () => {
 						const data = await response.json();
 
 						expect(data.error).toBe('Failed to create collection');
-						
+
 						// Should log the error
-						expect(consoleErrorSpy).toHaveBeenCalledWith(
-							'Error creating collection:',
-							expect.any(Error)
-						);
+						expect(consoleErrorSpy).toHaveBeenCalledWith('Error creating collection:', expect.any(Error));
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -474,26 +468,18 @@ describe('/api/collections/create', () => {
 						expect(data.error).toBe('Failed to upload light mode image');
 
 						// Should have called cleanup
-						expect(mockExecute).toHaveBeenCalledWith(
-							'DELETE FROM collections WHERE id = ?',
-							[555]
-						);
+						expect(mockExecute).toHaveBeenCalledWith('DELETE FROM collections WHERE id = ?', [555]);
 
 						// Should log upload failure
-						expect(consoleErrorSpy).toHaveBeenCalledWith(
-							'Failed to upload light image:',
-							'Upload failed'
-						);
+						expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to upload light image:', 'Upload failed');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should handle slug generation failure gracefully', async () => {
 				const mockInsertResult = { insertId: 333, affectedRows: 1 };
-				mockExecute
-					.mockResolvedValueOnce([mockInsertResult, []])
-					.mockRejectedValueOnce(new Error('Slug update failed')); // Slug update fails
+				mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockRejectedValueOnce(new Error('Slug update failed')); // Slug update fails
 
 				const formData = new FormData();
 				formData.append('title', 'Slug Failure Collection');
@@ -513,7 +499,7 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Failed to create collection');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -521,9 +507,7 @@ describe('/api/collections/create', () => {
 		describe('Household isolation', () => {
 			it('should always assign collection to authenticated user household', async () => {
 				const mockInsertResult = { insertId: 777, affectedRows: 1 };
-				mockExecute
-					.mockResolvedValueOnce([mockInsertResult, []])
-					.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+				mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
 				const formData = new FormData();
 				formData.append('title', 'Household Test Collection');
@@ -550,15 +534,13 @@ describe('/api/collections/create', () => {
 							expect.arrayContaining([99]) // Should use the user's household_id
 						);
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should set public flag to 0 for new collections (private by default)', async () => {
 				const mockInsertResult = { insertId: 888, affectedRows: 1 };
-				mockExecute
-					.mockResolvedValueOnce([mockInsertResult, []])
-					.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+				mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
 				const formData = new FormData();
 				formData.append('title', 'Private Collection');
@@ -576,12 +558,15 @@ describe('/api/collections/create', () => {
 						expect(response.status).toBe(200);
 
 						// Check that public is set to 0 (private) - it's hardcoded in the SQL
-						expect(mockExecute).toHaveBeenCalledWith(
-							expect.stringContaining('INSERT INTO collections'),
-							['Private Collection', null, 'custom_collection_004', 'custom_collection_004_dark', 42]
-						);
+						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
+							'Private Collection',
+							null,
+							'custom_collection_004',
+							'custom_collection_004_dark',
+							42,
+						]);
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -616,7 +601,7 @@ describe('/api/collections/create', () => {
 						expect(consoleSpy).toHaveBeenCalledWith('Storage mode: gcs');
 						expect(consoleSpy).toHaveBeenCalledWith('Creating collection with filename: secure_filename_123');
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -652,7 +637,7 @@ describe('/api/collections/create', () => {
 							'collections' // Should use collections directory
 						);
 					},
-					requestPatcher: (req) => Object.assign(req, request),
+					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
