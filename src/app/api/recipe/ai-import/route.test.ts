@@ -1,8 +1,13 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import * as appHandler from './route';
 import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, createMockFile, MockConnection } from '@/lib/test-utils';
+
+// Set OpenAI API key before importing the route handler
+process.env.OPENAI_API_KEY = 'test-api-key-12345';
+
+// Import route handler after setting environment
+import * as appHandler from './route';
 
 // Mock the auth middleware to properly handle authentication
 jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
@@ -19,9 +24,6 @@ const mockConnection: MockConnection = {
 jest.mock('@/lib/db.js', () => ({
 	getConnection: jest.fn(() => Promise.resolve(mockConnection)),
 }));
-
-// Set OpenAI API key before any module imports
-process.env.OPENAI_API_KEY = 'test-api-key-12345';
 
 // Mock OpenAI with proper setup
 const mockOpenAICreate = jest.fn();
@@ -57,6 +59,7 @@ const mockGenerateSlugFromTitle = jest.mocked(jest.requireMock('@/lib/utils/urlH
 
 describe('/api/recipe/ai-import', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
+	let originalApiKey: string | undefined;
 
 	// Helper function to create a fresh mock setup for each test
 	const setupFreshMocks = () => {
@@ -80,12 +83,24 @@ describe('/api/recipe/ai-import', () => {
 	};
 
 	beforeEach(() => {
+		// Save original API key to avoid test interference
+		originalApiKey = process.env.OPENAI_API_KEY;
+
+		// Set API key for tests
+		process.env.OPENAI_API_KEY = 'test-api-key-12345';
+
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
 		setupFreshMocks();
 	});
 
 	afterEach(() => {
+		// Restore original API key after each test
+		if (originalApiKey !== undefined) {
+			process.env.OPENAI_API_KEY = originalApiKey;
+		} else {
+			delete process.env.OPENAI_API_KEY;
+		}
 		consoleMocks.cleanup();
 	});
 

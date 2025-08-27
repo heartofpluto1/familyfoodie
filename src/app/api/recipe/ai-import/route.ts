@@ -47,19 +47,8 @@ interface IngredientRow extends RowDataPacket {
 	name: string;
 }
 
-// Initialize OpenAI client
-const openai = process.env.OPENAI_API_KEY
-	? new OpenAI({
-			apiKey: process.env.OPENAI_API_KEY,
-		})
-	: null;
-
 // Helper function to parse recipe data using OpenAI
-const parseRecipeWithAI = async (pdfFile: File): Promise<ExtractedRecipe> => {
-	if (!openai) {
-		throw new Error('OpenAI API key not configured');
-	}
-
+const parseRecipeWithAI = async (pdfFile: File, openai: OpenAI): Promise<ExtractedRecipe> => {
 	// Convert PDF to base64 for OpenAI
 	const bytes = await pdfFile.arrayBuffer();
 	const buffer = Buffer.from(bytes);
@@ -267,8 +256,28 @@ async function importHandler(request: AuthenticatedRequest) {
 				tempConnection.release();
 			}
 
+			// Initialize OpenAI client
+			let openai: OpenAI;
 			try {
-				recipe = await parseRecipeWithAI(pdfFile);
+				if (!process.env.OPENAI_API_KEY) {
+					throw new Error('OpenAI API key not configured');
+				}
+				openai = new OpenAI({
+					apiKey: process.env.OPENAI_API_KEY,
+				});
+			} catch (error) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error instanceof Error ? error.message : 'Failed to initialize OpenAI client',
+						code: 'OPENAI_INITIALIZATION_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
+
+			try {
+				recipe = await parseRecipeWithAI(pdfFile, openai);
 				// Ensure recipe has collection ID from form field
 				recipe.collectionId = parseInt(collectionIdFromForm!);
 			} catch (error) {
