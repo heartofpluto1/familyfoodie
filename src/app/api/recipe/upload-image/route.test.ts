@@ -22,6 +22,7 @@ jest.mock('@/lib/storage', () => ({
 // Mock the permissions module
 jest.mock('@/lib/permissions', () => ({
 	canEditResource: jest.fn(),
+	validateRecipeInCollection: jest.fn(),
 }));
 
 // Mock the utils module
@@ -33,7 +34,7 @@ jest.mock('@/lib/utils/secureFilename', () => ({
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
-import { canEditResource } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 // Type assertions for mocked modules
@@ -42,6 +43,7 @@ const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStora
 const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
 const mockGetRecipeImageUrl = getRecipeImageUrl as jest.MockedFunction<typeof getRecipeImageUrl>;
 const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
+const mockValidateRecipeInCollection = validateRecipeInCollection as jest.MockedFunction<typeof validateRecipeInCollection>;
 
 // Mock console methods
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -60,6 +62,7 @@ describe('/api/recipe/upload-image', () => {
 		mockDeleteFile.mockReset();
 		mockGetRecipeImageUrl.mockReset();
 		mockCanEditResource.mockResolvedValue(true); // Default: can edit
+		mockValidateRecipeInCollection.mockResolvedValue(true); // Default: recipe is in collection
 
 		// Reset database mock
 		mockExecute.mockReset();
@@ -77,6 +80,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute
 				.mockResolvedValueOnce([
@@ -122,6 +126,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '2');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: 'existing.jpg', pdf_filename: 'recipe_2.pdf' }]]);
 
@@ -155,6 +160,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '3');
+			formData.append('collectionId', '1');
 
 			mockExecute
 				.mockResolvedValueOnce([
@@ -191,6 +197,7 @@ describe('/api/recipe/upload-image', () => {
 		it('returns 400 when image file is missing', async () => {
 			const formData = new FormData();
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -204,7 +211,7 @@ describe('/api/recipe/upload-image', () => {
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
 						success: false,
-						error: 'Image file and recipe ID are required',
+						error: 'Image file, recipe ID, and collection ID are required',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -213,7 +220,7 @@ describe('/api/recipe/upload-image', () => {
 			});
 		});
 
-		it('returns 400 when recipe ID is missing', async () => {
+		it('returns 400 when recipe ID and collection ID are missing', async () => {
 			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
 			const formData = new FormData();
 			formData.append('image', mockFile);
@@ -230,7 +237,61 @@ describe('/api/recipe/upload-image', () => {
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
 						success: false,
-						error: 'Image file and recipe ID are required',
+						error: 'Image file, recipe ID, and collection ID are required',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+					expect(mockUploadFile).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 when only recipe ID is missing', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('collectionId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						success: false,
+						error: 'Image file, recipe ID, and collection ID are required',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+					expect(mockUploadFile).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 when only collection ID is missing', async () => {
+			const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						success: false,
+						error: 'Image file, recipe ID, and collection ID are required',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -244,6 +305,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -271,6 +333,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', largeFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -298,10 +361,9 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '999');
+			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([
-				[], // No recipe found
-			]);
+			mockValidateRecipeInCollection.mockResolvedValueOnce(false);
 
 			await testApiHandler({
 				appHandler,
@@ -328,6 +390,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]);
 
@@ -360,6 +423,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute
 				.mockResolvedValueOnce([
@@ -397,6 +461,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: 'existing.jpg', pdf_filename: null }]]);
 
@@ -432,6 +497,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE result
 
@@ -466,6 +532,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockRejectedValue(standardErrorScenarios.databaseError);
 
@@ -494,6 +561,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockRejectedValue('String error');
 
@@ -521,6 +589,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '5');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: 'old_image.jpg', pdf_filename: 'recipe_5.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -555,6 +624,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', 'abc');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -568,7 +638,7 @@ describe('/api/recipe/upload-image', () => {
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
 						success: false,
-						error: 'Recipe ID must be a valid number',
+						error: 'Recipe ID must be a valid positive number',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -582,6 +652,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '-1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -595,7 +666,7 @@ describe('/api/recipe/upload-image', () => {
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
 						success: false,
-						error: 'Recipe ID must be a positive number',
+						error: 'Recipe ID must be a valid positive number',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -609,6 +680,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', exactlyFiveMB);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -642,6 +714,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: 'existing.jpg', pdf_filename: null }]]);
 
@@ -676,6 +749,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Database update fails
 
@@ -717,6 +791,7 @@ describe('/api/recipe/upload-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,

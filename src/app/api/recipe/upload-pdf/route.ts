@@ -4,7 +4,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename } from '@/lib/utils/secureFilename';
-import { canEditResource } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {
@@ -17,6 +17,7 @@ async function postHandler(request: AuthenticatedRequest) {
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
 		const recipeId = formData.get('recipeId') as string;
+		const collectionId = formData.get('collectionId') as string;
 
 		if (!file) {
 			return NextResponse.json(
@@ -29,26 +30,40 @@ async function postHandler(request: AuthenticatedRequest) {
 			);
 		}
 
-		if (!recipeId || recipeId.trim() === '') {
+		if (!recipeId || !collectionId) {
 			return NextResponse.json(
 				{
-					error: 'Recipe ID is required.',
-					field: 'recipeId',
-					message: 'Please specify which recipe to update.',
+					error: 'Recipe ID and collection ID are required.',
+					fields: ['recipeId', 'collectionId'],
+					message: 'Please specify which recipe and collection to update.',
 				},
 				{ status: 400 }
 			);
 		}
 
-		// Add recipe ID format validation
+		// Add recipe ID and collection ID format validation
 		const recipeIdNum = parseInt(recipeId, 10);
-		if (isNaN(recipeIdNum)) {
+		const collectionIdNum = parseInt(collectionId, 10);
+
+		if (isNaN(recipeIdNum) || recipeIdNum <= 0) {
 			return NextResponse.json(
 				{
-					error: 'Recipe ID must be a valid number.',
+					error: 'Recipe ID must be a valid positive number.',
 					field: 'recipeId',
 					receivedValue: recipeId,
 					message: 'Please provide a valid numeric recipe ID.',
+				},
+				{ status: 400 }
+			);
+		}
+
+		if (isNaN(collectionIdNum) || collectionIdNum <= 0) {
+			return NextResponse.json(
+				{
+					error: 'Collection ID must be a valid positive number.',
+					field: 'collectionId',
+					receivedValue: collectionId,
+					message: 'Please provide a valid numeric collection ID.',
 				},
 				{ status: 400 }
 			);
@@ -190,9 +205,9 @@ async function postHandler(request: AuthenticatedRequest) {
 			buffer = Buffer.from(bytes);
 		}
 
-		// Check if user can edit this recipe (household ownership)
-		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
-		if (!canEdit) {
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		if (!isRecipeInCollection) {
 			return NextResponse.json(
 				{
 					error: 'Recipe not found.',
@@ -220,6 +235,19 @@ async function postHandler(request: AuthenticatedRequest) {
 		}
 
 		const currentPdfFilename = recipeRows[0].pdf_filename;
+
+		// Check if household can edit this recipe (must own it to upload initial PDF)
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+		if (!canEdit) {
+			return NextResponse.json(
+				{
+					error: 'Permission denied.',
+					message: 'You can only upload PDFs to recipes you own.',
+					suggestion: 'Create your own copy of this recipe first.',
+				},
+				{ status: 403 }
+			);
+		}
 
 		// Generate filename - if updating existing, create versioned filename for cache busting
 		let uploadFilename;

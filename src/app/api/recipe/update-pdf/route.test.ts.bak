@@ -164,9 +164,8 @@ describe('/api/recipe/update-pdf', () => {
 							timestamp: expect.any(String),
 							fileSize: expect.any(String),
 						},
-						recipeId: 1,
-						collectionId: 1,
-						wasCopied: false,
+						// Internal cleanup details should not be exposed in API response
+						// but should still be logged for debugging
 					});
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.pdf, recipe_abc123_v2.pdf');
 					// Verify no cleanup details in response
@@ -181,7 +180,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '2');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_def456.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -220,9 +218,6 @@ describe('/api/recipe/update-pdf', () => {
 							convertedTo: 'application/pdf',
 							originalFileName: 'recipe-photo.jpg',
 						},
-						recipeId: 2,
-						collectionId: 1,
-						wasCopied: false,
 					});
 
 					// Verify PDF metadata was set correctly
@@ -256,7 +251,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '3');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_ghi789.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -285,7 +279,6 @@ describe('/api/recipe/update-pdf', () => {
 		it('returns 400 when file is missing', async () => {
 			const formData = new FormData();
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -305,34 +298,10 @@ describe('/api/recipe/update-pdf', () => {
 			});
 		});
 
-		it('returns 400 when both recipe ID and collection ID are missing', async () => {
-			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
-			const formData = new FormData();
-			formData.append('pdf', mockFile);
-
-			await testApiHandler({
-				appHandler,
-				test: async ({ fetch }) => {
-					const response = await fetch({ method: 'POST', body: formData });
-					const json = await response.json();
-
-					expect(response.status).toBe(400);
-					expect(json).toEqual({
-						error: 'Recipe ID and collection ID are required.',
-						fields: ['recipeId', 'collectionId'],
-						message: 'Please specify which recipe and collection to update.',
-					});
-					expect(mockExecute).not.toHaveBeenCalled();
-				},
-				requestPatcher: mockAuthenticatedUser,
-			});
-		});
-
 		it('returns 400 when recipe ID is missing', async () => {
 			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -342,33 +311,9 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Recipe ID and collection ID are required.',
-						fields: ['recipeId', 'collectionId'],
-						message: 'Please specify which recipe and collection to update.',
-					});
-					expect(mockExecute).not.toHaveBeenCalled();
-				},
-				requestPatcher: mockAuthenticatedUser,
-			});
-		});
-
-		it('returns 400 when collection ID is missing', async () => {
-			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
-			const formData = new FormData();
-			formData.append('pdf', mockFile);
-			formData.append('recipeId', '1');
-
-			await testApiHandler({
-				appHandler,
-				test: async ({ fetch }) => {
-					const response = await fetch({ method: 'POST', body: formData });
-					const json = await response.json();
-
-					expect(response.status).toBe(400);
-					expect(json).toEqual({
-						error: 'Recipe ID and collection ID are required.',
-						fields: ['recipeId', 'collectionId'],
-						message: 'Please specify which recipe and collection to update.',
+						error: 'Recipe ID is required.',
+						field: 'recipeId',
+						message: 'Please specify which recipe to update.',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
@@ -381,7 +326,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', 'not-a-number');
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -391,7 +335,7 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Recipe ID must be a valid positive number.',
+						error: 'Recipe ID must be a valid number.',
 						field: 'recipeId',
 						receivedValue: 'not-a-number',
 						message: 'Please provide a valid numeric recipe ID.',
@@ -407,7 +351,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -441,7 +384,6 @@ describe('/api/recipe/update-pdf', () => {
 				const formData = new FormData();
 				formData.append('pdf', mockFile);
 				formData.append('recipeId', '1');
-				formData.append('collectionId', '1');
 
 				await testApiHandler({
 					appHandler,
@@ -468,7 +410,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', largeFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -495,7 +436,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -520,9 +460,8 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '999');
-			formData.append('collectionId', '1');
 
-			mockValidateRecipeInCollection.mockResolvedValueOnce(false);
+			mockExecute.mockResolvedValueOnce([[]]);
 
 			await testApiHandler({
 				appHandler,
@@ -534,7 +473,7 @@ describe('/api/recipe/update-pdf', () => {
 					expect(json).toEqual({
 						error: 'Recipe not found.',
 						recipeId: '999',
-						message: 'The specified recipe does not exist or you do not have permission to edit it.',
+						message: 'The specified recipe does not exist or has been deleted.',
 						suggestion: 'Please check the recipe ID and try again.',
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -548,7 +487,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]);
 			mockExtractBaseHash.mockReturnValue('abc');
@@ -582,7 +520,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
 
@@ -619,7 +556,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_original.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -651,7 +587,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockRejectedValue(standardErrorScenarios.databaseError);
 
@@ -674,7 +609,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockRejectedValue('String error');
 
@@ -710,7 +644,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '5');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_test.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -738,7 +671,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_xyz.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -768,7 +700,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			// Mock a database lock or conflict scenario
 			mockExecute
@@ -803,7 +734,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc123.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -855,7 +785,6 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
-			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,

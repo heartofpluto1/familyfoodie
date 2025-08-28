@@ -5,7 +5,8 @@ import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
-import { canEditResource } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
+import { cascadeCopyWithContext } from '@/lib/copy-on-write';
 import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {
@@ -15,11 +16,13 @@ interface RecipeRow extends RowDataPacket {
 
 async function updatePdfHandler(request: AuthenticatedRequest) {
 	let recipeId: string | undefined;
+	let collectionId: string | undefined;
 
 	try {
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
 		recipeId = formData.get('recipeId') as string;
+		collectionId = formData.get('collectionId') as string;
 
 		// Validate file presence
 		if (!file) {
@@ -33,26 +36,41 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 			);
 		}
 
-		// Validate recipe ID presence
-		if (!recipeId) {
+		// Validate recipe ID and collection ID presence
+		if (!recipeId || !collectionId) {
 			return NextResponse.json(
 				{
-					error: 'Recipe ID is required.',
-					field: 'recipeId',
-					message: 'Please specify which recipe to update.',
+					error: 'Recipe ID and collection ID are required.',
+					fields: ['recipeId', 'collectionId'],
+					message: 'Please specify which recipe and collection to update.',
 				},
 				{ status: 400 }
 			);
 		}
 
-		// Validate recipe ID is numeric
-		if (isNaN(parseInt(recipeId))) {
+		// Validate IDs are numeric
+		const recipeIdNum = parseInt(recipeId);
+		const collectionIdNum = parseInt(collectionId);
+
+		if (isNaN(recipeIdNum) || recipeIdNum <= 0) {
 			return NextResponse.json(
 				{
-					error: 'Recipe ID must be a valid number.',
+					error: 'Recipe ID must be a valid positive number.',
 					field: 'recipeId',
 					receivedValue: recipeId,
 					message: 'Please provide a valid numeric recipe ID.',
+				},
+				{ status: 400 }
+			);
+		}
+
+		if (isNaN(collectionIdNum) || collectionIdNum <= 0) {
+			return NextResponse.json(
+				{
+					error: 'Collection ID must be a valid positive number.',
+					field: 'collectionId',
+					receivedValue: collectionId,
+					message: 'Please provide a valid numeric collection ID.',
 				},
 				{ status: 400 }
 			);
@@ -182,9 +200,9 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 			buffer = Buffer.from(bytes);
 		}
 
-		// Check if user can edit this recipe (household ownership)
-		const canEdit = await canEditResource(request.household_id, 'recipes', parseInt(recipeId));
-		if (!canEdit) {
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		if (!isRecipeInCollection) {
 			return NextResponse.json(
 				{
 					error: 'Recipe not found.',
@@ -197,7 +215,7 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 		}
 
 		// Get the current pdf filename from the database
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId)]);
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [recipeIdNum]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json(
@@ -213,8 +231,31 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 
 		const currentPdfFilename = recipeRows[0].pdf_filename;
 
-		// Defensive cleanup: remove all old files with the same base hash
-		const baseHash = extractBaseHash(currentPdfFilename);
+		// Check if we need to trigger copy-on-write
+		let targetRecipeId = recipeIdNum;
+		let targetCollectionId = collectionIdNum;
+		let targetPdfFilename = currentPdfFilename;
+		let wasCopied = false;
+
+		// Check if household can edit this recipe
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+
+		if (!canEdit) {
+			// Recipe is not owned - trigger copy-on-write
+			const copyResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIdNum);
+			targetRecipeId = copyResult.newRecipeId;
+			targetCollectionId = copyResult.newCollectionId;
+			wasCopied = true;
+
+			// Get the new recipe's current PDF filename
+			const [newRecipeRows] = await pool.execute<RecipeRow[]>('SELECT pdf_filename FROM recipes WHERE id = ?', [targetRecipeId]);
+			if (newRecipeRows.length > 0) {
+				targetPdfFilename = newRecipeRows[0].pdf_filename;
+			}
+		}
+
+		// Defensive cleanup: remove all old files with the same base hash (only for the target recipe)
+		const baseHash = extractBaseHash(targetPdfFilename);
 		let cleanupSummary = '';
 
 		if (baseHash) {
@@ -230,7 +271,7 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 		}
 
 		// Generate versioned filename for update (this will increment the version)
-		const uploadFilename = generateVersionedFilename(currentPdfFilename, 'pdf');
+		const uploadFilename = generateVersionedFilename(targetPdfFilename, 'pdf');
 
 		console.log(`Storage mode: ${getStorageMode()}`);
 		console.log(`Updating PDF from ${currentPdfFilename} to ${uploadFilename}`);
@@ -253,8 +294,8 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 			);
 		}
 
-		// Update the database with the new versioned filename
-		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET pdf_filename = ? WHERE id = ?', [uploadFilename, parseInt(recipeId)]);
+		// Update the database with the new versioned filename (use target recipe ID which may be the copy)
+		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET pdf_filename = ? WHERE id = ?', [uploadFilename, targetRecipeId]);
 
 		if (updateResult.affectedRows === 0) {
 			// Rollback: Delete the uploaded file since database update failed
@@ -277,7 +318,7 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 			);
 		}
 
-		console.log(`Updated database pdf_filename to ${uploadFilename} for recipe ${recipeId}`);
+		console.log(`Updated database pdf_filename to ${uploadFilename} for recipe ${targetRecipeId}`);
 
 		// Generate URL for immediate display
 		const pdfUrl = getRecipePdfUrl(uploadFilename);
@@ -297,6 +338,9 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 				timestamp: string;
 				fileSize: string;
 			};
+			collectionId?: number;
+			recipeId?: number;
+			wasCopied?: boolean;
 			conversion?: {
 				originalFormat: string;
 				convertedTo: string;
@@ -304,9 +348,9 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 			};
 		} = {
 			success: true,
-			message: 'Recipe PDF updated successfully',
+			message: wasCopied ? 'Recipe copied and PDF updated successfully' : 'Recipe PDF updated successfully',
 			recipe: {
-				id: parseInt(recipeId),
+				id: targetRecipeId,
 				pdfUrl,
 				filename: uploadFilename,
 			},
@@ -316,6 +360,9 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 				timestamp: new Date().toISOString(),
 				fileSize: `${Math.round(buffer.length / 1024)}KB`,
 			},
+			recipeId: targetRecipeId,
+			collectionId: targetCollectionId,
+			wasCopied,
 		};
 
 		// Add conversion details if it was an image
