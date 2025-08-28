@@ -482,6 +482,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 			<Modal isOpen={showImageModal} onClose={() => setShowImageModal(false)} title="Recipe Image" maxWidth="xl">
 				<ImageUploadWithCrop
 					recipeId={recipe.id}
+					collectionId={recipe.collection_id}
 					currentImageSrc={recipe ? getRecipeImageUrl(recipe.image_filename) : undefined}
 					onImageUploaded={handleImageUploadComplete}
 					isEditing={true}
@@ -490,7 +491,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 
 			{/* PDF Upload Modal */}
 			<Modal isOpen={showPdfModal} onClose={() => setShowPdfModal(false)} title="Recipe PDF" maxWidth="lg">
-				<PdfUpload recipeId={recipe.id} onPdfUploaded={handlePdfUploadComplete} isEditing={true} />
+				<PdfUpload recipeId={recipe.id} collectionId={recipe.collection_id} onPdfUploaded={handlePdfUploadComplete} isEditing={true} />
 			</Modal>
 		</div>
 	);

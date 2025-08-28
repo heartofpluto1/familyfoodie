@@ -47,7 +47,7 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 		}
 	};
 
-	const uploadFile = async (recipeId: number, fileParamName: string): Promise<{ success: boolean; data?: UpdateImageResponse }> => {
+	const uploadFile = async (recipeId: number, collectionId: number, fileParamName: string): Promise<{ success: boolean; data?: UpdateImageResponse }> => {
 		if (!selectedFile) return { success: false };
 
 		setIsUploading(true);
@@ -55,6 +55,7 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 			const formData = new FormData();
 			formData.append(fileParamName, selectedFile);
 			formData.append('recipeId', recipeId.toString());
+			formData.append('collectionId', collectionId.toString());
 
 			const response = await fetch(options.uploadEndpoint, {
 				method: 'POST',
@@ -80,12 +81,18 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 		}
 	};
 
-	const uploadFileBlob = async (recipeId: number, file: File, fileParamName: string): Promise<{ success: boolean; data?: UpdateImageResponse }> => {
+	const uploadFileBlob = async (
+		recipeId: number,
+		collectionId: number,
+		file: File,
+		fileParamName: string
+	): Promise<{ success: boolean; data?: UpdateImageResponse }> => {
 		setIsUploading(true);
 		try {
 			const formData = new FormData();
 			formData.append(fileParamName, file);
 			formData.append('recipeId', recipeId.toString());
+			formData.append('collectionId', collectionId.toString());
 
 			const response = await fetch(options.uploadEndpoint, {
 				method: 'POST',

@@ -98,5 +98,4 @@ describe('Authentication with Household Context', () => {
 			expect(result.error).toBe('Invalid username or password');
 		});
 	});
-
 });

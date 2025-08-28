@@ -7,10 +7,11 @@ interface ImageUploadProps {
 	currentImageSrc?: string;
 	onImageUploaded?: () => void;
 	recipeId?: number;
+	collectionId: number;
 	isEditing?: boolean;
 }
 
-const ImageUpload = ({ currentImageSrc, onImageUploaded, recipeId, isEditing = false }: ImageUploadProps) => {
+const ImageUpload = ({ currentImageSrc, onImageUploaded, recipeId, collectionId, isEditing = false }: ImageUploadProps) => {
 	const imageUpload = useFileUpload({
 		allowedTypes: ['image/jpeg', 'image/jpg', 'image/png'],
 		maxSize: 5 * 1024 * 1024, // 5MB
@@ -21,8 +22,8 @@ const ImageUpload = ({ currentImageSrc, onImageUploaded, recipeId, isEditing = f
 
 	const handleImageUpload = async () => {
 		if (recipeId && imageUpload.selectedFile) {
-			const success = await imageUpload.uploadFile(recipeId, 'image');
-			if (success && onImageUploaded) {
+			const result = await imageUpload.uploadFile(recipeId, collectionId, 'image');
+			if (result.success && onImageUploaded) {
 				onImageUploaded();
 			}
 		}

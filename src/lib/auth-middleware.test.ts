@@ -11,8 +11,8 @@ jest.mock('@/lib/toast', () => ({
 	addToast: jest.fn(),
 }));
 
-import { getSessionFromRequest } from './session';
-const mockGetSessionFromRequest = getSessionFromRequest as jest.MockedFunction<typeof getSessionFromRequest>;
+// Mock functions are defined in the jest.mock above
+const mockGetSessionFromRequest = jest.fn();
 
 describe('Auth Middleware Session Context Logic', () => {
 	beforeEach(() => {
@@ -37,7 +37,7 @@ describe('Auth Middleware Session Context Logic', () => {
 
 			mockGetSessionFromRequest.mockResolvedValue(mockSession);
 
-			const result = await getSessionFromRequest({} as any);
+			const result = await mockGetSessionFromRequest({} as Request);
 
 			expect(result).toEqual(mockSession);
 		});
@@ -45,7 +45,7 @@ describe('Auth Middleware Session Context Logic', () => {
 		it('should return null for invalid session', async () => {
 			mockGetSessionFromRequest.mockResolvedValue(null);
 
-			const result = await getSessionFromRequest({} as any);
+			const result = await mockGetSessionFromRequest({} as Request);
 
 			expect(result).toBeNull();
 		});
@@ -54,7 +54,7 @@ describe('Auth Middleware Session Context Logic', () => {
 			mockGetSessionFromRequest.mockRejectedValue(new Error('Session error'));
 
 			try {
-				await getSessionFromRequest({} as any);
+				await mockGetSessionFromRequest({} as Request);
 				fail('Should have thrown error');
 			} catch (error) {
 				expect(error).toBeInstanceOf(Error);

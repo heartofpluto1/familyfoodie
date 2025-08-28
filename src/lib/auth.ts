@@ -94,4 +94,3 @@ export async function authenticateUserWithHousehold(username: string, password: 
 		return { success: false, error: 'Authentication failed' };
 	}
 }
-
