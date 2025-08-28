@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addToast } from '@/lib/toast';
 import { SessionUser } from '@/types/auth';
-import { validateSessionWithHousehold } from '@/lib/auth';
 
 export interface AuthenticatedRequest extends NextRequest {
 	user: SessionUser;
@@ -53,13 +52,14 @@ export async function requireAuth(request: NextRequest) {
 }
 
 /**
- * Enhanced authentication that includes household context
- * Used by Agent 2 implementation for household-scoped API routes
+ * Simple authentication that uses session data directly
+ * Session already has household_id and household_name from login
  */
 export async function requireAuthWithHousehold(request: NextRequest) {
-	const basicSession = await getSessionFromRequest(request);
+	const session = await getSessionFromRequest(request);
 
-	if (!basicSession || !basicSession.id) {
+	// Check if session exists and has required fields
+	if (!session || !session.user?.id || !session.household_id) {
 		return {
 			response: NextResponse.json(
 				{
@@ -73,22 +73,18 @@ export async function requireAuthWithHousehold(request: NextRequest) {
 		};
 	}
 
-	// Get full user context with household information
-	const user = await validateSessionWithHousehold(basicSession.id);
-
-	if (!user) {
-		return {
-			response: NextResponse.json(
-				{
-					success: false,
-					error: 'Invalid session or user not found',
-					code: 'UNAUTHORIZED',
-				},
-				{ status: 401 }
-			),
-			user: null,
-		};
-	}
+	// Build user object from session data (no extra DB call needed!)
+	const user: SessionUser = {
+		id: session.user.id,
+		username: session.user.username,
+		email: session.user.email,
+		first_name: session.user.first_name || '',
+		last_name: session.user.last_name || '',
+		is_admin: session.user.is_admin || false,
+		is_active: session.user.is_active || true,
+		household_id: session.household_id,
+		household_name: session.household_name || '',
+	};
 
 	return {
 		response: null,

@@ -77,6 +77,8 @@ export async function POST(request: NextRequest) {
 				id: authResult.user!.id,
 				username: authResult.user!.username,
 				email: authResult.user!.email,
+				first_name: authResult.user!.first_name,
+				last_name: authResult.user!.last_name,
 				is_admin: authResult.user!.is_admin,
 				is_active: authResult.user!.is_active,
 			},
