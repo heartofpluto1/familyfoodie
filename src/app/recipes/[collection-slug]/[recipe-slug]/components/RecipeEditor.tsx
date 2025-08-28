@@ -26,7 +26,7 @@ type EditMode = 'none' | 'details' | 'ingredients';
 const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
-	const ingredientApi = useIngredientApi();
+	const ingredientApi = useIngredientApi(recipe.collection_id);
 
 	// Separate edit modes
 	const [editMode, setEditMode] = useState<EditMode>('none');
@@ -176,17 +176,27 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				credentials: 'include',
 				body: JSON.stringify({
 					recipeId: recipe.id,
+					collectionId: recipe.collection_id,
 					ingredients: ingredientsData,
 					deletedIngredientIds,
 				}),
 			});
 
 			if (response.ok) {
+				const result = await response.json();
 				showToast('success', 'Success', 'Recipe ingredients updated successfully');
 				setEditMode('none');
 				setDeletedIngredientIds([]);
-				// Refresh page to show updated data
-				window.location.reload();
+
+				// Check if we need to redirect due to copy-on-write
+				if (result.data?.redirectNeeded && result.data?.newRecipeSlug) {
+					// Redirect to the new recipe URL
+					const newCollectionSlug = result.data.newCollectionSlug || window.location.pathname.split('/')[2];
+					window.location.href = `/recipes/${newCollectionSlug}/${result.data.newRecipeSlug}`;
+				} else {
+					// Refresh page to show updated data
+					window.location.reload();
+				}
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || 'Failed to update ingredients');
@@ -270,6 +280,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				quantity4: newIngredient.quantity4,
 				measureId: selectedMeasure?.id,
 				preparationId: selectedPreparation?.id,
+				collectionId: recipe.collection_id,
 			});
 
 			if (newId) {
