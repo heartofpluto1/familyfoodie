@@ -23,7 +23,7 @@ export default async function HomePage() {
 
 	// Get household_id from session
 	const household_id = session.household_id;
-	
+
 	if (!household_id) {
 		// Session exists but no household_id - show error or redirect to login
 		return <HomeUnauthenticated />;
