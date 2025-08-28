@@ -1066,9 +1066,11 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 export async function getMyIngredients(householdId: number): Promise<any[]> {
 	const query = `
 		SELECT DISTINCT i.*,
+		       pc.name as pantryCategory_name,
 		       CASE WHEN i.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
 		       i.household_id = ? as can_edit
 		FROM ingredients i
+		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
 		LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
 		LEFT JOIN recipes r ON ri.recipe_id = r.id
 		LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
