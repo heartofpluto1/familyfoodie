@@ -3,7 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { cascadeCopyWithContext, cascadeCopyIngredientWithContext, copyIngredientForEdit } from '@/lib/copy-on-write';
-import { validateRecipeInCollection, validateHouseholdCollectionAccess } from '@/lib/permissions';
+import { validateRecipeInCollection } from '@/lib/permissions';
 
 // Helper function for standardized error responses
 function createErrorResponse(error: string, code: string, status: number, details?: object) {

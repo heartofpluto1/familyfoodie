@@ -37,12 +37,13 @@ jest.mock('@/lib/copy-on-write', () => ({
 
 jest.mock('@/lib/permissions', () => ({
 	canEditResource: jest.fn(),
+	validateRecipeInCollection: jest.fn(),
 }));
 
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
-import { canEditResource } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 
 // Get the mocked database
 const mockDatabase = jest.mocked(jest.requireMock('@/lib/db.js'));
@@ -56,6 +57,7 @@ const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFu
 const mockExtractBaseHash = extractBaseHash as jest.MockedFunction<typeof extractBaseHash>;
 const mockFindAndDeleteHashFiles = findAndDeleteHashFiles as jest.MockedFunction<typeof findAndDeleteHashFiles>;
 const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
+const mockValidateRecipeInCollection = validateRecipeInCollection as jest.MockedFunction<typeof validateRecipeInCollection>;
 
 // Mock console methods
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -70,6 +72,7 @@ describe('/api/recipe/update-image', () => {
 		consoleMocks = setupConsoleMocks();
 		mockGetStorageMode.mockReturnValue('local');
 		mockCanEditResource.mockResolvedValue(true); // Default: can edit
+		mockValidateRecipeInCollection.mockResolvedValue(true); // Default: recipe is in collection
 	});
 
 	afterAll(() => {
@@ -87,15 +90,12 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([
 					[{ image_filename: 'recipe_abc123.jpg', pdf_filename: 'recipe_1.pdf' }], // Recipe with existing image
-				])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access check
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection check
 				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Update successful
 
@@ -150,14 +150,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '2');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_def456.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('def456');
@@ -196,14 +193,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '3');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_ghi789.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('ghi789');
@@ -243,14 +237,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '4');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_jkl012.png', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('jkl012');
@@ -289,14 +280,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '5');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_mno345.webp', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('mno345');
@@ -335,14 +323,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '6');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_pqr678.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('pqr678');
@@ -484,9 +469,7 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '999');
 			formData.append('collectionId', '1');
 
-			mockDatabase.execute.mockResolvedValueOnce([
-				[], // No recipe found
-			]);
+			mockValidateRecipeInCollection.mockResolvedValue(false); // Recipe not in collection
 
 			await testApiHandler({
 				appHandler,
@@ -514,14 +497,10 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockDatabase.execute
-				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				]);
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
+			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]]);
 
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -557,15 +536,10 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockDatabase.execute
-				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
-				.mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
+			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
 
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -606,15 +580,10 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockDatabase.execute
-				.mockResolvedValueOnce([[{ image_filename: 'recipe_xyz.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
-				.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
+			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_xyz.jpg', pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue(null as unknown as string); // No base hash
 			mockGenerateVersionedFilename.mockReturnValue('recipe_xyz_v2.jpg');
@@ -652,14 +621,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_original.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('original');
@@ -703,7 +669,7 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockDatabase.execute.mockRejectedValue(standardErrorScenarios.databaseError);
+			mockValidateRecipeInCollection.mockRejectedValue(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
 				appHandler,
@@ -731,7 +697,7 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockDatabase.execute.mockRejectedValue('String error');
+			mockValidateRecipeInCollection.mockRejectedValue('String error');
 
 			await testApiHandler({
 				appHandler,
@@ -810,14 +776,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]) // Recipe with no existing image
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Update successful
 
 			mockGenerateVersionedFilename.mockReturnValue('recipe_new_abc123_v1.jpg');
@@ -911,14 +874,11 @@ describe('/api/recipe/update-image', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc123.jpg', pdf_filename: null }]])
-				.mockResolvedValueOnce([
-					[{ household_id: 1, is_public: 0, subscription_id: null }], // Collection access
-				])
-				.mockResolvedValueOnce([
-					[{ 1: 1 }], // Recipe in collection
-				])
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('abc123');

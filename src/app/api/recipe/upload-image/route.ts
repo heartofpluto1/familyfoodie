@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { canEditResource } from '@/lib/permissions';
 
 interface RecipeRow extends RowDataPacket {
 	image_filename: string;
@@ -31,7 +32,7 @@ function validateFileContent(buffer: Buffer, mimeType: string): boolean {
 	}
 }
 
-async function postHandler(request: NextRequest) {
+async function postHandler(request: AuthenticatedRequest) {
 	try {
 		const formData = await request.formData();
 		const file = formData.get('image') as File;
@@ -85,6 +86,12 @@ async function postHandler(request: NextRequest) {
 					return 'jpg';
 			}
 		};
+
+		// Check if user can edit this recipe (household ownership)
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+		if (!canEdit) {
+			return NextResponse.json({ success: false, error: 'Recipe not found' }, { status: 404 });
+		}
 
 		// Get the current image filename from the database
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [recipeIdNum]);

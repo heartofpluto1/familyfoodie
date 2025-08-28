@@ -1,4 +1,13 @@
-import { canEditResource, validateHouseholdAccess, canAccessRecipe, canAccessIngredient, canEditMultipleResources, isAdmin, validateRecipeInCollection, validateHouseholdCollectionAccess } from './permissions';
+import {
+	canEditResource,
+	validateHouseholdAccess,
+	canAccessRecipe,
+	canAccessIngredient,
+	canEditMultipleResources,
+	isAdmin,
+	validateRecipeInCollection,
+	validateHouseholdCollectionAccess,
+} from './permissions';
 import pool from './db.js';
 import { RowDataPacket } from 'mysql2';
 
@@ -343,10 +352,7 @@ describe('Permission System', () => {
 			const result = await validateHouseholdCollectionAccess(456, 123);
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('FROM collections c'),
-				[123, 456, 123]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('FROM collections c'), [123, 456, 123]);
 		});
 
 		it('should return true when household is subscribed to collection', async () => {

@@ -3,7 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { AuthenticatedRequest, withAuth } from '@/lib/auth-middleware';
 import { cascadeCopyWithContext } from '@/lib/copy-on-write';
-import { canEditResource, validateRecipeInCollection, validateHouseholdCollectionAccess } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 import { copyIngredientForEdit } from '@/lib/copy-on-write';
 
 interface Ingredient {

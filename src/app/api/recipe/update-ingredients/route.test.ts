@@ -44,7 +44,7 @@ describe('/api/recipe/update-ingredients', () => {
 		mockCascadeCopyWithContext.mockClear();
 		mockCopyIngredientForEdit.mockClear();
 		consoleMocks = setupConsoleMocks();
-		
+
 		// Default mock behavior - recipe belongs to collection and household has access
 		mockValidateRecipeInCollection.mockResolvedValue(true);
 

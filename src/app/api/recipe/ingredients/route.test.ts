@@ -24,9 +24,7 @@ jest.mock('@/lib/copy-on-write', () => ({
 
 // Mock the permissions functions
 jest.mock('@/lib/permissions', () => ({
-	canEditResource: jest.fn(),
 	validateRecipeInCollection: jest.fn(),
-	validateHouseholdCollectionAccess: jest.fn(),
 }));
 
 // Get the mocked functions
@@ -38,9 +36,10 @@ describe('/api/recipe/ingredients', () => {
 	beforeEach(() => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
-		
-		// Default mock behavior - recipe belongs to collection
+		// Mock permission validation to allow access by default
 		mockValidateRecipeInCollection.mockResolvedValue(true);
+		// Reset mock implementations
+		mockExecute.mockReset();
 	});
 
 	afterAll(() => {
@@ -379,8 +378,11 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should return 409 when ingredient already exists in recipe', async () => {
-			// Mock duplicate key constraint violation
-			mockExecute.mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+			// Mock canEditRecipe check - user owns the recipe
+			mockExecute
+				.mockResolvedValueOnce([[{ household_id: 1 }], []]) // canEditRecipe check
+				.mockResolvedValueOnce([[{ household_id: 1 }], []]) // canEditIngredient check
+				.mockRejectedValueOnce(new Error('UNIQUE constraint failed')); // INSERT fails with duplicate
 
 			await testApiHandler({
 				appHandler,

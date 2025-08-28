@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
+import { canEditResource } from '@/lib/permissions';
 import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {
@@ -12,7 +13,7 @@ interface RecipeRow extends RowDataPacket {
 	pdf_filename: string;
 }
 
-async function updatePdfHandler(request: NextRequest) {
+async function updatePdfHandler(request: AuthenticatedRequest) {
 	let recipeId: string | undefined;
 
 	try {
@@ -179,6 +180,20 @@ async function updatePdfHandler(request: NextRequest) {
 			// For PDF files, use as-is
 			const bytes = await file.arrayBuffer();
 			buffer = Buffer.from(bytes);
+		}
+
+		// Check if user can edit this recipe (household ownership)
+		const canEdit = await canEditResource(request.household_id, 'recipes', parseInt(recipeId));
+		if (!canEdit) {
+			return NextResponse.json(
+				{
+					error: 'Recipe not found.',
+					recipeId: recipeId,
+					message: 'The specified recipe does not exist or you do not have permission to edit it.',
+					suggestion: 'Please check the recipe ID and try again.',
+				},
+				{ status: 404 }
+			);
 		}
 
 		// Get the current pdf filename from the database

@@ -24,6 +24,11 @@ jest.mock('@/lib/utils/secureFilename', () => ({
 	generateVersionedFilename: jest.fn(),
 }));
 
+// Mock the permissions module
+jest.mock('@/lib/permissions', () => ({
+	canEditResource: jest.fn(),
+}));
+
 // Mock jsPDF
 jest.mock('jspdf', () => {
 	return jest.fn().mockImplementation(() => ({
@@ -56,6 +61,7 @@ global.Image = class {
 
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename } from '@/lib/utils/secureFilename';
+import { canEditResource } from '@/lib/permissions';
 
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
@@ -65,6 +71,7 @@ const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStorageMode>;
 const mockGetRecipePdfUrl = getRecipePdfUrl as jest.MockedFunction<typeof getRecipePdfUrl>;
 const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFunction<typeof generateVersionedFilename>;
+const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
 
 // Mock console methods
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -77,6 +84,7 @@ describe('/api/recipe/upload-pdf', () => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
 		mockGetStorageMode.mockReturnValue('local');
+		mockCanEditResource.mockResolvedValue(true); // Default: can edit
 	});
 
 	afterAll(() => {

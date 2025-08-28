@@ -19,6 +19,11 @@ jest.mock('@/lib/storage', () => ({
 	deleteFile: jest.fn(),
 }));
 
+// Mock the permissions module
+jest.mock('@/lib/permissions', () => ({
+	canEditResource: jest.fn(),
+}));
+
 // Mock the utils module
 jest.mock('@/lib/utils/secureFilename', () => ({
 	getRecipeImageUrl: jest.fn(),
@@ -28,6 +33,7 @@ jest.mock('@/lib/utils/secureFilename', () => ({
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
+import { canEditResource } from '@/lib/permissions';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 
 // Type assertions for mocked modules
@@ -35,6 +41,7 @@ const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStorageMode>;
 const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
 const mockGetRecipeImageUrl = getRecipeImageUrl as jest.MockedFunction<typeof getRecipeImageUrl>;
+const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
 
 // Mock console methods
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -52,6 +59,7 @@ describe('/api/recipe/upload-image', () => {
 		mockUploadFile.mockReset();
 		mockDeleteFile.mockReset();
 		mockGetRecipeImageUrl.mockReset();
+		mockCanEditResource.mockResolvedValue(true); // Default: can edit
 
 		// Reset database mock
 		mockExecute.mockReset();

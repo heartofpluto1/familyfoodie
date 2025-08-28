@@ -95,9 +95,9 @@ export async function validateHouseholdCollectionAccess(collectionId: number, us
 				c.public = 1                   -- Collection is public
 			)
 		`;
-		
+
 		const [rows] = await pool.execute(query, [userHouseholdId, collectionId, userHouseholdId]);
-		
+
 		const results = rows as Array<unknown>;
 		return results.length > 0;
 	} catch (error) {
@@ -110,7 +110,7 @@ export async function validateHouseholdCollectionAccess(collectionId: number, us
  * Validate that a recipe belongs to a specific collection AND that the household has access
  * This prevents enumeration attacks and ensures proper authorization
  * @param recipeId The recipe ID to validate
- * @param collectionId The collection ID to validate  
+ * @param collectionId The collection ID to validate
  * @param userHouseholdId The requesting user's household ID
  * @returns true if recipe is in collection and household has access, false otherwise
  */
@@ -125,7 +125,7 @@ export async function validateRecipeInCollection(recipeId: number, collectionId:
 		// Only if household has collection access, check if recipe is in collection
 		const query = 'SELECT 1 FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?';
 		const [rows] = await pool.execute(query, [recipeId, collectionId]);
-		
+
 		const results = rows as Array<unknown>;
 		return results.length > 0;
 	} catch (error) {

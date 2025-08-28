@@ -7,17 +7,11 @@ import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash } from '@
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import { UpdateImageResponse } from '@/types/fileUpload';
 import { cascadeCopyWithContext } from '@/lib/copy-on-write';
-import { canEditResource } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 
 interface RecipeRow extends RowDataPacket {
 	image_filename: string;
 	pdf_filename: string;
-}
-
-interface CollectionAccessRow extends RowDataPacket {
-	household_id: number;
-	is_public: number;
-	subscription_id: number | null;
 }
 
 // Helper function to validate file content matches declared MIME type
@@ -130,49 +124,17 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 			}
 		};
 
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		if (!isRecipeInCollection) {
+			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+		}
+
 		// Get the current image filename from the database
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [recipeIdNum]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
-		}
-
-		// Verify collection access
-		const [collectionRows] = await pool.execute<CollectionAccessRow[]>(
-			`SELECT 
-				c.household_id,
-				c.is_public,
-				cs.id as subscription_id
-			FROM collections c
-			LEFT JOIN collection_subscriptions cs 
-				ON cs.collection_id = c.id 
-				AND cs.household_id = ?
-			WHERE c.id = ?`,
-			[request.household_id, collectionIdNum]
-		);
-
-		if (collectionRows.length === 0) {
-			return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
-		}
-
-		const collection = collectionRows[0];
-		const hasAccess =
-			collection.household_id === request.household_id || // Owned
-			collection.subscription_id !== null || // Subscribed
-			collection.is_public === 1; // Public
-
-		if (!hasAccess) {
-			return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
-		}
-
-		// Verify recipe is in this collection
-		const [recipeCollectionRows] = await pool.execute<RowDataPacket[]>('SELECT 1 FROM collection_recipes WHERE collection_id = ? AND recipe_id = ?', [
-			collectionIdNum,
-			recipeIdNum,
-		]);
-
-		if (recipeCollectionRows.length === 0) {
-			return NextResponse.json({ error: 'Recipe not found in collection' }, { status: 404 });
 		}
 
 		const currentImageFilename = recipeRows[0].image_filename;
@@ -201,11 +163,11 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 		let wasCopied = false;
 
 		// Check if household can edit this recipe
-		const canEdit = await canEditResource(request.household_id!, 'recipes', recipeIdNum);
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
 
 		if (!canEdit) {
 			// Recipe is not owned - trigger copy-on-write
-			const copyResult = await cascadeCopyWithContext(request.household_id!, collectionIdNum, recipeIdNum);
+			const copyResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIdNum);
 			targetRecipeId = copyResult.newRecipeId;
 			targetCollectionId = copyResult.newCollectionId;
 			wasCopied = true;
