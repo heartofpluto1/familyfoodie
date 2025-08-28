@@ -15,6 +15,7 @@ import { useRecipeOptions } from '@/app/recipes/hooks/useRecipeOptions';
 import { useIngredientApi } from '../hooks/useIngredientApi';
 import { RecipeFormData, NewIngredient } from '@/app/recipes/types';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { UpdateImageResponse } from '@/types/fileUpload';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
@@ -28,10 +29,12 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 	const { options } = useRecipeOptions();
 	const ingredientApi = useIngredientApi(recipe.collection_id);
 
+	// Recipe state for dynamic updates
+	const [currentRecipe, setCurrentRecipe] = useState(recipe);
+
 	// Separate edit modes
 	const [editMode, setEditMode] = useState<EditMode>('none');
 	const [isLoading, setIsLoading] = useState(false);
-	const [refreshKey, setRefreshKey] = useState(0);
 	const [showPdfModal, setShowPdfModal] = useState(false);
 	const [showImageModal, setShowImageModal] = useState(false);
 
@@ -209,11 +212,16 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 		}
 	};
 
-	const handleImageUploadComplete = () => {
+	const handleImageUploadComplete = (uploadResponse?: UpdateImageResponse) => {
 		showToast('success', 'Success', 'Recipe image updated successfully');
 		setShowImageModal(false);
-		// Force refresh to show new image
-		setRefreshKey(prev => prev + 1);
+		// Update recipe state with new filename if provided
+		if (uploadResponse?.filename) {
+			setCurrentRecipe(prev => ({
+				...prev,
+				image_filename: uploadResponse.filename,
+			}));
+		}
 	};
 
 	const handleDeleteIngredient = async (id: number) => {
@@ -348,7 +356,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					<div className="bg-white border border-custom shadow rounded-sm pb-4 space-y-4">
 						{/* Recipe Image Section with contextual edit buttons */}
 						<div className="relative">
-							<img key={refreshKey} src={getRecipeImageUrl(recipe.image_filename)} alt={recipe.name} className="w-full rounded-t-sm" />
+							<img src={getRecipeImageUrl(currentRecipe.image_filename)} alt={currentRecipe.name} className="w-full rounded-t-sm" />
 							{/* Edit buttons */}
 							<div className="absolute bottom-4 right-4 flex gap-2">
 								{editMode === 'details' ? (
@@ -479,7 +487,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				<ImageUploadWithCrop
 					recipeId={recipe.id}
 					collectionId={recipe.collection_id}
-					currentImageSrc={recipe ? getRecipeImageUrl(recipe.image_filename) : undefined}
+					currentImageSrc={currentRecipe ? getRecipeImageUrl(currentRecipe.image_filename) : undefined}
 					onImageUploaded={handleImageUploadComplete}
 					isEditing={true}
 				/>
