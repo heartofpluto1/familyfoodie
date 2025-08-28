@@ -20,8 +20,16 @@ export default async function HomePage() {
 		return <HomeUnauthenticated />;
 	}
 
+	// Get household_id from session
+	const household_id = session.household_id;
+	
+	if (!household_id) {
+		// Session exists but no household_id - show error or redirect to login
+		return <HomeUnauthenticated />;
+	}
+
 	// User is authenticated - fetch data and show dashboard
-	const { data: plans, stats } = await getRecipeWeeks(6);
+	const { data: plans, stats } = await getRecipeWeeks(household_id, 6);
 	return <HomeAuthenticated plans={plans || []} stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }} />;
 }
 
