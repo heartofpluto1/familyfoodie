@@ -15,6 +15,8 @@ jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').
 // Mock the permission and copy-on-write functions
 jest.mock('@/lib/permissions', () => ({
 	canEditResource: jest.fn(),
+	validateRecipeInCollection: jest.fn(),
+	validateHouseholdCollectionAccess: jest.fn(),
 }));
 
 jest.mock('@/lib/copy-on-write', () => ({
@@ -26,6 +28,7 @@ jest.mock('@/lib/copy-on-write', () => ({
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 const mockGetConnection = jest.mocked(jest.requireMock('@/lib/db.js').getConnection);
 const mockCanEditResource = jest.mocked(jest.requireMock('@/lib/permissions').canEditResource);
+const mockValidateRecipeInCollection = jest.mocked(jest.requireMock('@/lib/permissions').validateRecipeInCollection);
 const mockCascadeCopyWithContext = jest.mocked(jest.requireMock('@/lib/copy-on-write').cascadeCopyWithContext);
 const mockCopyIngredientForEdit = jest.mocked(jest.requireMock('@/lib/copy-on-write').copyIngredientForEdit);
 
@@ -37,9 +40,13 @@ describe('/api/recipe/update-ingredients', () => {
 		mockExecute.mockClear();
 		mockGetConnection.mockClear();
 		mockCanEditResource.mockClear();
+		mockValidateRecipeInCollection.mockClear();
 		mockCascadeCopyWithContext.mockClear();
 		mockCopyIngredientForEdit.mockClear();
 		consoleMocks = setupConsoleMocks();
+		
+		// Default mock behavior - recipe belongs to collection and household has access
+		mockValidateRecipeInCollection.mockResolvedValue(true);
 
 		// Setup mock connection object
 		mockConnection = {

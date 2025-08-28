@@ -76,6 +76,65 @@ export async function validateHouseholdAccess(userHouseholdId: number, collectio
 }
 
 /**
+ * Validate that a household has access to a specific collection
+ * This prevents enumeration attacks by only returning access for owned/subscribed/public collections
+ * @param collectionId The collection ID to validate access to
+ * @param userHouseholdId The requesting user's household ID
+ * @returns true if household has access (owned, subscribed, or public), false otherwise
+ */
+export async function validateHouseholdCollectionAccess(collectionId: number, userHouseholdId: number): Promise<boolean> {
+	try {
+		const query = `
+			SELECT 1 
+			FROM collections c
+			LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
+			WHERE c.id = ?
+			AND (
+				c.household_id = ? OR          -- User owns collection
+				cs.household_id IS NOT NULL OR -- User is subscribed
+				c.public = 1                   -- Collection is public
+			)
+		`;
+		
+		const [rows] = await pool.execute(query, [userHouseholdId, collectionId, userHouseholdId]);
+		
+		const results = rows as Array<unknown>;
+		return results.length > 0;
+	} catch (error) {
+		addToast('error', 'Validation Error', `Failed to validate household collection access: ${error instanceof Error ? error.message : String(error)}`);
+		return false;
+	}
+}
+
+/**
+ * Validate that a recipe belongs to a specific collection AND that the household has access
+ * This prevents enumeration attacks and ensures proper authorization
+ * @param recipeId The recipe ID to validate
+ * @param collectionId The collection ID to validate  
+ * @param userHouseholdId The requesting user's household ID
+ * @returns true if recipe is in collection and household has access, false otherwise
+ */
+export async function validateRecipeInCollection(recipeId: number, collectionId: number, userHouseholdId: number): Promise<boolean> {
+	try {
+		// First check if household has access to the collection
+		const hasCollectionAccess = await validateHouseholdCollectionAccess(collectionId, userHouseholdId);
+		if (!hasCollectionAccess) {
+			return false; // Don't reveal whether recipe exists in collection
+		}
+
+		// Only if household has collection access, check if recipe is in collection
+		const query = 'SELECT 1 FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?';
+		const [rows] = await pool.execute(query, [recipeId, collectionId]);
+		
+		const results = rows as Array<unknown>;
+		return results.length > 0;
+	} catch (error) {
+		addToast('error', 'Validation Error', `Failed to validate recipe-collection relationship: ${error instanceof Error ? error.message : String(error)}`);
+		return false;
+	}
+}
+
+/**
  * Check if a user can access a specific recipe within a collection context
  * Considers recipe ownership, collection ownership, and subscription status
  */

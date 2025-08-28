@@ -1,4 +1,4 @@
-import { canEditResource, validateHouseholdAccess, canAccessRecipe, canAccessIngredient, canEditMultipleResources, isAdmin } from './permissions';
+import { canEditResource, validateHouseholdAccess, canAccessRecipe, canAccessIngredient, canEditMultipleResources, isAdmin, validateRecipeInCollection, validateHouseholdCollectionAccess } from './permissions';
 import pool from './db.js';
 import { RowDataPacket } from 'mysql2';
 
@@ -331,6 +331,96 @@ describe('Permission System', () => {
 			mockPool.execute.mockRejectedValueOnce(new Error('Database error'));
 
 			const result = await isAdmin(1);
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('validateHouseholdCollectionAccess', () => {
+		it('should return true when household owns collection', async () => {
+			mockPool.execute.mockResolvedValueOnce([[{ '1': 1 }] as RowDataPacket[], []]);
+
+			const result = await validateHouseholdCollectionAccess(456, 123);
+
+			expect(result).toBe(true);
+			expect(mockPool.execute).toHaveBeenCalledWith(
+				expect.stringContaining('FROM collections c'),
+				[123, 456, 123]
+			);
+		});
+
+		it('should return true when household is subscribed to collection', async () => {
+			mockPool.execute.mockResolvedValueOnce([[{ '1': 1 }] as RowDataPacket[], []]);
+
+			const result = await validateHouseholdCollectionAccess(456, 123);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return true when collection is public', async () => {
+			mockPool.execute.mockResolvedValueOnce([[{ '1': 1 }] as RowDataPacket[], []]);
+
+			const result = await validateHouseholdCollectionAccess(456, 123);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when household has no access to collection', async () => {
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+			const result = await validateHouseholdCollectionAccess(456, 123);
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when database query fails', async () => {
+			mockPool.execute.mockRejectedValueOnce(new Error('Database connection failed'));
+
+			const result = await validateHouseholdCollectionAccess(456, 123);
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('validateRecipeInCollection', () => {
+		it('should return true when household has access and recipe belongs to collection', async () => {
+			// Mock household has collection access
+			mockPool.execute
+				.mockResolvedValueOnce([[{ '1': 1 }] as RowDataPacket[], []]) // Collection access check
+				.mockResolvedValueOnce([[{ '1': 1 }] as RowDataPacket[], []]); // Recipe in collection check
+
+			const result = await validateRecipeInCollection(123, 456, 789);
+
+			expect(result).toBe(true);
+			expect(mockPool.execute).toHaveBeenCalledTimes(2);
+		});
+
+		it('should return false when household has no access to collection', async () => {
+			// Mock household has no collection access
+			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+
+			const result = await validateRecipeInCollection(123, 456, 789);
+
+			expect(result).toBe(false);
+			expect(mockPool.execute).toHaveBeenCalledTimes(1); // Should not check recipe membership
+		});
+
+		it('should return false when household has access but recipe not in collection', async () => {
+			// Mock household has collection access but recipe not in collection
+			mockPool.execute
+				.mockResolvedValueOnce([[{ '1': 1 }] as RowDataPacket[], []]) // Collection access check
+				.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Recipe not in collection
+
+			const result = await validateRecipeInCollection(123, 456, 789);
+
+			expect(result).toBe(false);
+			expect(mockPool.execute).toHaveBeenCalledTimes(2);
+		});
+
+		it('should return false when database query fails', async () => {
+			mockPool.execute.mockRejectedValueOnce(new Error('Database connection failed'));
+
+			const result = await validateRecipeInCollection(123, 456, 789);
 
 			expect(result).toBe(false);
 		});

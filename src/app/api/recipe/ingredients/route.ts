@@ -3,6 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { cascadeCopyWithContext, cascadeCopyIngredientWithContext, copyIngredientForEdit } from '@/lib/copy-on-write';
+import { validateRecipeInCollection, validateHouseholdCollectionAccess } from '@/lib/permissions';
 
 // Helper function for standardized error responses
 function createErrorResponse(error: string, code: string, status: number, details?: object) {
@@ -96,6 +97,12 @@ async function putHandler(request: AuthenticatedRequest) {
 			return createErrorResponse('Recipe ingredient not found', 'INGREDIENT_NOT_FOUND', 404);
 		}
 
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIngredientInfo.recipeId, collectionId, request.household_id);
+		if (!isRecipeInCollection) {
+			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
+		}
+
 		// Check if the user owns the recipe
 		const canEdit = await canEditRecipe(recipeIngredientInfo.recipeId, request.household_id);
 
@@ -181,6 +188,12 @@ async function postHandler(request: AuthenticatedRequest) {
 		// Validate quantities are not empty strings
 		if ((typeof quantity === 'string' && quantity.trim() === '') || (typeof quantity4 === 'string' && quantity4.trim() === '')) {
 			return createErrorResponse('Quantity cannot be empty', 'VALIDATION_ERROR', 400);
+		}
+
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, request.household_id);
+		if (!isRecipeInCollection) {
+			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe
@@ -282,6 +295,12 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		const recipeIngredientInfo = await getRecipeIngredientInfo(recipeIngredientId);
 		if (!recipeIngredientInfo) {
 			return createErrorResponse('Recipe ingredient not found', 'INGREDIENT_NOT_FOUND', 404);
+		}
+
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIngredientInfo.recipeId, collectionIdNum, request.household_id);
+		if (!isRecipeInCollection) {
+			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe

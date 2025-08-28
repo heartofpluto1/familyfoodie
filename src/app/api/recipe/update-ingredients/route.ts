@@ -3,7 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { AuthenticatedRequest, withAuth } from '@/lib/auth-middleware';
 import { cascadeCopyWithContext } from '@/lib/copy-on-write';
-import { canEditResource } from '@/lib/permissions';
+import { canEditResource, validateRecipeInCollection, validateHouseholdCollectionAccess } from '@/lib/permissions';
 import { copyIngredientForEdit } from '@/lib/copy-on-write';
 
 interface Ingredient {
@@ -70,6 +70,12 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 			if (typeof ingredient.ingredientId !== 'number') {
 				return createErrorResponse('Invalid ingredient data format', 'VALIDATION_ERROR', 400);
 			}
+		}
+
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, request.household_id);
+		if (!isRecipeInCollection) {
+			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe

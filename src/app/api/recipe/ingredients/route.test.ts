@@ -22,12 +22,25 @@ jest.mock('@/lib/copy-on-write', () => ({
 	copyIngredientForEdit: jest.fn(),
 }));
 
+// Mock the permissions functions
+jest.mock('@/lib/permissions', () => ({
+	canEditResource: jest.fn(),
+	validateRecipeInCollection: jest.fn(),
+	validateHouseholdCollectionAccess: jest.fn(),
+}));
+
+// Get the mocked functions
+const mockValidateRecipeInCollection = jest.mocked(jest.requireMock('@/lib/permissions').validateRecipeInCollection);
+
 describe('/api/recipe/ingredients', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
 
 	beforeEach(() => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		
+		// Default mock behavior - recipe belongs to collection
+		mockValidateRecipeInCollection.mockResolvedValue(true);
 	});
 
 	afterAll(() => {
@@ -330,7 +343,9 @@ describe('/api/recipe/ingredients', () => {
 			});
 		});
 
-		it('should return 400 when recipe does not exist', async () => {
+		it('should return 400 when recipe does not belong to collection', async () => {
+			// Mock that recipe doesn't belong to collection
+			mockValidateRecipeInCollection.mockResolvedValueOnce(false);
 			// Mock foreign key constraint violation
 			mockExecute.mockRejectedValueOnce(new Error('FOREIGN KEY constraint failed'));
 
@@ -351,12 +366,12 @@ describe('/api/recipe/ingredients', () => {
 						}),
 					});
 
-					expect(response.status).toBe(400);
+					expect(response.status).toBe(404);
 					const data = await response.json();
 					expect(data).toEqual({
 						success: false,
 						error: 'Recipe not found',
-						code: 'INVALID_RECIPE_ID',
+						code: 'RECIPE_NOT_FOUND',
 					});
 				},
 				requestPatcher: mockAuthenticatedUser,
