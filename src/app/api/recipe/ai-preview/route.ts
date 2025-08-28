@@ -24,6 +24,7 @@ interface ExistingIngredient extends RowDataPacket {
 	fresh: number;
 	pantryCategory_id: number;
 	supermarketCategory_id: number;
+	household_id: number;
 	pantryCategory_name: string;
 }
 
@@ -305,37 +306,69 @@ If the images don't contain a clear recipe, create the best recipe you can based
 		// Remove duplicates by name - prefer household-owned versions over external sources
 		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(
 			`
-			SELECT DISTINCT 
+			SELECT 
 				i.id, 
 				i.name, 
 				i.fresh, 
 				i.pantryCategory_id, 
 				i.supermarketCategory_id,
+				i.household_id,
 				pc.name as pantryCategory_name
 			FROM ingredients i
 			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
-			LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
-			LEFT JOIN recipes r ON ri.recipe_id = r.id
-			LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
-			LEFT JOIN collections c ON cr.collection_id = c.id
-			LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 			WHERE (
-				i.household_id = ? OR  -- Include household's own ingredients
+				i.household_id = ? OR  -- 1. Include household's own ingredients
 				(
-					(c.id = 1 OR cs.household_id IS NOT NULL) -- Include Spencer's essentials + subscribed ingredients
-					AND i.household_id != ? -- But only if not household-owned
+					-- 2. Include subscribed collection ingredients (not household-owned, not duplicating household names)
+					i.id IN (
+						SELECT DISTINCT ri.ingredient_id
+						FROM recipe_ingredients ri
+						JOIN recipes r ON ri.recipe_id = r.id
+						JOIN collection_recipes cr ON r.id = cr.recipe_id
+						JOIN collection_subscriptions cs ON cr.collection_id = cs.collection_id
+						WHERE cs.household_id = ?
+					)
+					AND i.household_id != ?
 					AND NOT EXISTS (
 						SELECT 1 FROM ingredients i2 
 						WHERE i2.household_id = ? 
-						AND LOWER(i2.name) = LOWER(i.name)  -- Exclude if household has same ingredient name
+						AND LOWER(i2.name) = LOWER(i.name)
+					)
+				) OR (
+					-- 3. Include Spencer's essentials (not household-owned, not duplicating household or subscribed names)
+					i.id IN (
+						SELECT DISTINCT ri.ingredient_id
+						FROM recipe_ingredients ri
+						JOIN recipes r ON ri.recipe_id = r.id
+						JOIN collection_recipes cr ON r.id = cr.recipe_id
+						WHERE cr.collection_id = 1
+					)
+					AND i.household_id != ?
+					AND NOT EXISTS (
+						SELECT 1 FROM ingredients i2 
+						WHERE i2.household_id = ? 
+						AND LOWER(i2.name) = LOWER(i.name)
+					)
+					AND NOT EXISTS (
+						SELECT 1 FROM ingredients i3
+						JOIN recipe_ingredients ri3 ON i3.id = ri3.ingredient_id
+						JOIN recipes r3 ON ri3.recipe_id = r3.id
+						JOIN collection_recipes cr3 ON r3.id = cr3.recipe_id
+						JOIN collection_subscriptions cs3 ON cr3.collection_id = cs3.collection_id
+						WHERE cs3.household_id = ? AND LOWER(i3.name) = LOWER(i.name)
 					)
 				)
 			)
-			ORDER BY 
-				CASE WHEN i.household_id = ? THEN 0 ELSE 1 END,  -- Household ingredients first
-				i.name ASC
 		`,
-			[request.household_id, request.household_id, request.household_id, request.household_id, request.household_id]
+			[
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+			]
 		);
 
 		// Get categories for new ingredients

@@ -556,15 +556,15 @@ describe('/api/recipe/ai-preview', () => {
 					// Check the complex household-scoped query was called
 					expect(mockExecute).toHaveBeenNthCalledWith(
 						1,
-						expect.stringContaining('SELECT DISTINCT'),
-						[1, 1, 1, 1, 1] // household_id repeated 5 times
+						expect.stringContaining('SELECT'),
+						[1, 1, 1, 1, 1, 1, 1] // household_id repeated 7 times
 					);
 
 					// Verify the query includes household filtering
 					const sqlQuery = mockExecute.mock.calls[0][0];
 					expect(sqlQuery).toContain('i.household_id = ?');
-					expect(sqlQuery).toContain('c.id = 1'); // Spencer's essentials
-					expect(sqlQuery).toContain('cs.household_id IS NOT NULL'); // Subscribed collections
+					expect(sqlQuery).toContain('cr.collection_id = 1'); // Spencer's essentials
+					expect(sqlQuery).toContain('cs.household_id = ?'); // Subscribed collections
 					expect(sqlQuery).toContain('LOWER(i2.name) = LOWER(i.name)'); // Name-based duplicate removal
 				},
 			});
@@ -590,7 +590,7 @@ describe('/api/recipe/ai-preview', () => {
 					});
 
 					const sqlQuery = mockExecute.mock.calls[0][0];
-					expect(sqlQuery).toContain('c.id = 1 OR');
+					expect(sqlQuery).toContain('cr.collection_id = 1');
 				},
 			});
 		});
