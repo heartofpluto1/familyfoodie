@@ -1,4 +1,4 @@
-import { authenticateUserWithHousehold, validateSessionWithHousehold } from './auth';
+import { authenticateUserWithHousehold } from './auth';
 import pool from './db.js';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
@@ -99,50 +99,4 @@ describe('Authentication with Household Context', () => {
 		});
 	});
 
-	describe('validateSessionWithHousehold', () => {
-		it('should return user with household context for valid user ID', async () => {
-			const mockUser = {
-				id: 1,
-				username: 'testuser',
-				email: 'test@example.com',
-				first_name: 'Test',
-				last_name: 'User',
-				is_active: 1,
-				is_admin: 0,
-				household_id: 1,
-				household_name: 'Spencer',
-			};
-
-			mockPool.execute.mockResolvedValueOnce([[mockUser] as RowDataPacket[], []]);
-
-			const result = await validateSessionWithHousehold(1);
-
-			expect(result).toEqual(mockUser);
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('JOIN households h ON u.household_id = h.id'), [1]);
-		});
-
-		it('should return null for invalid user ID', async () => {
-			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
-
-			const result = await validateSessionWithHousehold(999);
-
-			expect(result).toBeNull();
-		});
-
-		it('should return null for inactive user', async () => {
-			mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
-
-			const result = await validateSessionWithHousehold(1);
-
-			expect(result).toBeNull();
-		});
-
-		it('should handle database errors gracefully', async () => {
-			mockPool.execute.mockRejectedValueOnce(new Error('Database connection failed'));
-
-			const result = await validateSessionWithHousehold(1);
-
-			expect(result).toBeNull();
-		});
-	});
 });

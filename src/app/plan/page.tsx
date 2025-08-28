@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { getCurrentAndPlannedWeeks, getAllRecipesWithDetails } from '@/lib/queries/menus';
-import { getEncryptedSession, decrypt } from '@/lib/session';
-import { validateSessionWithHousehold } from '@/lib/auth';
+import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import withAuth from '@/app/components/withAuth';
 import MultiWeekPlanClient from './plan-client-multiweek';
@@ -16,22 +15,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 async function PlanPage() {
-	// Get user's household context
-	const sessionCookie = await getEncryptedSession();
-	if (!sessionCookie) {
+	// Get session with household context
+	const session = await getSession();
+	if (!session || !session.household_id) {
 		redirect('/login');
 	}
 
-	const sessionData = decrypt(sessionCookie);
-	const session = JSON.parse(sessionData);
-
-	const user = await validateSessionWithHousehold(session.id);
-	if (!user) {
-		redirect('/login');
-	}
-
-	const plannedWeeks = await getCurrentAndPlannedWeeks(user.household_id);
-	const allRecipes = await getAllRecipesWithDetails(user.household_id);
+	const plannedWeeks = await getCurrentAndPlannedWeeks(session.household_id);
+	const allRecipes = await getAllRecipesWithDetails(session.household_id);
 
 	// Convert database results to WeekPlan format
 	const weekPlans: WeekPlan[] = plannedWeeks.map(({ week, year, recipes }) => ({

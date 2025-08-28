@@ -14,7 +14,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
 	// Check authentication status server-side
 	const session = await getSession();
-	console.log('HomePage: Session data:', JSON.stringify(session, null, 2));
 
 	if (!session) {
 		// User is not authenticated - show marketing/login page

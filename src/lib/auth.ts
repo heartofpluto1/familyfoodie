@@ -13,12 +13,6 @@ export interface User {
 	is_admin: boolean;
 }
 
-export interface AuthResult {
-	success: boolean;
-	user?: User;
-	error?: string;
-}
-
 export interface HouseholdAuthResult {
 	success: boolean;
 	user?: SessionUser;
@@ -47,40 +41,6 @@ async function verifyDjangoPassword(password: string, hashedPassword: string): P
 	} catch (error) {
 		addToast('error', 'Password Verification Error', 'Password verification failed: ' + (error instanceof Error ? error.message : String(error)));
 		return false;
-	}
-}
-
-export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
-	try {
-		const [rows] = await pool.execute(
-			'SELECT id, username, email, first_name, last_name, password, is_active, is_admin FROM users WHERE username = ? AND is_active = 1',
-			[username]
-		);
-
-		const users = rows as (User & { password: string })[];
-		if (users.length === 0) {
-			return { success: false, error: 'Invalid username or password' };
-		}
-
-		const user = users[0];
-		const isValidPassword = await verifyDjangoPassword(password, user.password);
-
-		if (!isValidPassword) {
-			return { success: false, error: 'Invalid username or password' };
-		}
-
-		// Update last_login
-		await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-
-		// Return user without password
-		const { ...userWithoutPassword } = user;
-		return {
-			success: true,
-			user: userWithoutPassword,
-		};
-	} catch (error) {
-		addToast('error', 'Authentication Error', 'Authentication failed: ' + (error instanceof Error ? error.message : String(error)));
-		return { success: false, error: 'Authentication failed' };
 	}
 }
 
@@ -135,25 +95,3 @@ export async function authenticateUserWithHousehold(username: string, password: 
 	}
 }
 
-/**
- * Validate session and return user with household context
- * Used by withAuth middleware to get household information
- */
-export async function validateSessionWithHousehold(userId: number): Promise<SessionUser | null> {
-	try {
-		const [rows] = await pool.execute(
-			`SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.is_active, u.is_admin, 
-			        u.household_id, h.name as household_name
-			 FROM users u 
-			 JOIN households h ON u.household_id = h.id 
-			 WHERE u.id = ? AND u.is_active = 1`,
-			[userId]
-		);
-
-		const users = rows as SessionUser[];
-		return users.length > 0 ? users[0] : null;
-	} catch (error) {
-		addToast('error', 'Session Validation Error', 'Session validation failed: ' + (error instanceof Error ? error.message : String(error)));
-		return null;
-	}
-}
