@@ -214,10 +214,6 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 		setShowImageModal(false);
 		// Force refresh to show new image
 		setRefreshKey(prev => prev + 1);
-		// Also refresh the page after a short delay
-		setTimeout(() => {
-			window.location.reload();
-		}, 500);
 	};
 
 	const handleDeleteIngredient = async (id: number) => {
