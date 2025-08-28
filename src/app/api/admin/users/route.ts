@@ -9,23 +9,64 @@ async function handler(request: NextRequest) {
 		// Require admin permissions
 		const adminUser = await requireAdminUser(request);
 		if (!adminUser) {
-			return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+			return NextResponse.json(
+				{
+					error: 'Admin access required',
+					code: 'ADMIN_ACCESS_REQUIRED',
+				},
+				{ status: 403 }
+			);
 		}
 
-		const includeStats = request.nextUrl.searchParams.get('includeStats') === 'true';
+		// Parse URL correctly for query parameters
+		const { searchParams } = new URL(request.url);
+		const includeStats = searchParams.get('includeStats') === 'true';
 
-		const users = await getAllUsers();
+		// Fetch all users
+		let users: User[];
+		try {
+			users = await getAllUsers();
+		} catch (error) {
+			console.error('Failed to fetch users:', error);
+			return NextResponse.json(
+				{
+					error: 'Failed to fetch users',
+					code: 'DATABASE_ERROR',
+				},
+				{ status: 500 }
+			);
+		}
 
+		// Build response
 		const response: { users: User[]; stats?: { total: number; active: number; admins: number } } = { users };
 
+		// Optionally include stats
 		if (includeStats) {
-			const stats = await getUserStats();
-			response.stats = stats;
+			try {
+				const stats = await getUserStats();
+				response.stats = stats;
+			} catch (error) {
+				console.error('Failed to fetch user stats:', error);
+				return NextResponse.json(
+					{
+						error: 'Failed to fetch users',
+						code: 'STATS_FETCH_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
 		}
 
 		return NextResponse.json(response);
-	} catch {
-		return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+	} catch (error) {
+		console.error('Error in admin users handler:', error);
+		return NextResponse.json(
+			{
+				error: 'Failed to fetch users',
+				code: 'INTERNAL_ERROR',
+			},
+			{ status: 500 }
+		);
 	}
 }
 
