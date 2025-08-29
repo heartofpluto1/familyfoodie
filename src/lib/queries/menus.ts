@@ -285,7 +285,7 @@ export async function getCurrentWeekRecipes(household_id: number): Promise<Recip
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
 		WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
-		ORDER BY rw.id ASC
+		ORDER BY r.id ASC
 	`;
 
 	const [rows] = await pool.execute(query, [week, year, household_id]);
@@ -316,7 +316,7 @@ export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
 		WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
-		ORDER BY rw.id ASC
+		ORDER BY r.id ASC
 	`;
 
 	const [rows] = await pool.execute(query, [week, year, household_id]);
@@ -790,7 +790,7 @@ export async function getAllPlannedWeeks(household_id: number): Promise<Array<{ 
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id
 				WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
-				ORDER BY rw.id ASC
+				ORDER BY r.id ASC
 			`;
 
 			const [recipeRows] = await pool.execute(recipesQuery, [week, year, household_id]);

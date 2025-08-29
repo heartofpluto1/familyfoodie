@@ -143,8 +143,8 @@ function MenuCard({ year, week, meals }: Menu) {
 
 			<div className="">
 				<div className="">
-					{meals.map(meal => (
-						<Meal key={meal.id} meal={meal} isLast={meals[meals.length - 1].id === meal.id} />
+					{meals.map((meal, index) => (
+						<Meal key={`${meal.id}-${index}`} meal={meal} isLast={index === meals.length - 1} />
 					))}
 				</div>
 			</div>
