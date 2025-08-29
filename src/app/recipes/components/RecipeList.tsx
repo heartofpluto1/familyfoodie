@@ -13,9 +13,12 @@ interface RecipeListProps {
 	recipes: Recipe[];
 	collections: Collection[];
 	collectionSlug: string;
+	isSelecting?: boolean;
+	selectedRecipeIds?: Set<number>;
+	onToggleSelection?: (recipeId: number) => void;
 }
 
-const RecipeList = ({ recipes, collectionSlug }: RecipeListProps) => {
+const RecipeList = ({ recipes, collectionSlug, isSelecting = false, selectedRecipeIds = new Set(), onToggleSelection }: RecipeListProps) => {
 	const searchParams = useSearchParams();
 	const [searchTerm, setSearchTerm] = useState('');
 
@@ -77,7 +80,13 @@ const RecipeList = ({ recipes, collectionSlug }: RecipeListProps) => {
 
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 				{filteredRecipes.map(recipe => (
-					<RecipeCard key={recipe.id} recipe={recipe} />
+					<RecipeCard
+						key={recipe.id}
+						recipe={recipe}
+						isSelecting={isSelecting}
+						isSelected={selectedRecipeIds.has(recipe.id)}
+						onToggleSelection={onToggleSelection}
+					/>
 				))}
 			</div>
 

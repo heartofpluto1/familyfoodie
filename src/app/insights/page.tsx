@@ -5,7 +5,9 @@ import {
 	getTopRecipes,
 	getGardenSavings,
 	getRecipePairingSuggestions,
+	getPlannedWeeksCount,
 } from '@/lib/queries/insights';
+import { getSession } from '@/lib/session';
 import withAuth from '@/app/components/withAuth';
 import HeaderPage from '@/app/components/HeaderPage';
 import { formatPrice } from '@/lib/utils/formatting';
@@ -15,17 +17,56 @@ import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 
 async function InsightsPage() {
+	// Get session for household context
+	const session = await getSession();
+	if (!session || !session.household_id) {
+		throw new Error('No household context available');
+	}
+	const householdId = session.household_id;
+
+	// Check if household has enough planning data
+	const plannedWeeksCount = await getPlannedWeeksCount(householdId);
+
+	// Show placeholder if insufficient data
+	if (plannedWeeksCount <= 2) {
+		return (
+			<div className="min-h-screen bg-background">
+				<div className="container mx-auto px-4 py-8">
+					<HeaderPage title="Food Insights" subtitle="Discover patterns in your eating habits and spending to make smarter food choices." />
+
+					<main className="container mx-auto py-4">
+						<div className="bg-white border border-custom rounded-sm shadow-md p-12 text-center">
+							<div className="max-w-md mx-auto space-y-4">
+								<h2 className="text-2xl font-semibold text-foreground">Start Planning Your Meals</h2>
+								<p className="text-gray-600 dark:text-gray-400">
+									Food insights become available after you&apos;ve planned a few weeks of meals. Start planning your weekly meals and come back in a
+									couple of weeks to see personalized insights about your eating habits, spending patterns, and recipe recommendations.
+								</p>
+								<Link
+									href="/plan"
+									className="inline-block bg-accent text-background px-6 py-3 rounded-sm font-medium hover:bg-accent/90 transition-colors mt-4"
+								>
+									Start Planning
+								</Link>
+							</div>
+						</div>
+					</main>
+				</div>
+			</div>
+		);
+	}
+
 	const [weeklySpending, topFruitsAndVeggies, topHerbs, topRecipes, recipePairings] = await Promise.all([
-		getAverageWeeklySpending(),
-		getTopFruitsAndVegetables(),
-		getTopHerbs(),
-		getTopRecipes(),
-		getRecipePairingSuggestions(),
+		getAverageWeeklySpending(householdId),
+		getTopFruitsAndVegetables(householdId),
+		getTopHerbs(householdId),
+		getTopRecipes(householdId),
+		getRecipePairingSuggestions(householdId),
 	]);
 
 	// Get garden savings for top 3 fruits & vegetables and herbs
-	const gardenSavings = await getGardenSavings(topFruitsAndVeggies);
-	const herbGardenSavings = await getGardenSavings(topHerbs);
+	const gardenSavings = await getGardenSavings(topFruitsAndVeggies, householdId);
+	const herbGardenSavings = await getGardenSavings(topHerbs, householdId);
 
 	return (
 		<div className="min-h-screen bg-background">

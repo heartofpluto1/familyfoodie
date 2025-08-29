@@ -13,10 +13,22 @@ jest.mock('@/lib/db.js', () => ({
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 // Mock the auth middleware to properly handle authentication
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
-// mockExecute is already defined above
+// Mock the copy-on-write functions
+jest.mock('@/lib/copy-on-write', () => ({
+	cascadeCopyWithContext: jest.fn(),
+	cascadeCopyIngredientWithContext: jest.fn(),
+	copyIngredientForEdit: jest.fn(),
+}));
+
+// Mock the permissions functions
+jest.mock('@/lib/permissions', () => ({
+	validateRecipeInCollection: jest.fn(),
+}));
+
+// Get the mocked functions
+const mockValidateRecipeInCollection = jest.mocked(jest.requireMock('@/lib/permissions').validateRecipeInCollection);
 
 describe('/api/recipe/ingredients', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -24,6 +36,10 @@ describe('/api/recipe/ingredients', () => {
 	beforeEach(() => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		// Mock permission validation to allow access by default
+		mockValidateRecipeInCollection.mockResolvedValue(true);
+		// Reset mock implementations
+		mockExecute.mockReset();
 	});
 
 	afterAll(() => {
@@ -51,7 +67,36 @@ describe('/api/recipe/ingredients', () => {
 					const data = await response.json();
 					expect(data).toEqual({
 						success: false,
-						error: 'Ingredient ID and quantities are required',
+						error: 'Ingredient ID, quantities, and collection ID are required',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 with standardized error for missing collectionId', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: 1,
+							quantity: '2 cups',
+							quantity4: '500ml',
+							// Missing collectionId
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Ingredient ID, quantities, and collection ID are required',
 						code: 'VALIDATION_ERROR',
 					});
 				},
@@ -72,6 +117,7 @@ describe('/api/recipe/ingredients', () => {
 							id: 'not-a-number',
 							quantity: '2 cups',
 							quantity4: '500ml',
+							collectionId: 1,
 						}),
 					});
 
@@ -88,8 +134,9 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should return 404 when ingredient does not exist', async () => {
+			// Mock getRecipeIngredientInfo returning no rows
 			mockExecute.mockResolvedValueOnce([
-				{ affectedRows: 0 }, // No rows updated - ingredient not found
+				[], // No recipe_ingredient found
 				[],
 			]);
 
@@ -105,6 +152,7 @@ describe('/api/recipe/ingredients', () => {
 							id: 999,
 							quantity: '2 cups',
 							quantity4: '500ml',
+							collectionId: 1,
 						}),
 					});
 
@@ -121,9 +169,20 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should successfully update recipe ingredient', async () => {
+			// Mock getRecipeIngredientInfo returning recipe and ingredient IDs
+			mockExecute.mockResolvedValueOnce([
+				[{ recipe_id: 1, ingredient_id: 5 }], // Recipe ingredient found
+				[],
+			]);
+			// Mock canEditRecipe check - user owns the recipe
+			mockExecute.mockResolvedValueOnce([
+				[{ household_id: 1 }], // Recipe owned by user's household
+				[],
+			]);
+			// Mock the UPDATE query
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 1 }, // Successful update
-				[], // fields array (second element of mysql2 result)
+				[],
 			]);
 
 			await testApiHandler({
@@ -139,21 +198,22 @@ describe('/api/recipe/ingredients', () => {
 							quantity: '2 cups',
 							quantity4: '500ml',
 							measureId: 5,
+							collectionId: 1,
 						}),
 					});
 
 					expect(response.status).toBe(200);
 					const data = await response.json();
-					expect(data).toEqual({
-						success: true,
-						message: 'Ingredient updated successfully',
-						data: {
-							id: 1,
-							quantity: '2 cups',
-							quantity4: '500ml',
-							measureId: 5,
-						},
-					});
+					expect(data.success).toBe(true);
+					expect(data.message).toBe('Ingredient updated successfully');
+					expect(data.data).toBeDefined();
+					expect(data.data.id).toBe(1);
+					expect(data.data.quantity).toBe('2 cups');
+					expect(data.data.quantity4).toBe('500ml');
+					expect(data.data.measureId).toBe(5);
+					// Additional fields added by the new implementation
+					expect(data.data.actionsTaken).toEqual([]);
+					expect(data.data.redirectNeeded).toBe(false);
 
 					// Verify database call
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipe_ingredients'), ['2 cups', '500ml', 5, 1]);
@@ -175,6 +235,7 @@ describe('/api/recipe/ingredients', () => {
 							id: 1,
 							quantity: '2 cups',
 							quantity4: '500ml',
+							collectionId: 1,
 						}),
 					});
 
@@ -204,6 +265,7 @@ describe('/api/recipe/ingredients', () => {
 						body: JSON.stringify({
 							recipeId: 1,
 							quantity: '3 cups',
+							collectionId: 1,
 							// Missing ingredientId and quantity4
 						}),
 					});
@@ -212,7 +274,37 @@ describe('/api/recipe/ingredients', () => {
 					const data = await response.json();
 					expect(data).toEqual({
 						success: false,
-						error: 'Recipe ID, ingredient ID, and quantities are required',
+						error: 'Recipe ID, ingredient ID, quantities, and collection ID are required',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('should return 400 with standardized error for missing collectionId', async () => {
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							recipeId: 1,
+							ingredientId: 5,
+							quantity: '3 cups',
+							quantity4: '750ml',
+							// Missing collectionId
+						}),
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe ID, ingredient ID, quantities, and collection ID are required',
 						code: 'VALIDATION_ERROR',
 					});
 				},
@@ -234,6 +326,7 @@ describe('/api/recipe/ingredients', () => {
 							ingredientId: 5,
 							quantity: '',
 							quantity4: '750ml',
+							collectionId: 1,
 						}),
 					});
 
@@ -249,7 +342,9 @@ describe('/api/recipe/ingredients', () => {
 			});
 		});
 
-		it('should return 400 when recipe does not exist', async () => {
+		it('should return 400 when recipe does not belong to collection', async () => {
+			// Mock that recipe doesn't belong to collection
+			mockValidateRecipeInCollection.mockResolvedValueOnce(false);
 			// Mock foreign key constraint violation
 			mockExecute.mockRejectedValueOnce(new Error('FOREIGN KEY constraint failed'));
 
@@ -266,15 +361,16 @@ describe('/api/recipe/ingredients', () => {
 							ingredientId: 5,
 							quantity: '3 cups',
 							quantity4: '750ml',
+							collectionId: 1,
 						}),
 					});
 
-					expect(response.status).toBe(400);
+					expect(response.status).toBe(404);
 					const data = await response.json();
 					expect(data).toEqual({
 						success: false,
 						error: 'Recipe not found',
-						code: 'INVALID_RECIPE_ID',
+						code: 'RECIPE_NOT_FOUND',
 					});
 				},
 				requestPatcher: mockAuthenticatedUser,
@@ -282,8 +378,11 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should return 409 when ingredient already exists in recipe', async () => {
-			// Mock duplicate key constraint violation
-			mockExecute.mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+			// Mock canEditRecipe check - user owns the recipe
+			mockExecute
+				.mockResolvedValueOnce([[{ household_id: 1 }], []]) // canEditRecipe check
+				.mockResolvedValueOnce([[{ household_id: 1 }], []]) // canEditIngredient check
+				.mockRejectedValueOnce(new Error('UNIQUE constraint failed')); // INSERT fails with duplicate
 
 			await testApiHandler({
 				appHandler,
@@ -298,6 +397,7 @@ describe('/api/recipe/ingredients', () => {
 							ingredientId: 5,
 							quantity: '3 cups',
 							quantity4: '750ml',
+							collectionId: 1,
 						}),
 					});
 
@@ -314,9 +414,20 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should successfully add recipe ingredient with all fields', async () => {
+			// Mock canEditRecipe check - user owns the recipe
+			mockExecute.mockResolvedValueOnce([
+				[{ household_id: 1 }], // Recipe owned by user's household
+				[],
+			]);
+			// Mock canEditIngredient check - user owns the ingredient
+			mockExecute.mockResolvedValueOnce([
+				[{ household_id: 1 }], // Ingredient owned by user's household
+				[],
+			]);
+			// Mock the INSERT query
 			mockExecute.mockResolvedValueOnce([
 				{ insertId: 42 }, // Successful insert
-				[], // fields array (second element of mysql2 result)
+				[],
 			]);
 
 			await testApiHandler({
@@ -334,24 +445,25 @@ describe('/api/recipe/ingredients', () => {
 							quantity4: '750ml',
 							measureId: 10,
 							preparationId: 2,
+							collectionId: 1,
 						}),
 					});
 
 					expect(response.status).toBe(200);
 					const data = await response.json();
-					expect(data).toEqual({
-						success: true,
-						message: 'Ingredient added successfully',
-						data: {
-							id: 42,
-							recipeId: 1,
-							ingredientId: 5,
-							quantity: '3 cups',
-							quantity4: '750ml',
-							measureId: 10,
-							preparationId: 2,
-						},
-					});
+					expect(data.success).toBe(true);
+					expect(data.message).toBe('Ingredient added successfully');
+					expect(data.data).toBeDefined();
+					expect(data.data.id).toBe(42);
+					expect(data.data.recipeId).toBe(1);
+					expect(data.data.ingredientId).toBe(5);
+					expect(data.data.quantity).toBe('3 cups');
+					expect(data.data.quantity4).toBe('750ml');
+					expect(data.data.measureId).toBe(10);
+					expect(data.data.preparationId).toBe(2);
+					// Additional fields added by the new implementation
+					expect(data.data.actionsTaken).toEqual([]);
+					expect(data.data.redirectNeeded).toBe(false);
 
 					// Verify database call with all parameters including primaryIngredient as 0
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [1, 5, '3 cups', '750ml', 10, 2, 0]);
@@ -374,6 +486,7 @@ describe('/api/recipe/ingredients', () => {
 							ingredientId: 1,
 							quantity: '1 cup',
 							quantity4: '250ml',
+							collectionId: 1,
 						}),
 					});
 
@@ -391,10 +504,31 @@ describe('/api/recipe/ingredients', () => {
 	});
 
 	describe('DELETE /api/recipe/ingredients', () => {
+		it('should return 400 with standardized error for missing collectionId', async () => {
+			await testApiHandler({
+				appHandler,
+				url: '/api/recipe/ingredients?id=1',
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+					});
+
+					expect(response.status).toBe(400);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Ingredient ID and collection ID are required',
+						code: 'VALIDATION_ERROR',
+					});
+				},
+			});
+		});
+
 		it('should return 400 with standardized error for invalid ID format', async () => {
 			await testApiHandler({
 				appHandler,
-				url: '/api/recipe/ingredients?id=not-a-number',
+				url: '/api/recipe/ingredients?id=not-a-number&collectionId=1',
 				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -413,13 +547,15 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should return 404 when ingredient does not exist', async () => {
+			// Mock getRecipeIngredientInfo returning no rows
 			mockExecute.mockResolvedValueOnce([
-				{ affectedRows: 0 }, // No rows deleted - ingredient not found
+				[], // No recipe_ingredient found
+				[],
 			]);
 
 			await testApiHandler({
 				appHandler,
-				url: '/api/recipe/ingredients?id=999',
+				url: '/api/recipe/ingredients?id=999&collectionId=1',
 				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -438,13 +574,25 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should successfully delete recipe ingredient', async () => {
+			// Mock getRecipeIngredientInfo returning recipe and ingredient IDs
+			mockExecute.mockResolvedValueOnce([
+				[{ recipe_id: 1, ingredient_id: 5 }], // Recipe ingredient found
+				[],
+			]);
+			// Mock canEditRecipe check - user owns the recipe
+			mockExecute.mockResolvedValueOnce([
+				[{ household_id: 1 }], // Recipe owned by user's household
+				[],
+			]);
+			// Mock the DELETE query
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 1 }, // Successful delete
+				[],
 			]);
 
 			await testApiHandler({
 				appHandler,
-				url: '/api/recipe/ingredients?id=1',
+				url: '/api/recipe/ingredients?id=1&collectionId=1',
 				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -453,13 +601,13 @@ describe('/api/recipe/ingredients', () => {
 
 					expect(response.status).toBe(200);
 					const data = await response.json();
-					expect(data).toEqual({
-						success: true,
-						message: 'Ingredient removed successfully',
-						data: {
-							deletedId: 1,
-						},
-					});
+					expect(data.success).toBe(true);
+					expect(data.message).toBe('Ingredient removed successfully');
+					expect(data.data).toBeDefined();
+					expect(data.data.deletedId).toBe(1);
+					// Additional fields added by the new implementation
+					expect(data.data.actionsTaken).toEqual([]);
+					expect(data.data.redirectNeeded).toBe(false);
 
 					// Verify database call was made with correct parameters
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM recipe_ingredients'), [1]);
@@ -470,7 +618,7 @@ describe('/api/recipe/ingredients', () => {
 		it('should return 401 for unauthenticated users', async () => {
 			await testApiHandler({
 				appHandler,
-				url: '/api/recipe/ingredients?id=1',
+				url: '/api/recipe/ingredients?id=1&collectionId=1',
 				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({

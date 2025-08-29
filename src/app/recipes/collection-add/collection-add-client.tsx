@@ -117,40 +117,6 @@ const CollectionAddClient = () => {
 			<div className="max-w-2xl mx-auto">
 				<div className="bg-white border border-custom rounded-sm shadow-md overflow-hidden">
 					<div className="p-6 space-y-6">
-						{/* Image Uploads */}
-						<div className="space-y-3">
-							{/* Side by side upload sections */}
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-								<ImageUploadSection
-									label="Light Mode Image (Optional)"
-									selectedFile={lightModeImage}
-									onFileSelect={file => {
-										setLightModeImage(file);
-										const url = URL.createObjectURL(file);
-										setLightImagePreview(url);
-									}}
-									onFileValidationError={handleFileValidationError}
-									disabled={isLoading}
-									previewUrl={lightImagePreview}
-									accept="image/jpeg,.jpg"
-								/>
-
-								<ImageUploadSection
-									label="Dark Mode Image (Optional)"
-									selectedFile={darkModeImage}
-									onFileSelect={file => {
-										setDarkModeImage(file);
-										const url = URL.createObjectURL(file);
-										setDarkImagePreview(url);
-									}}
-									onFileValidationError={handleFileValidationError}
-									disabled={isLoading}
-									previewUrl={darkImagePreview}
-									accept="image/jpeg,.jpg"
-								/>
-							</div>
-						</div>
-
 						{/* Collection Details */}
 						<div className="space-y-4">
 							<div>
@@ -176,6 +142,56 @@ const CollectionAddClient = () => {
 									disabled={isLoading}
 								/>
 							</div>
+						</div>
+
+						{/* Image Uploads */}
+						<div className="space-y-3">
+							{/* Side by side upload sections */}
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<ImageUploadSection
+									label="Light Mode Image (Optional)"
+									selectedFile={lightModeImage}
+									onFileSelect={file => {
+										setLightModeImage(file);
+										const url = URL.createObjectURL(file);
+										setLightImagePreview(url);
+									}}
+									onFileValidationError={handleFileValidationError}
+									disabled={isLoading}
+									previewUrl={lightImagePreview}
+									defaultBackgroundImage="/collections/custom_collection_004.jpg"
+									accept="image/jpeg,.jpg"
+								/>
+
+								<ImageUploadSection
+									label="Dark Mode Image (Optional)"
+									selectedFile={darkModeImage}
+									onFileSelect={file => {
+										setDarkModeImage(file);
+										const url = URL.createObjectURL(file);
+										setDarkImagePreview(url);
+									}}
+									onFileValidationError={handleFileValidationError}
+									disabled={isLoading}
+									previewUrl={darkImagePreview}
+									defaultBackgroundImage="/collections/custom_collection_004_dark.jpg"
+									accept="image/jpeg,.jpg"
+								/>
+							</div>
+							{!lightModeImage && !darkModeImage && (
+								<p className="text-sm text-muted mt-2">
+									Don&apos;t have images handy? Use these defaults and change them later. They are available as a{' '}
+									<a
+										href="https://www.canva.com/design/DAGxZ7Kn4CA/AH9vfwnm0BLwS9Z-KeQvHQ/view?utm_content=DAGxZ7Kn4CA&utm_campaign=designshare&utm_medium=link&utm_source=publishsharelink&mode=preview"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-blue-600 hover:text-blue-700 underline"
+									>
+										Canva template
+									</a>
+									.
+								</p>
+							)}
 						</div>
 
 						{/* Action Buttons */}

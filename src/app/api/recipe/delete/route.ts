@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { cleanupRecipeFiles } from '@/lib/utils/secureFilename.server';
+import { canEditResource } from '@/lib/permissions';
 
 interface RecipeRow extends RowDataPacket {
 	id: number;
@@ -12,6 +13,15 @@ interface RecipeRow extends RowDataPacket {
 
 interface PlanRow extends RowDataPacket {
 	count: number;
+}
+
+interface IngredientRow extends RowDataPacket {
+	ingredient_id: number;
+}
+
+interface IngredientInfoRow extends RowDataPacket {
+	id: number;
+	name: string;
 }
 
 function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { success: false; error: string; code: string } } {
@@ -35,13 +45,15 @@ function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { succ
 	return { isValid: true };
 }
 
-async function deleteHandler(request: NextRequest) {
+async function deleteHandler(request: AuthenticatedRequest) {
 	let recipeId: unknown;
+	let collectionId: unknown;
 
 	// Handle JSON parsing with proper error handling
 	try {
 		const body = await request.json();
 		recipeId = body.recipeId;
+		collectionId = body.collectionId; // Optional: collection context
 	} catch {
 		return NextResponse.json({ success: false, error: 'Invalid JSON in request body', code: 'INVALID_JSON' }, { status: 400 });
 	}
@@ -52,9 +64,68 @@ async function deleteHandler(request: NextRequest) {
 		return NextResponse.json(validation.error, { status: 400 });
 	}
 
+	const numericRecipeId = parseInt(recipeId as string);
+	const numericCollectionId = collectionId ? parseInt(collectionId as string) : null;
+
 	try {
+		// Check if user can edit this recipe (household ownership)
+		const canEditRecipe = await canEditResource(request.household_id, 'recipes', numericRecipeId);
+
+		// If user doesn't own the recipe, check if they can remove it from their collection
+		if (!canEditRecipe) {
+			// If no collection context provided, deny the request
+			if (!numericCollectionId) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					},
+					{ status: 403 }
+				);
+			}
+
+			// Check if user owns the collection
+			const canEditCollection = await canEditResource(request.household_id, 'collections', numericCollectionId);
+
+			if (!canEditCollection) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'You can only remove recipes from collections owned by your household',
+						code: 'PERMISSION_DENIED',
+					},
+					{ status: 403 }
+				);
+			}
+
+			// User owns the collection but not the recipe - just remove from collection
+			const [result] = await pool.execute<ResultSetHeader>('DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?', [
+				numericRecipeId,
+				numericCollectionId,
+			]);
+
+			if (result.affectedRows === 0) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'Recipe not found in this collection',
+						code: 'RECIPE_NOT_IN_COLLECTION',
+					},
+					{ status: 404 }
+				);
+			}
+
+			return NextResponse.json({
+				success: true,
+				message: 'Recipe removed from collection successfully',
+				removedFromCollection: true,
+				collectionId: numericCollectionId,
+			});
+		}
+
 		// First, check if the recipe exists and get its filenames
-		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [parseInt(recipeId as string)]);
+		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT id, image_filename, pdf_filename FROM recipes WHERE id = ?', [numericRecipeId]);
 
 		if (recipeRows.length === 0) {
 			return NextResponse.json(
@@ -69,8 +140,11 @@ async function deleteHandler(request: NextRequest) {
 
 		const recipe = recipeRows[0];
 
-		// Check if the recipe is used in any planned weeks
-		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM plans WHERE recipe_id = ?', [parseInt(recipeId as string)]);
+		// Check if the recipe is used in any planned weeks (household-scoped)
+		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM plans WHERE recipe_id = ? AND household_id = ?', [
+			numericRecipeId,
+			request.household_id,
+		]);
 
 		if (planRows[0].count > 0) {
 			return NextResponse.json(
@@ -84,99 +158,133 @@ async function deleteHandler(request: NextRequest) {
 			);
 		}
 
-		// Check if any ingredients from this recipe have been used in shopping lists
+		// Check if any ingredients from this recipe have been used in shopping lists (household-scoped)
 		const [shoppingListUsage] = await pool.execute<RowDataPacket[]>(
 			`SELECT COUNT(*) as count FROM shopping_lists sl 
 			 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
-			 WHERE ri.recipe_id = ?`,
-			[parseInt(recipeId as string)]
+			 WHERE ri.recipe_id = ? AND sl.household_id = ?`,
+			[numericRecipeId, request.household_id]
 		);
 
 		const hasShoppingListHistory = shoppingListUsage[0].count > 0;
 
-		// Get a connection for transaction handling
-		const connection = await pool.getConnection();
+		if (hasShoppingListHistory) {
+			// Recipe has shopping list history - archive it instead of deleting to preserve referential integrity
+			const connection = await pool.getConnection();
+			try {
+				await connection.beginTransaction();
 
-		try {
-			// Start transaction
-			await connection.beginTransaction();
-
-			if (hasShoppingListHistory) {
-				// Recipe has shopping list history - archive it instead of deleting
-				// Archive functionality removed - recipes can no longer be archived
-				await connection.rollback();
-				return NextResponse.json(
-					{
-						success: false,
-						error: 'Cannot delete recipe with existing shopping list history',
-						code: 'SHOPPING_HISTORY_EXISTS',
-					},
-					{ status: 400 }
+				// Remove recipe from household's collections since it's being archived
+				await connection.execute(
+					'DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id IN (SELECT id FROM collections WHERE household_id = ?)',
+					[numericRecipeId, request.household_id]
 				);
-			} else {
-				// No shopping list history - safe to fully delete
 
-				// First, get all ingredients used by this recipe so we can check for unused ones later
-				const [recipeIngredients] = await connection.execute<RowDataPacket[]>('SELECT DISTINCT ingredient_id FROM recipe_ingredients WHERE recipe_id = ?', [
-					parseInt(recipeId as string),
+				await connection.execute('UPDATE recipes SET archived = 1 WHERE id = ?', [numericRecipeId]);
+
+				await connection.commit();
+
+				return NextResponse.json({
+					success: true,
+					message: 'Recipe archived successfully due to shopping list references',
+					archived: true,
+					code: 'RECIPE_ARCHIVED',
+				});
+			} catch (dbError) {
+				await connection.rollback();
+				throw dbError;
+			} finally {
+				connection.release();
+			}
+		} else {
+			// No shopping list history - safe to fully delete with proper transaction management
+			const connection = await pool.getConnection();
+			try {
+				await connection.beginTransaction();
+
+				// Get recipe ingredients that will be deleted
+				const [recipeIngredients] = await connection.execute<IngredientRow[]>('SELECT ingredient_id FROM recipe_ingredients WHERE recipe_id = ?', [
+					numericRecipeId,
 				]);
 				const ingredientIds = recipeIngredients.map(row => row.ingredient_id);
 
-				// Delete recipe ingredients first (foreign key constraint)
-				await connection.execute('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [parseInt(recipeId as string)]);
+				// Final safety check - ensure no shopping list references exist
+				const [finalSafetyCheck] = await connection.execute<RowDataPacket[]>(
+					`SELECT COUNT(*) as count FROM shopping_lists sl 
+					 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
+					 WHERE ri.recipe_id = ?`,
+					[numericRecipeId]
+				);
 
-				// Account associations no longer exist - recipes are globally available
+				if (finalSafetyCheck[0].count > 0) {
+					// Found shopping list references during deletion - archive instead
+					await connection.execute('DELETE FROM collection_recipes WHERE recipe_id = ?', [numericRecipeId]);
+					await connection.execute('UPDATE recipes SET archived = 1 WHERE id = ?', [numericRecipeId]);
+					await connection.commit();
 
-				// Delete the recipe
-				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [parseInt(recipeId as string)]);
-
-				if (deleteResult.affectedRows === 0) {
-					const error = new Error('Failed to delete recipe from database') as Error & { code: string };
-					error.code = 'DELETE_FAILED';
-					throw error;
+					return NextResponse.json({
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references detected during deletion',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
+					});
 				}
 
-				// Now check for unused ingredients and delete them
-				let deletedIngredientsCount = 0;
+				// Delete recipe_ingredients
+				await connection.execute<ResultSetHeader>('DELETE FROM recipe_ingredients WHERE recipe_id = ?', [numericRecipeId]);
+
+				// Delete the recipe itself
+				const [deleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM recipes WHERE id = ?', [numericRecipeId]);
+
+				if (deleteResult.affectedRows === 0) {
+					throw new Error('Failed to delete recipe from database');
+				}
+
+				// Find and delete orphaned ingredients for this household
 				const deletedIngredientNames: string[] = [];
+				let deletedIngredientsCount = 0;
 
 				for (const ingredientId of ingredientIds) {
-					// Check if this ingredient is used in any other recipes
-					const [otherRecipeUse] = await connection.execute<RowDataPacket[]>('SELECT COUNT(*) as count FROM recipe_ingredients WHERE ingredient_id = ?', [
-						ingredientId,
-					]);
-
-					// Account ingredients table no longer exists
-
-					// Check if this ingredient has been used in shopping lists (via recipeingredient)
-					const [shoppingListUse] = await connection.execute<RowDataPacket[]>(
-						`SELECT COUNT(*) as count FROM shopping_lists sl 
-						 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
-						 WHERE ri.ingredient_id = ?`,
-						[ingredientId]
+					// Check if this ingredient is still used by other recipes in this household
+					const [usageCheck] = await connection.execute<RowDataPacket[]>(
+						`SELECT COUNT(*) as count FROM recipe_ingredients ri
+						 JOIN recipes r ON ri.recipe_id = r.id
+						 WHERE ri.ingredient_id = ? AND r.household_id = ?`,
+						[ingredientId, request.household_id]
 					);
 
-					// If ingredient is not used anywhere else, delete it
-					if (otherRecipeUse[0].count === 0 && shoppingListUse[0].count === 0) {
-						// Get ingredient name for logging
-						const [ingredientName] = await connection.execute<RowDataPacket[]>('SELECT name FROM ingredients WHERE id = ?', [ingredientId]);
+					// Also check if it's used in shopping lists
+					const [shoppingCheck] = await connection.execute<RowDataPacket[]>(
+						`SELECT COUNT(*) as count FROM shopping_lists sl
+						 WHERE sl.ingredient_id = ? AND sl.household_id = ?`,
+						[ingredientId, request.household_id]
+					);
 
-						// Delete the unused ingredient
-						const [ingredientDeleteResult] = await connection.execute<ResultSetHeader>('DELETE FROM ingredients WHERE id = ?', [ingredientId]);
+					if (usageCheck[0].count === 0 && shoppingCheck[0].count === 0) {
+						// Ingredient is orphaned - get its name before deleting
+						const [ingredientInfo] = await connection.execute<IngredientInfoRow[]>('SELECT name FROM ingredients WHERE id = ? AND household_id = ?', [
+							ingredientId,
+							request.household_id,
+						]);
 
-						if (ingredientDeleteResult.affectedRows > 0) {
-							deletedIngredientsCount++;
-							if (ingredientName.length > 0) {
-								deletedIngredientNames.push(ingredientName[0].name);
+						if (ingredientInfo.length > 0) {
+							// Delete the orphaned ingredient
+							const [deleteIngResult] = await connection.execute<ResultSetHeader>('DELETE FROM ingredients WHERE id = ? AND household_id = ?', [
+								ingredientId,
+								request.household_id,
+							]);
+
+							if (deleteIngResult.affectedRows > 0) {
+								deletedIngredientNames.push(ingredientInfo[0].name);
+								deletedIngredientsCount++;
 							}
 						}
 					}
 				}
 
-				// Commit the database transaction
 				await connection.commit();
 
-				// Delete associated files after successful database deletion (with defensive cleanup)
+				// Delete associated files after successful database deletion
 				let warning: string | undefined;
 				try {
 					await cleanupRecipeFiles(recipe.image_filename, recipe.pdf_filename);
@@ -192,23 +300,19 @@ async function deleteHandler(request: NextRequest) {
 					}
 				}
 
-				const response = {
+				return NextResponse.json({
 					success: true,
 					message,
 					deletedIngredientsCount,
 					deletedIngredientNames,
 					...(warning && { warning }),
-				};
-
-				return NextResponse.json(response);
+				});
+			} catch (error) {
+				await connection.rollback();
+				throw error;
+			} finally {
+				connection.release();
 			}
-		} catch (dbError) {
-			// Rollback transaction on database error
-			await connection.rollback();
-			throw dbError;
-		} finally {
-			// Always release the connection back to the pool
-			connection.release();
 		}
 	} catch (error) {
 		const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: unknown }).code : undefined;

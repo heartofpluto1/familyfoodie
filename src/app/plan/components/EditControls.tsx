@@ -48,7 +48,7 @@ export function EditControls({ isEditMode, isLoading, planActions, week, year }:
 					disabled={isLoading}
 					className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50"
 				>
-					Automate
+					✨ Plan for me
 				</button>
 				<button onClick={planActions.handleSave} disabled={isLoading} className="btn-default px-3 py-1.5 rounded text-sm font-medium disabled:opacity-50">
 					Save

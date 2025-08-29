@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 import OpenAI from 'openai';
@@ -24,6 +24,7 @@ interface ExistingIngredient extends RowDataPacket {
 	fresh: number;
 	pantryCategory_id: number;
 	supermarketCategory_id: number;
+	household_id: number;
 	pantryCategory_name: string;
 }
 
@@ -68,20 +69,49 @@ interface ExtractedRecipe {
 	difficulty?: string;
 }
 
-// Initialize OpenAI client
-const openai = process.env.OPENAI_API_KEY
-	? new OpenAI({
-			apiKey: process.env.OPENAI_API_KEY,
-		})
-	: null;
-
-async function previewHandler(request: NextRequest) {
+async function previewHandler(request: AuthenticatedRequest) {
 	try {
-		if (!openai) {
-			return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 });
+		// Initialize OpenAI client at runtime to allow for testing
+		if (!process.env.OPENAI_API_KEY) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'OpenAI API key not configured',
+					code: 'OPENAI_NOT_CONFIGURED',
+				},
+				{ status: 500 }
+			);
 		}
 
-		const formData = await request.formData();
+		let openai: OpenAI;
+		try {
+			openai = new OpenAI({
+				apiKey: process.env.OPENAI_API_KEY,
+			});
+		} catch (error) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: error instanceof Error ? error.message : 'Failed to initialize OpenAI client',
+					code: 'OPENAI_INITIALIZATION_ERROR',
+				},
+				{ status: 500 }
+			);
+		}
+
+		let formData: FormData;
+		try {
+			formData = await request.formData();
+		} catch {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Failed to parse form data',
+					code: 'INVALID_FORM_DATA',
+				},
+				{ status: 400 }
+			);
+		}
 
 		// Extract all image files from form data
 		const imageFiles: Blob[] = [];
@@ -92,7 +122,14 @@ async function previewHandler(request: NextRequest) {
 		}
 
 		if (imageFiles.length === 0) {
-			return NextResponse.json({ error: 'At least one image file is required' }, { status: 400 });
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'At least one image file is required',
+					code: 'MISSING_IMAGE_FILES',
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Convert images to base64 for OpenAI
@@ -233,7 +270,14 @@ If the images don't contain a clear recipe, create the best recipe you can based
 		const content = completion.choices[0]?.message?.content;
 
 		if (!content) {
-			throw new Error('No content received from OpenAI');
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'No content received from OpenAI',
+					code: 'OPENAI_NO_CONTENT',
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Clean the content to extract JSON (remove markdown code blocks if present)
@@ -244,21 +288,88 @@ If the images don't contain a clear recipe, create the best recipe you can based
 			cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
 		}
 
-		const recipe = JSON.parse(cleanContent) as ExtractedRecipe;
+		let recipe: ExtractedRecipe;
+		try {
+			recipe = JSON.parse(cleanContent) as ExtractedRecipe;
+		} catch (error) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: error instanceof Error ? error.message : 'Failed to parse recipe data from OpenAI',
+					code: 'INVALID_JSON_RESPONSE',
+				},
+				{ status: 500 }
+			);
+		}
 
-		// Get all existing ingredients with complete data for both AI matching and processing
-		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(`
+		// Get household-scoped ingredients: household-owned + Spencer's essentials + subscribed ingredients
+		// Remove duplicates by name - prefer household-owned versions over external sources
+		const [existingIngredients] = await pool.execute<ExistingIngredient[]>(
+			`
 			SELECT 
 				i.id, 
 				i.name, 
 				i.fresh, 
 				i.pantryCategory_id, 
 				i.supermarketCategory_id,
+				i.household_id,
 				pc.name as pantryCategory_name
-			FROM ingredients i 
-			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id 
-			ORDER BY i.name
-		`);
+			FROM ingredients i
+			LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
+			WHERE (
+				i.household_id = ? OR  -- 1. Include household's own ingredients
+				(
+					-- 2. Include subscribed collection ingredients (not household-owned, not duplicating household names)
+					i.id IN (
+						SELECT DISTINCT ri.ingredient_id
+						FROM recipe_ingredients ri
+						JOIN recipes r ON ri.recipe_id = r.id
+						JOIN collection_recipes cr ON r.id = cr.recipe_id
+						JOIN collection_subscriptions cs ON cr.collection_id = cs.collection_id
+						WHERE cs.household_id = ?
+					)
+					AND i.household_id != ?
+					AND NOT EXISTS (
+						SELECT 1 FROM ingredients i2 
+						WHERE i2.household_id = ? 
+						AND LOWER(i2.name) = LOWER(i.name)
+					)
+				) OR (
+					-- 3. Include Spencer's essentials (not household-owned, not duplicating household or subscribed names)
+					i.id IN (
+						SELECT DISTINCT ri.ingredient_id
+						FROM recipe_ingredients ri
+						JOIN recipes r ON ri.recipe_id = r.id
+						JOIN collection_recipes cr ON r.id = cr.recipe_id
+						WHERE cr.collection_id = 1
+					)
+					AND i.household_id != ?
+					AND NOT EXISTS (
+						SELECT 1 FROM ingredients i2 
+						WHERE i2.household_id = ? 
+						AND LOWER(i2.name) = LOWER(i.name)
+					)
+					AND NOT EXISTS (
+						SELECT 1 FROM ingredients i3
+						JOIN recipe_ingredients ri3 ON i3.id = ri3.ingredient_id
+						JOIN recipes r3 ON ri3.recipe_id = r3.id
+						JOIN collection_recipes cr3 ON r3.id = cr3.recipe_id
+						JOIN collection_subscriptions cs3 ON cr3.collection_id = cs3.collection_id
+						WHERE cs3.household_id = ? AND LOWER(i3.name) = LOWER(i.name)
+					)
+				)
+			)
+		`,
+			[
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+				request.household_id,
+			]
+		);
 
 		// Get categories for new ingredients
 		const [pantryCategories] = await pool.execute<PantryCategory[]>('SELECT id, name FROM category_pantry ORDER BY name');
@@ -385,12 +496,53 @@ Rules:
 		});
 	} catch (error) {
 		console.error('Error parsing recipe with AI:', error);
-		return NextResponse.json(
-			{
-				error: error instanceof Error ? error.message : 'Failed to parse recipe',
-			},
-			{ status: 500 }
-		);
+
+		// Handle different types of errors with appropriate codes
+		if (error instanceof Error) {
+			// Check for specific error types
+			if (error.message.includes('OpenAI') || error.message.includes('chat.completions')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'OPENAI_API_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Database errors
+			if (error.message.includes('execute') || error.message.includes('Database') || error.message.includes('connection')) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						code: 'DATABASE_ERROR',
+					},
+					{ status: 500 }
+				);
+			}
+
+			// Generic error with message
+			return NextResponse.json(
+				{
+					success: false,
+					error: error.message,
+					code: 'INTERNAL_SERVER_ERROR',
+				},
+				{ status: 500 }
+			);
+		} else {
+			// Non-Error objects
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Failed to parse recipe',
+					code: 'INTERNAL_SERVER_ERROR',
+				},
+				{ status: 500 }
+			);
+		}
 	}
 }
 

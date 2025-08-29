@@ -5,8 +5,7 @@ import * as appHandler from './route';
 import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
 
 // Mock the auth middleware to properly handle authentication
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -21,6 +20,17 @@ jest.mock('@/lib/storage', () => ({
 	uploadFile: jest.fn(),
 	getStorageMode: jest.fn(),
 	deleteFile: jest.fn(),
+}));
+
+// Mock the permissions module
+jest.mock('@/lib/permissions', () => ({
+	canEditResource: jest.fn(),
+	validateRecipeInCollection: jest.fn(),
+}));
+
+// Mock the copy-on-write module
+jest.mock('@/lib/copy-on-write', () => ({
+	cascadeCopyWithContext: jest.fn(),
 }));
 
 // Mock the utils modules
@@ -70,6 +80,8 @@ global.Image = class {
 } as typeof Image;
 
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
+import { cascadeCopyWithContext } from '@/lib/copy-on-write';
 import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 
@@ -81,6 +93,9 @@ const mockGetRecipePdfUrl = getRecipePdfUrl as jest.MockedFunction<typeof getRec
 const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFunction<typeof generateVersionedFilename>;
 const mockExtractBaseHash = extractBaseHash as jest.MockedFunction<typeof extractBaseHash>;
 const mockFindAndDeleteHashFiles = findAndDeleteHashFiles as jest.MockedFunction<typeof findAndDeleteHashFiles>;
+const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
+const mockValidateRecipeInCollection = validateRecipeInCollection as jest.MockedFunction<typeof validateRecipeInCollection>;
+const mockCascadeCopyWithContext = cascadeCopyWithContext as jest.MockedFunction<typeof cascadeCopyWithContext>;
 
 // Mock console methods
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -94,6 +109,13 @@ describe('/api/recipe/update-pdf', () => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
 		mockGetStorageMode.mockReturnValue('local');
+		mockCanEditResource.mockResolvedValue(true); // Default: can edit
+		mockValidateRecipeInCollection.mockResolvedValue(true); // Default: recipe is in collection
+		mockCascadeCopyWithContext.mockResolvedValue({
+			newCollectionId: 1,
+			newRecipeId: 100,
+			actionsTaken: ['recipe_copied'],
+		}); // Default cascade copy response
 	});
 
 	afterAll(() => {
@@ -109,6 +131,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_1.jpg', pdf_filename: 'recipe_abc123.pdf' }]])
@@ -117,7 +140,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('abc123');
 			mockFindAndDeleteHashFiles.mockResolvedValue(['recipe_abc123_v1.pdf', 'recipe_abc123_v2.pdf']);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v3.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v3.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v3.pdf', filename: 'recipe_abc123_v3.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.pdf');
 
 			await testApiHandler({
@@ -141,8 +164,6 @@ describe('/api/recipe/update-pdf', () => {
 							timestamp: expect.any(String),
 							fileSize: expect.any(String),
 						},
-						// Internal cleanup details should not be exposed in API response
-						// but should still be logged for debugging
 					});
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.pdf, recipe_abc123_v2.pdf');
 					// Verify no cleanup details in response
@@ -157,13 +178,14 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '2');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_def456.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('def456');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_def456_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_def456_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_def456_v2.pdf', filename: 'recipe_def456_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_def456_v2.pdf');
 
 			// Reset the mock before test to ensure clean state
@@ -228,13 +250,14 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '3');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_ghi789.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('ghi789');
 			mockFindAndDeleteHashFiles.mockRejectedValue(new Error('Cleanup failed'));
 			mockGenerateVersionedFilename.mockReturnValue('recipe_ghi789_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_ghi789_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_ghi789_v2.pdf', filename: 'recipe_ghi789_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_ghi789_v2.pdf');
 
 			await testApiHandler({
@@ -256,6 +279,7 @@ describe('/api/recipe/update-pdf', () => {
 		it('returns 400 when file is missing', async () => {
 			const formData = new FormData();
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -275,7 +299,7 @@ describe('/api/recipe/update-pdf', () => {
 			});
 		});
 
-		it('returns 400 when recipe ID is missing', async () => {
+		it('returns 400 when both recipe ID and collection ID are missing', async () => {
 			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -288,9 +312,57 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Recipe ID is required.',
-						field: 'recipeId',
-						message: 'Please specify which recipe to update.',
+						error: 'Recipe ID and collection ID are required.',
+						fields: ['recipeId', 'collectionId'],
+						message: 'Please specify which recipe and collection to update.',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 when recipe ID is missing', async () => {
+			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('collectionId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Recipe ID and collection ID are required.',
+						fields: ['recipeId', 'collectionId'],
+						message: 'Please specify which recipe and collection to update.',
+					});
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		it('returns 400 when collection ID is missing', async () => {
+			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', '1');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(400);
+					expect(json).toEqual({
+						error: 'Recipe ID and collection ID are required.',
+						fields: ['recipeId', 'collectionId'],
+						message: 'Please specify which recipe and collection to update.',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
@@ -303,6 +375,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', 'not-a-number');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -312,7 +385,7 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Recipe ID must be a valid number.',
+						error: 'Recipe ID must be a valid positive number.',
 						field: 'recipeId',
 						receivedValue: 'not-a-number',
 						message: 'Please provide a valid numeric recipe ID.',
@@ -328,6 +401,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -361,6 +435,7 @@ describe('/api/recipe/update-pdf', () => {
 				const formData = new FormData();
 				formData.append('pdf', mockFile);
 				formData.append('recipeId', '1');
+				formData.append('collectionId', '1');
 
 				await testApiHandler({
 					appHandler,
@@ -387,6 +462,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', largeFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -413,6 +489,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -437,8 +514,9 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '999');
+			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[]]);
+			mockValidateRecipeInCollection.mockResolvedValueOnce(false);
 
 			await testApiHandler({
 				appHandler,
@@ -450,7 +528,7 @@ describe('/api/recipe/update-pdf', () => {
 					expect(json).toEqual({
 						error: 'Recipe not found.',
 						recipeId: '999',
-						message: 'The specified recipe does not exist or has been deleted.',
+						message: 'The specified recipe does not exist or you do not have permission to edit it.',
 						suggestion: 'Please check the recipe ID and try again.',
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -464,6 +542,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]);
 			mockExtractBaseHash.mockReturnValue('abc');
@@ -497,14 +576,15 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
 
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf' });
-			mockDeleteFile.mockResolvedValue({ success: true }); // Rollback succeeds
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf', filename: 'recipe_abc_v2.pdf' });
+			mockDeleteFile.mockResolvedValue(true); // Rollback succeeds
 
 			await testApiHandler({
 				appHandler,
@@ -533,13 +613,14 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_original.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('original');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_original_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_original_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_original_v2.pdf', filename: 'recipe_original_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_original_v2.pdf');
 			mockGetStorageMode.mockReturnValue('cloud');
 
@@ -564,6 +645,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockRejectedValue(standardErrorScenarios.databaseError);
 
@@ -586,6 +668,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockRejectedValue('String error');
 
@@ -621,13 +704,14 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '5');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_test.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('test');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_test_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_test_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_test_v2.pdf', filename: 'recipe_test_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_test_v2.pdf');
 
 			await testApiHandler({
@@ -648,12 +732,13 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_xyz.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue(null as unknown as string); // No base hash
 			mockGenerateVersionedFilename.mockReturnValue('recipe_xyz_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_xyz_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_xyz_v2.pdf', filename: 'recipe_xyz_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_xyz_v2.pdf');
 
 			await testApiHandler({
@@ -677,6 +762,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			// Mock a database lock or conflict scenario
 			mockExecute
@@ -686,7 +772,7 @@ describe('/api/recipe/update-pdf', () => {
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc_v2.pdf', filename: 'recipe_abc_v2.pdf' });
 
 			await testApiHandler({
 				appHandler,
@@ -711,13 +797,14 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc123.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('abc123');
 			mockFindAndDeleteHashFiles.mockResolvedValue(['recipe_abc123_v1.pdf']);
 			mockGenerateVersionedFilename.mockReturnValue('recipe_abc123_v2.pdf');
-			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v2.pdf' });
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_abc123_v2.pdf', filename: 'recipe_abc123_v2.pdf' });
 			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_abc123_v2.pdf');
 
 			await testApiHandler({
@@ -762,6 +849,7 @@ describe('/api/recipe/update-pdf', () => {
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,

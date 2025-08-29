@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import { UpdateImageResponse } from '@/types/fileUpload';
+import { cascadeCopyWithContext } from '@/lib/copy-on-write';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 
 interface RecipeRow extends RowDataPacket {
 	image_filename: string;
@@ -50,7 +52,7 @@ function validateFileExtension(filename: string, mimeType: string): boolean {
 	return ext ? validExtensions.includes(ext) : false;
 }
 
-async function updateImageHandler(request: NextRequest) {
+async function updateImageHandler(request: AuthenticatedRequest) {
 	try {
 		// Validate storage configuration first
 		if (!getStorageMode()) {
@@ -60,15 +62,20 @@ async function updateImageHandler(request: NextRequest) {
 		const formData = await request.formData();
 		const file = formData.get('image') as File;
 		const recipeId = formData.get('recipeId') as string;
+		const collectionId = formData.get('collectionId') as string;
 
-		if (!file || !recipeId) {
-			return NextResponse.json({ error: 'Image file and recipe ID are required' }, { status: 400 });
+		if (!file || !recipeId || !collectionId) {
+			return NextResponse.json({ error: 'Image file, recipe ID, and collection ID are required' }, { status: 400 });
 		}
 
-		// Validate recipe ID format
+		// Validate recipe ID and collection ID format
 		const recipeIdNum = parseInt(recipeId);
+		const collectionIdNum = parseInt(collectionId);
 		if (isNaN(recipeIdNum) || recipeIdNum <= 0) {
 			return NextResponse.json({ error: 'Invalid recipe ID format' }, { status: 400 });
+		}
+		if (isNaN(collectionIdNum) || collectionIdNum <= 0) {
+			return NextResponse.json({ error: 'Invalid collection ID format' }, { status: 400 });
 		}
 
 		// Validate file is not empty
@@ -117,6 +124,12 @@ async function updateImageHandler(request: NextRequest) {
 			}
 		};
 
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		if (!isRecipeInCollection) {
+			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+		}
+
 		// Get the current image filename from the database
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [recipeIdNum]);
 
@@ -143,8 +156,33 @@ async function updateImageHandler(request: NextRequest) {
 			}
 		}
 
+		// Check if we need to trigger copy-on-write
+		let targetRecipeId = recipeIdNum;
+		let targetImageFilename = currentImageFilename;
+		let wasCopied = false;
+		let newRecipeSlug: string | undefined;
+		let newCollectionSlug: string | undefined;
+
+		// Check if household can edit this recipe
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+
+		if (!canEdit) {
+			// Recipe is not owned - trigger copy-on-write
+			const copyResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIdNum);
+			targetRecipeId = copyResult.newRecipeId;
+			wasCopied = true;
+			newRecipeSlug = copyResult.newRecipeSlug;
+			newCollectionSlug = copyResult.newCollectionSlug;
+
+			// Get the new recipe's current image filename
+			const [newRecipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename FROM recipes WHERE id = ?', [targetRecipeId]);
+			if (newRecipeRows.length > 0) {
+				targetImageFilename = newRecipeRows[0].image_filename;
+			}
+		}
+
 		// Generate versioned filename for update (this will increment the version)
-		let uploadFilename = generateVersionedFilename(currentImageFilename, extension);
+		let uploadFilename = generateVersionedFilename(targetImageFilename, extension);
 
 		console.log(`Storage mode: ${getStorageMode()}`);
 		console.log(`Updating image from ${currentImageFilename} to ${uploadFilename}`);
@@ -176,8 +214,8 @@ async function updateImageHandler(request: NextRequest) {
 			return NextResponse.json({ error: uploadResult.error || 'Image upload failed' }, { status: 500 });
 		}
 
-		// Update the database with the new versioned filename
-		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ? WHERE id = ?', [uploadFilename, recipeIdNum]);
+		// Update the database with the new versioned filename (use target recipe ID which may be the copy)
+		const [updateResult] = await pool.execute<ResultSetHeader>('UPDATE recipes SET image_filename = ? WHERE id = ?', [uploadFilename, targetRecipeId]);
 
 		if (updateResult.affectedRows === 0) {
 			// Attempt to clean up uploaded file since database update failed
@@ -191,19 +229,24 @@ async function updateImageHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'Failed to update recipe image filename' }, { status: 500 });
 		}
 
-		console.log(`Updated database image_filename to ${uploadFilename} for recipe ${recipeIdNum}`);
+		console.log(`Updated database image_filename to ${uploadFilename} for recipe ${targetRecipeId}`);
 
 		// Generate URL for immediate display
 		const imageUrl = getRecipeImageUrl(uploadFilename);
 
 		const response: UpdateImageResponse = {
 			success: true,
-			message: 'Recipe image updated successfully',
+			message: wasCopied ? 'Recipe copied and image updated successfully' : 'Recipe image updated successfully',
 			filename: uploadFilename,
 			uploadUrl: uploadResult.url!,
 			displayUrl: imageUrl,
 			storageMode: getStorageMode(),
 			cleanup: cleanupSummary || 'No old files to clean up',
+			...(wasCopied && {
+				wasCopied,
+				newRecipeSlug,
+				newCollectionSlug,
+			}),
 		};
 
 		return NextResponse.json(response);

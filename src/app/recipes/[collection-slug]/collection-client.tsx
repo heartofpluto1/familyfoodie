@@ -7,8 +7,9 @@ import { Collection } from '@/lib/queries/collections';
 import CollectionCardSmall from '@/app/components/CollectionCardSmall';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useToast } from '@/app/components/ToastProvider';
-import { EditIcon, TrashIcon } from '@/app/components/Icons';
+import { EditIcon, TrashIcon, CursorClickIcon, CopyIcon, CancelIcon } from '@/app/components/Icons';
 import RecipeList from '../components/RecipeList';
+import CopyRecipesModal from '../components/CopyRecipesModal';
 import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
 
 interface CollectionClientProps {
@@ -25,6 +26,11 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
+
+	// Selection mode state
+	const [isSelecting, setIsSelecting] = useState(false);
+	const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<number>>(new Set());
+	const [showCopyModal, setShowCopyModal] = useState(false);
 
 	const getSubtitle = () => {
 		return `${recipes.length} recipes in this collection`;
@@ -74,6 +80,37 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 		setCollectionToDelete(null);
 	};
 
+	// Selection mode handlers
+	const handleEnterSelectionMode = () => {
+		setIsSelecting(true);
+		setSelectedRecipeIds(new Set());
+	};
+
+	const handleExitSelectionMode = () => {
+		setIsSelecting(false);
+		setSelectedRecipeIds(new Set());
+	};
+
+	const handleToggleRecipeSelection = (recipeId: number) => {
+		setSelectedRecipeIds(prev => {
+			const newSet = new Set(prev);
+			if (newSet.has(recipeId)) {
+				newSet.delete(recipeId);
+			} else {
+				newSet.add(recipeId);
+			}
+			return newSet;
+		});
+	};
+
+	const handleCopyClick = () => {
+		if (selectedRecipeIds.size === 0) {
+			showToast('warning', 'No recipes selected', 'Please select at least one recipe to copy');
+			return;
+		}
+		setShowCopyModal(true);
+	};
+
 	return (
 		<>
 			<div className="mb-8">
@@ -94,39 +131,78 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 						subtitle={selectedCollection.subtitle || undefined}
 						subscribed={true}
 					/>
-					<div className="group">
-						<h2 className="text-2xl text-foreground">{selectedCollection.title}</h2>
-						{selectedCollection.subtitle && <p className="text-sm text-muted">{selectedCollection.subtitle}</p>}
-						<p className="text-sm text-muted pt-4">{getSubtitle()}</p>
-
-						{/* Edit and Delete Buttons */}
-						<div className="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-							<button
-								onClick={() => {
-									// TODO: Handle edit
-									console.log('Edit collection:', selectedCollection.id);
-								}}
-								className="btn-default inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm"
-								title="Edit collection"
-							>
-								<EditIcon className="w-3 h-3" />
-								Edit
-							</button>
-							<button
-								onClick={() => handleDeleteClick(selectedCollection)}
-								className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm transition-colors"
-								title="Delete collection"
-							>
-								<TrashIcon className="w-3 h-3" />
-								Delete
-							</button>
+					<div className="flex-1">
+						<div className="flex items-start justify-between">
+							<div>
+								<h2 className="text-2xl text-foreground">{selectedCollection.title}</h2>
+								{selectedCollection.subtitle && <p className="text-sm text-muted">{selectedCollection.subtitle}</p>}
+								<p className="text-sm text-muted pt-4">{getSubtitle()}</p>
+							</div>
+							{/* Conditional buttons based on selection mode */}
+							<div className="flex gap-2">
+								{isSelecting ? (
+									// Selection mode: Copy and Cancel buttons with border
+									<div className="flex gap-2 p-1 border border-gray-300 dark:border-gray-600 rounded-full">
+										<button
+											onClick={handleCopyClick}
+											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+											title={`Copy ${selectedRecipeIds.size} selected recipe${selectedRecipeIds.size !== 1 ? 's' : ''}`}
+											disabled={selectedRecipeIds.size === 0}
+										>
+											<CopyIcon className="w-4 h-4" />
+										</button>
+										<button
+											onClick={handleExitSelectionMode}
+											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+											title="Cancel selection"
+										>
+											<CancelIcon className="w-4 h-4" />
+										</button>
+									</div>
+								) : (
+									// Normal mode: Select, Edit and Delete buttons
+									<>
+										<button
+											onClick={handleEnterSelectionMode}
+											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+											title="Select recipes"
+										>
+											<CursorClickIcon className="w-4 h-4" />
+										</button>
+										<button
+											onClick={() => {
+												// TODO: Handle edit
+												console.log('Edit collection:', selectedCollection.id);
+											}}
+											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+											title="Edit Collection"
+										>
+											<EditIcon className="w-4 h-4" />
+										</button>
+										<button
+											onClick={() => handleDeleteClick(selectedCollection)}
+											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+											title="Delete Collection"
+										>
+											<TrashIcon className="w-4 h-4" />
+										</button>
+									</>
+								)}
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 
 			<Suspense fallback={<div>Loading recipes...</div>}>
-				<RecipeList recipes={recipes} collections={collections} collectionSlug={collectionSlug} />
+				<RecipeList
+					recipes={recipes}
+					collections={collections}
+					collectionSlug={collectionSlug}
+					isSelecting={isSelecting}
+					selectedRecipeIds={selectedRecipeIds}
+					onToggleSelection={handleToggleRecipeSelection}
+				/>
 			</Suspense>
 
 			{/* Delete Confirmation Dialog */}
@@ -139,6 +215,20 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 				onConfirm={handleDeleteConfirm}
 				onCancel={handleDeleteCancel}
 				isLoading={isDeleting}
+			/>
+
+			{/* Copy Recipes Modal */}
+			<CopyRecipesModal
+				isOpen={showCopyModal}
+				onClose={() => setShowCopyModal(false)}
+				collections={collections}
+				selectedRecipeIds={selectedRecipeIds}
+				currentCollectionId={selectedCollection.id}
+				onSuccess={() => {
+					setIsSelecting(false);
+					setSelectedRecipeIds(new Set());
+					setShowCopyModal(false);
+				}}
 			/>
 		</>
 	);

@@ -32,7 +32,18 @@ export function PlanProvider({
 	initialEditMode,
 	onWeekDelete,
 }: PlanProviderProps) {
-	const { state, setRecipes: originalSetRecipes, setEditMode, setLoading, resetToInitial } = usePlanState({ initialRecipes, week, year, initialEditMode });
+	const {
+		state,
+		setRecipes: originalSetRecipes,
+		setEditMode,
+		setLoading,
+		resetToInitial,
+	} = usePlanState({
+		initialRecipes,
+		week,
+		year,
+		initialEditMode,
+	});
 	const [animatingAutomate, setAnimatingAutomate] = React.useState(false);
 	const [pendingRecipes, setPendingRecipes] = React.useState<Recipe[] | null>(null);
 
@@ -55,6 +66,7 @@ export function PlanProvider({
 		setAnimatingAutomate,
 		setPendingRecipes,
 		onWeekDelete,
+		wasInitialEditMode: initialEditMode,
 	});
 
 	const recipeActions = useRecipeManagement({

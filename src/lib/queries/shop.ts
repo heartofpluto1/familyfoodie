@@ -1,8 +1,9 @@
 import pool from '@/lib/db.js';
 import { ShoppingListData, Ingredient } from '@/types/shop.js';
 
-export async function getIngredients() {
-	const [rows] = await pool.execute(`
+export async function getIngredients(household_id: number) {
+	const [rows] = await pool.execute(
+		`
       SELECT 
         i.id as ingredientId,
         i.name,
@@ -13,42 +14,12 @@ export async function getIngredients() {
       FROM ingredients i
       LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
       LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
-      WHERE public = 1
+      WHERE i.household_id = ? OR i.public = 1
       ORDER BY name
-    `);
+    `,
+		[household_id]
+	);
 	return rows as Ingredient[];
-}
-
-export async function getAllIngredients() {
-	const [rows] = await pool.execute(`
-		SELECT
-			i.id,
-			i.name,
-			i.fresh,
-			i.cost as price,
-			i.stockcode,
-			sc.name as supermarketCategory,
-			pc.name as pantryCategory,
-			COUNT(DISTINCT ri.recipe_id) as recipeCount
-		FROM ingredients i
-		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
-		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
-		LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
-		LEFT JOIN recipes r ON ri.recipe_id = r.id
-		WHERE i.public = 1
-		GROUP BY i.id, i.name, i.fresh, i.cost, i.stockcode, sc.name, pc.name
-		ORDER BY sc.id, i.name;
-	`);
-	return rows as {
-		id: number;
-		name: string;
-		fresh: boolean;
-		price: number | null;
-		stockcode: number | null;
-		supermarketCategory: string | null;
-		pantryCategory: string | null;
-		recipeCount: number;
-	}[];
 }
 
 export async function getSupermarketCategories() {
@@ -69,8 +40,8 @@ export async function getPantryCategories() {
 	return rows as { id: number; name: string }[];
 }
 
-export async function getShoppingList(week: string, year: string) {
-	// Get fresh ingredients from shopping list
+export async function getShoppingList(week: string, year: string, household_id: number) {
+	// Get fresh ingredients from shopping list with household scope
 	const [freshRows] = await pool.execute(
 		`
         SELECT
@@ -86,19 +57,21 @@ export async function getShoppingList(week: string, year: string) {
             ri.ingredient_id as ingredientId,
             sc.name as supermarketCategory,
             pc.name as pantryCategory,
-            sl.fresh
+            sl.fresh,
+            sl.household_id
         FROM shopping_lists sl
         LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
         LEFT JOIN ingredients i ON ri.ingredient_id = i.id
         LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
         LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
         LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
-        WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 1        ORDER BY sl.sort, sl.id;
+        WHERE sl.week = ? AND sl.year = ? AND sl.household_id = ? AND sl.fresh = 1
+        ORDER BY sl.sort, sl.id;
       `,
-		[week, year]
+		[week, year, household_id]
 	);
 
-	// Get pantry ingredients from shopping list
+	// Get pantry ingredients from shopping list with household scope
 	const [pantryRows] = await pool.execute(
 		`
         SELECT
@@ -114,16 +87,18 @@ export async function getShoppingList(week: string, year: string) {
             ri.ingredient_id as ingredientId,
             sc.name as supermarketCategory,
             pc.name as pantryCategory,
-            sl.fresh
+            sl.fresh,
+            sl.household_id
         FROM shopping_lists sl
         LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
         LEFT JOIN ingredients i ON ri.ingredient_id = i.id
         LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
         LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
         LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
-        WHERE sl.week = ? AND sl.year = ? AND sl.fresh = 0        ORDER BY sl.sort, sl.id;
+        WHERE sl.week = ? AND sl.year = ? AND sl.household_id = ? AND sl.fresh = 0
+        ORDER BY sl.sort, sl.id;
     `,
-		[week, year]
+		[week, year, household_id]
 	);
 
 	return {

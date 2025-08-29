@@ -4,7 +4,7 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
-import { setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { setupConsoleMocks, standardErrorScenarios, mockAdminUser } from '@/lib/test-utils';
 
 // Mock the authentication modules
 jest.mock('@/lib/auth-helpers', () => ({
@@ -12,8 +12,7 @@ jest.mock('@/lib/auth-helpers', () => ({
 }));
 
 // Mock the auth middleware to pass through for testing
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').passthroughAuthMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').passthroughAuthMock);
 
 // Mock the migration system
 jest.mock('../../../../../migrations/run-migrations.mjs', () => ({
@@ -34,15 +33,6 @@ const mockEnv = (env: Record<string, string | undefined>) => {
 	return () => {
 		process.env = originalEnv;
 	};
-};
-
-// Mock admin user data
-const mockAdminUser = {
-	id: 1,
-	username: 'admin',
-	email: 'admin@example.com',
-	is_admin: true,
-	is_active: true,
 };
 
 describe('/api/admin/migrate', () => {
@@ -162,11 +152,6 @@ describe('/api/admin/migrate', () => {
 			mockRunMigrations.mockResolvedValue({
 				success: true,
 				migrationsRun: 3,
-				executions: [
-					{ file: '001_test.sql', duration: 50 },
-					{ file: '002_test.sql', duration: 75 },
-					{ file: '003_test.sql', duration: 100 },
-				],
 			});
 
 			try {

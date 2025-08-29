@@ -9,6 +9,7 @@ interface IngredientData {
 	quantity4: string;
 	measureId?: number;
 	preparationId?: number;
+	collectionId: number; // Required for cascade copy context
 }
 
 interface UpdateIngredientData {
@@ -16,6 +17,7 @@ interface UpdateIngredientData {
 	quantity: string;
 	quantity4: string;
 	measureId?: number;
+	collectionId: number; // Required for cascade copy context
 }
 
 interface RecipeOptions {
@@ -25,7 +27,7 @@ interface RecipeOptions {
 	}[];
 }
 
-export const useIngredientApi = () => {
+export const useIngredientApi = (collectionId: number) => {
 	const { showToast } = useToast();
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [ingredientToDelete, setIngredientToDelete] = useState<number | null>(null);
@@ -63,7 +65,10 @@ export const useIngredientApi = () => {
 			const response = await fetch('/api/recipe/ingredients', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
+				body: JSON.stringify({
+					...data,
+					collectionId,
+				}),
 			});
 
 			if (response.ok) {
@@ -91,7 +96,7 @@ export const useIngredientApi = () => {
 
 		setIsDeleting(true);
 		try {
-			const response = await fetch(`/api/recipe/ingredients?id=${ingredientToDelete}`, {
+			const response = await fetch(`/api/recipe/ingredients?id=${ingredientToDelete}&collectionId=${collectionId}`, {
 				method: 'DELETE',
 			});
 
@@ -142,6 +147,7 @@ export const useIngredientApi = () => {
 						measureId: ingredient.measure?.id,
 						preparationId,
 						primaryIngredient: 0,
+						collectionId,
 					}),
 				});
 

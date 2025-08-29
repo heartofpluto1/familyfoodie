@@ -1,5 +1,7 @@
 'use client';
 
+import { BookmarkIcon, BookmarkOutlineIcon } from './Icons';
+
 interface CollectionCardProps {
 	coverImage: string;
 	darkCoverImage?: string;
@@ -7,9 +9,11 @@ interface CollectionCardProps {
 	subtitle?: string;
 	subscribed: boolean;
 	recipeCount?: number;
+	onToggleSubscription?: () => void;
+	isLoading?: boolean;
 }
 
-const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitle, recipeCount }: CollectionCardProps) => {
+const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitle, recipeCount, onToggleSubscription, isLoading }: CollectionCardProps) => {
 	// Peek card configurations
 	const peekCards = [
 		{ height: '380px', top: '10px', rotation: 3.6 },
@@ -49,7 +53,7 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 			{/* Main collection card - positioned in front */}
 			<div className="relative w-full h-[410px] z-10">
 				<article
-					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black text-black"
+					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-white dark:bg-black text-black"
 					style={{
 						boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.22)',
 					}}
@@ -57,7 +61,20 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 					{/* Image with dark mode support using semantic picture element */}
 					<picture className="absolute inset-0 w-full h-full">
 						{darkCoverImage && <source media="(prefers-color-scheme: dark)" srcSet={darkCoverImage} />}
-						<img src={coverImage} alt="Collection cover" className="w-full h-full object-cover" />
+						<img
+							src={coverImage}
+							alt="Collection cover"
+							className="w-full h-full object-cover"
+							onError={e => {
+								// Remove all source elements to prevent re-evaluation
+								const picture = e.currentTarget.parentElement;
+								if (picture && picture.tagName === 'PICTURE') {
+									const sources = picture.querySelectorAll('source');
+									sources.forEach(source => source.remove());
+								}
+								e.currentTarget.src = '/onerror_collection.png';
+							}}
+						/>
 					</picture>
 
 					<div
@@ -89,16 +106,24 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 							</div>
 						)}
 
-						{/* Subscribe button */}
-						{!subscribed && (
+						{/* Subscribe/Unsubscribe bookmark button */}
+						{onToggleSubscription && (
 							<button
-								className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-sm text-sm font-semibold hover:bg-blue-700 transition-colors"
+								className="absolute top-3 right-3 w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center disabled:opacity-50 transition-all hover:scale-110"
 								onClick={e => {
 									e.preventDefault();
-									console.log(`Subscribed to: ${title}`);
+									onToggleSubscription();
 								}}
+								disabled={isLoading}
+								title={isLoading ? 'Loading...' : subscribed ? 'Unsubscribe' : 'Subscribe'}
 							>
-								Subscribe
+								{isLoading ? (
+									<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+								) : subscribed ? (
+									<BookmarkIcon className="w-4 h-4 text-white" />
+								) : (
+									<BookmarkOutlineIcon className="w-4 h-4 text-white" />
+								)}
 							</button>
 						)}
 					</div>

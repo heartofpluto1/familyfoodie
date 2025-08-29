@@ -316,10 +316,20 @@ DELETE /api/collections/delete - Delete collection (smart file cleanup)
 3. **Function Cleanup**: Helper functions like `getTitle()` defined but not used after component changes
 4. **Parameter Typing**: SQL parameter arrays frequently typed as `any[]` instead of proper union types
 
+### ESLint Disable Comments - FORBIDDEN
+- **NEVER USE**: `eslint-disable-next-line` comments are absolutely forbidden
+- **FIX THE ROOT CAUSE**: Always address the underlying issue rather than suppressing the warning
+- **COMMON VIOLATIONS**: 
+  - `@typescript-eslint/no-explicit-any` - Use proper types instead of `any`
+  - `@typescript-eslint/no-unused-vars` - Remove unused variables and imports
+  - `@typescript-eslint/no-require-imports` - Use `jest.requireActual()` instead of `require()` in tests
+- **NO EXCEPTIONS**: There are no valid use cases for eslint-disable comments in this codebase
+
 ### Development Workflow
 - **BEFORE COMMITTING**: Always run `npm run lint` and fix all errors
 - **BUILD VERIFICATION**: Run `npm run build` to catch TypeScript errors not caught by lint
 - **PROGRESSIVE FIXING**: Use `npm run lint:fix` for auto-fixable issues, then manually address remaining errors
+- **ZERO TOLERANCE**: No commits allowed with eslint-disable comments
 
 ## User Confirmation Dialogs - ConfirmDialog Component (Updated 2025-08-21)
 
@@ -625,4 +635,13 @@ The codebase has comprehensive API route testing using Jest with `next-test-api-
 - [ ] Uses consistent mock cleanup in `beforeEach` and `afterAll`
 - [ ] Verifies database calls with proper parameters
 - [ ] Tests transaction rollback scenarios where applicable
+
+## TypeScript Unknown Type Elimination (Updated 2025-08-27)
+
+### IMPORTANT: Avoid Using Unknown Types
+- **NEVER USE**: `unknown[]` or `Promise<unknown[]>` for function return types
+- **ALWAYS**: Create proper TypeScript interfaces for database query results and API responses
+- **PREFER**: Strongly typed interfaces over `unknown` casting
+- **DATABASE QUERIES**: Results should be typed with proper interfaces (see `src/types/database.ts` for examples)
+- **LEGITIMATE USES**: Only use `unknown` for error handling (`catch (error: unknown)`) and framework compatibility
 

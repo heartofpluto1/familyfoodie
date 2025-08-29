@@ -1,4 +1,6 @@
-import { getAllIngredients, getSupermarketCategories, getPantryCategories } from '@/lib/queries/shop';
+import { getSupermarketCategories, getPantryCategories } from '@/lib/queries/shop';
+import { getMyIngredients } from '@/lib/queries/menus';
+import { getSession } from '@/lib/session';
 import withAuth from '@/app/components/withAuth';
 import HeaderPage from '@/app/components/HeaderPage';
 import { IngredientsTable } from './components/IngredientsTable';
@@ -20,7 +22,17 @@ export interface CategoryData {
 }
 
 async function IngredientsPage() {
-	const [ingredients, supermarketCategories, pantryCategories] = await Promise.all([getAllIngredients(), getSupermarketCategories(), getPantryCategories()]);
+	// Get session for household context
+	const session = await getSession();
+	if (!session || !session.household_id) {
+		throw new Error('No household context available');
+	}
+
+	const [ingredients, supermarketCategories, pantryCategories] = await Promise.all([
+		getMyIngredients(session.household_id),
+		getSupermarketCategories(),
+		getPantryCategories(),
+	]);
 
 	return (
 		<div className="min-h-screen bg-background">

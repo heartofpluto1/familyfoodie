@@ -7,10 +7,11 @@ import { UpdatePdfResponse } from '@/types/fileUpload';
 interface PdfUploadProps {
 	onPdfUploaded?: (uploadResponse?: UpdatePdfResponse) => void;
 	recipeId?: number;
+	collectionId: number;
 	isEditing?: boolean;
 }
 
-const PdfUpload = ({ onPdfUploaded, recipeId, isEditing = false }: PdfUploadProps) => {
+const PdfUpload = ({ onPdfUploaded, recipeId, collectionId, isEditing = false }: PdfUploadProps) => {
 	const [isDragOver, setIsDragOver] = useState(false);
 	const pdfUpload = useFileUpload({
 		allowedTypes: ['application/pdf'],
@@ -20,7 +21,7 @@ const PdfUpload = ({ onPdfUploaded, recipeId, isEditing = false }: PdfUploadProp
 
 	const handlePdfUpload = async () => {
 		if (recipeId && pdfUpload.selectedFile) {
-			const result = await pdfUpload.uploadFile(recipeId, 'pdf');
+			const result = await pdfUpload.uploadFile(recipeId, collectionId, 'pdf');
 			if (result.success && onPdfUploaded) {
 				// Cast the generic response to UpdatePdfResponse for PDF uploads
 				onPdfUploaded(result.data as unknown as UpdatePdfResponse);

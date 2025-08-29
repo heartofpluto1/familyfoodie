@@ -1,6 +1,7 @@
 // lib/auth.ts - Authentication utilities
 import pool from './db.js';
 import { addToast } from '@/lib/toast';
+import { SessionUser } from '@/types/auth';
 
 export interface User {
 	id: number;
@@ -12,9 +13,9 @@ export interface User {
 	is_admin: boolean;
 }
 
-export interface AuthResult {
+export interface HouseholdAuthResult {
 	success: boolean;
-	user?: User;
+	user?: SessionUser;
 	error?: string;
 }
 
@@ -43,14 +44,22 @@ async function verifyDjangoPassword(password: string, hashedPassword: string): P
 	}
 }
 
-export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
+/**
+ * Authenticate user with household context for Agent 2 implementation
+ * Joins with households table to get household information
+ */
+export async function authenticateUserWithHousehold(username: string, password: string): Promise<HouseholdAuthResult> {
 	try {
 		const [rows] = await pool.execute(
-			'SELECT id, username, email, first_name, last_name, password, is_active, is_admin FROM users WHERE username = ? AND is_active = 1',
+			`SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.password, u.is_active, u.is_admin, 
+			        u.household_id, h.name as household_name
+			 FROM users u 
+			 JOIN households h ON u.household_id = h.id 
+			 WHERE u.username = ? AND u.is_active = 1`,
 			[username]
 		);
 
-		const users = rows as (User & { password: string })[];
+		const users = rows as (SessionUser & { password: string })[];
 		if (users.length === 0) {
 			return { success: false, error: 'Invalid username or password' };
 		}
@@ -66,13 +75,22 @@ export async function authenticateUser(username: string, password: string): Prom
 		await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
 		// Return user without password
-		const { ...userWithoutPassword } = user;
 		return {
 			success: true,
-			user: userWithoutPassword,
+			user: {
+				id: user.id,
+				username: user.username,
+				first_name: user.first_name,
+				last_name: user.last_name,
+				email: user.email,
+				is_active: !!user.is_active,
+				is_admin: !!user.is_admin,
+				household_id: user.household_id,
+				household_name: user.household_name,
+			},
 		};
 	} catch (error) {
-		addToast('error', 'Authentication Error', 'Authentication failed: ' + (error instanceof Error ? error.message : String(error)));
+		addToast('error', 'Authentication Error', 'Authentication with household context failed: ' + (error instanceof Error ? error.message : String(error)));
 		return { success: false, error: 'Authentication failed' };
 	}
 }

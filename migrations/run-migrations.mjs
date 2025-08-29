@@ -2,6 +2,78 @@ import pool from '../src/lib/db.js';
 import fs from 'fs/promises';
 import path from 'path';
 
+/**
+ * Parse SQL statements with support for stored procedures and triggers.
+ * Handles DELIMITER changes and multi-statement procedures correctly.
+ * @param {string} sql - The SQL content to parse
+ * @returns {string[]} - Array of SQL statements ready for execution
+ */
+function parseSQLStatements(sql) {
+	const statements = [];
+	const lines = sql.split('\n');
+	let currentStatement = '';
+	let currentDelimiter = ';';
+	let inProcedure = false;
+	
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i].trim();
+		
+		// Skip empty lines and comments
+		if (!line || line.startsWith('--')) {
+			continue;
+		}
+		
+		// Handle DELIMITER changes
+		if (line.startsWith('DELIMITER ')) {
+			const newDelimiter = line.split(' ')[1];
+			if (newDelimiter === '$$') {
+				// Starting a procedure block
+				currentDelimiter = '$$';
+				inProcedure = true;
+			} else if (newDelimiter === ';') {
+				// Ending a procedure block
+				currentDelimiter = ';';
+				inProcedure = false;
+			}
+			continue; // Don't include DELIMITER statements in output
+		}
+		
+		// Handle DROP statements separately (even in procedure mode)
+		if (line.endsWith(';') && (line.startsWith('DROP PROCEDURE') || line.startsWith('DROP TRIGGER'))) {
+			// Add any pending statement first
+			if (currentStatement.trim()) {
+				statements.push(currentStatement.trim());
+				currentStatement = '';
+			}
+			// Add the DROP statement
+			statements.push(line.slice(0, -1).trim()); // Remove semicolon
+			continue;
+		}
+		
+		// Add line to current statement
+		currentStatement += (currentStatement ? '\n' : '') + line;
+		
+		// Check if statement is complete
+		if (line.endsWith(currentDelimiter)) {
+			// Remove the delimiter from the end
+			const cleanStatement = currentStatement.slice(0, -currentDelimiter.length).trim();
+			
+			if (cleanStatement) {
+				statements.push(cleanStatement);
+			}
+			
+			currentStatement = '';
+		}
+	}
+	
+	// Handle any remaining statement (shouldn't happen with well-formed SQL)
+	if (currentStatement.trim()) {
+		statements.push(currentStatement.trim());
+	}
+	
+	return statements;
+}
+
 async function runMigrations() {
 	console.log('Starting database migrations...');
 
@@ -54,19 +126,9 @@ async function runMigrations() {
 				try {
 					await connection.beginTransaction();
 
-					// Split SQL by semicolons and execute each statement
-					// Filter out empty statements and comments
-					const statements = sql
-						.split(';')
-						.map(s => {
-							// Remove comments from the statement and clean it up
-							const lines = s
-								.split('\n')
-								.map(line => line.trim())
-								.filter(line => !line.startsWith('--') && line.length > 0);
-							return lines.join('\n').trim();
-						})
-						.filter(s => s.length > 0);
+					// Parse SQL with support for stored procedures and triggers
+					// This handles DELIMITER changes for multi-statement procedures
+					const statements = parseSQLStatements(sql);
 
 					for (const statement of statements) {
 						if (statement.trim()) {

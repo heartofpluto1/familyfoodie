@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 
 interface RecipeRow extends RowDataPacket {
 	image_filename: string;
@@ -31,24 +32,27 @@ function validateFileContent(buffer: Buffer, mimeType: string): boolean {
 	}
 }
 
-async function postHandler(request: NextRequest) {
+async function postHandler(request: AuthenticatedRequest) {
 	try {
 		const formData = await request.formData();
 		const file = formData.get('image') as File;
 		const recipeId = formData.get('recipeId') as string;
+		const collectionId = formData.get('collectionId') as string;
 
-		if (!file || !recipeId) {
-			return NextResponse.json({ success: false, error: 'Image file and recipe ID are required' }, { status: 400 });
+		if (!file || !recipeId || !collectionId) {
+			return NextResponse.json({ success: false, error: 'Image file, recipe ID, and collection ID are required' }, { status: 400 });
 		}
 
-		// Validate recipe ID format
+		// Validate recipe ID and collection ID format
 		const recipeIdNum = parseInt(recipeId);
-		if (isNaN(recipeIdNum)) {
-			return NextResponse.json({ success: false, error: 'Recipe ID must be a valid number' }, { status: 400 });
+		const collectionIdNum = parseInt(collectionId);
+
+		if (isNaN(recipeIdNum) || recipeIdNum <= 0) {
+			return NextResponse.json({ success: false, error: 'Recipe ID must be a valid positive number' }, { status: 400 });
 		}
 
-		if (recipeIdNum <= 0) {
-			return NextResponse.json({ success: false, error: 'Recipe ID must be a positive number' }, { status: 400 });
+		if (isNaN(collectionIdNum) || collectionIdNum <= 0) {
+			return NextResponse.json({ success: false, error: 'Collection ID must be a valid positive number' }, { status: 400 });
 		}
 
 		// Validate file type - now supporting JPG, PNG, and WebP
@@ -85,6 +89,18 @@ async function postHandler(request: NextRequest) {
 					return 'jpg';
 			}
 		};
+
+		// Validate that the recipe belongs to the specified collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		if (!isRecipeInCollection) {
+			return NextResponse.json({ success: false, error: 'Recipe not found' }, { status: 404 });
+		}
+
+		// Check if user can edit this recipe (household ownership)
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+		if (!canEdit) {
+			return NextResponse.json({ success: false, error: 'Permission denied. You can only upload images to recipes you own.' }, { status: 403 });
+		}
 
 		// Get the current image filename from the database
 		const [recipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename, pdf_filename FROM recipes WHERE id = ?', [recipeIdNum]);

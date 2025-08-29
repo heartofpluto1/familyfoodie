@@ -150,25 +150,7 @@ const groupedIngredients = ingredients.reduce((acc, ingredient) => {
 
 ### Core API Endpoints
 
-#### Shopping List Retrieval
-```typescript
-// GET /api/shop?endpoint=week&week=X&year=Y
-// Returns week's shopping list split by fresh/pantry
-interface ShoppingListResponse {
-  success: boolean;
-  data: {
-    fresh: ListItem[];
-    pantry: ListItem[];
-  };
-}
-
-// GET /api/shop?endpoint=ingredients  
-// Returns all available ingredients for autocomplete
-interface IngredientsResponse {
-  success: boolean;
-  data: Ingredient[];
-}
-```
+**Note**: Shopping list data is fetched server-side using direct database queries via `getShoppingList()` and `getIngredients()` functions.
 
 #### List Management
 ```typescript

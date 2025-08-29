@@ -11,6 +11,7 @@ interface ImageUploadSectionProps {
 	accept?: string;
 	disabled?: boolean;
 	previewUrl?: string | null;
+	defaultBackgroundImage?: string;
 }
 
 const ImageUploadSection = ({
@@ -21,6 +22,7 @@ const ImageUploadSection = ({
 	accept = 'image/*',
 	disabled = false,
 	previewUrl = null,
+	defaultBackgroundImage,
 }: ImageUploadSectionProps) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isDragOver, setIsDragOver] = useState(false);
@@ -84,7 +86,7 @@ const ImageUploadSection = ({
 
 	return (
 		<div>
-			<h3 className="text-lg font-medium text-foreground mb-4">{label}</h3>
+			<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
 
 			<div
 				className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors overflow-hidden flex items-center justify-center ${
@@ -99,7 +101,7 @@ const ImageUploadSection = ({
 				style={{
 					width: '300px',
 					height: '410px',
-					backgroundImage: previewUrl ? `url(${previewUrl})` : undefined,
+					backgroundImage: previewUrl ? `url(${previewUrl})` : !selectedFile && defaultBackgroundImage ? `url(${defaultBackgroundImage})` : undefined,
 					backgroundSize: 'cover',
 					backgroundPosition: 'center',
 					backgroundRepeat: 'no-repeat',
@@ -112,7 +114,7 @@ const ImageUploadSection = ({
 				<input ref={fileInputRef} type="file" className="hidden" accept={accept} onChange={handleFileInputChange} disabled={disabled} />
 
 				{/* Overlay for background image */}
-				{previewUrl && <div className="absolute inset-0 bg-black/70 rounded-lg" />}
+				{(previewUrl || (!selectedFile && defaultBackgroundImage)) && <div className="absolute inset-0 bg-black/70 rounded-lg" />}
 
 				<div className="relative z-10">
 					{selectedFile ? (
