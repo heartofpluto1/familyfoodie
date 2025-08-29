@@ -69,6 +69,11 @@ async function copyHandler(request: AuthenticatedRequest) {
 
 	const { recipeIds, targetCollectionId } = validation;
 
+	// TypeScript guard - we know these are defined after successful validation
+	if (!recipeIds || !targetCollectionId) {
+		return NextResponse.json({ success: false, error: 'Invalid request data', code: 'INVALID_DATA' }, { status: 400 });
+	}
+
 	try {
 		// Verify target collection exists and belongs to the user's household
 		const [collectionRows] = await pool.execute<CollectionRow[]>('SELECT id, household_id FROM collections WHERE id = ? AND household_id = ?', [

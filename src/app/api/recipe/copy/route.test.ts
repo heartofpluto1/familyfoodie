@@ -4,6 +4,7 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import pool from '@/lib/db.js';
 import { clearAllMocks, setupConsoleMocks, mockRegularUser } from '@/lib/test-utils';
+import type { SessionUser } from '@/types/auth';
 
 // Mock the database BEFORE other imports
 jest.mock('@/lib/db.js', () => ({
@@ -18,7 +19,12 @@ jest.mock('@/lib/db.js', () => ({
 jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 // Helper to mock authenticated requests
-const mockAuthenticatedUser = (request: any, options = {}) => {
+interface AuthenticatedRequest extends Request {
+	user?: SessionUser;
+	household_id?: number;
+}
+
+const mockAuthenticatedUser = (request: AuthenticatedRequest, options: Partial<SessionUser> = {}) => {
 	request.user = { ...mockRegularUser, ...options };
 	request.household_id = request.user.household_id;
 };
