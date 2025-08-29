@@ -12,11 +12,33 @@ type RouteContext = {
  */
 async function toggleSubscriptionHandler(request: AuthenticatedRequest, context: RouteContext) {
 	try {
-		const { id } = await context.params;
+		// Handle missing context or params gracefully
+		if (!context || !context.params) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Invalid collection ID',
+				},
+				{ status: 400 }
+			);
+		}
+
+		const params = await context.params;
+		if (!params || !params.id) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Invalid collection ID',
+				},
+				{ status: 400 }
+			);
+		}
+
+		const { id } = params;
 		const idValue = Array.isArray(id) ? id[0] : id;
 		const collectionId = parseInt(idValue as string);
 
-		if (!collectionId || isNaN(collectionId)) {
+		if (!collectionId || isNaN(collectionId) || collectionId <= 0) {
 			return NextResponse.json(
 				{
 					success: false,
@@ -48,7 +70,7 @@ async function toggleSubscriptionHandler(request: AuthenticatedRequest, context:
 			return NextResponse.json(
 				{
 					success: false,
-					error: `Failed to ${action.replace('ed', '')}`,
+					error: `Failed to ${action === 'subscribed' ? 'subscribe' : 'unsubscribe'}`,
 				},
 				{ status: 409 }
 			);
