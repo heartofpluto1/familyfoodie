@@ -9,10 +9,11 @@ interface ImageUploadWithCropProps {
 	currentImageSrc?: string;
 	onImageUploaded?: (uploadResponse?: UpdateImageResponse) => void;
 	recipeId?: number;
+	collectionId: number;
 	isEditing?: boolean;
 }
 
-const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEditing = false }: ImageUploadWithCropProps) => {
+const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, collectionId, isEditing = false }: ImageUploadWithCropProps) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const cropCanvasRef = useRef<HTMLCanvasElement>(null);
 	const [showCropper, setShowCropper] = useState(false);
@@ -266,7 +267,7 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, isEdi
 			const croppedFile = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
 
 			// Upload the cropped image
-			const result = await imageUpload.uploadFileBlob(recipeId, croppedFile, 'image');
+			const result = await imageUpload.uploadFileBlob(recipeId, collectionId, croppedFile, 'image');
 			if (result.success && onImageUploaded) {
 				onImageUploaded(result.data);
 			}

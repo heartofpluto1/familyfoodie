@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser } from '@/lib/auth';
+import { authenticateUserWithHousehold } from '@/lib/auth';
 import { encrypt } from '@/lib/session';
 import { rateLimiter } from '@/lib/rate-limiter';
 
@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
 			await delay(delayMs);
 		}
 
-		// Authenticate user
-		const authResult = await authenticateUser(username, password);
+		// Authenticate user with household context
+		const authResult = await authenticateUserWithHousehold(username, password);
 
 		if (!authResult.success) {
 			// Record failed login attempt
@@ -71,15 +71,19 @@ export async function POST(request: NextRequest) {
 		// Record successful login (clears failed attempts)
 		await rateLimiter.recordAttempt(request, true);
 
-		// Create session data with user permissions
+		// Create session data with user permissions and household context
 		const sessionData = JSON.stringify({
 			user: {
 				id: authResult.user!.id,
 				username: authResult.user!.username,
 				email: authResult.user!.email,
+				first_name: authResult.user!.first_name,
+				last_name: authResult.user!.last_name,
 				is_admin: authResult.user!.is_admin,
 				is_active: authResult.user!.is_active,
 			},
+			household_id: authResult.user!.household_id,
+			household_name: authResult.user!.household_name,
 			loginTime: Date.now(),
 		});
 

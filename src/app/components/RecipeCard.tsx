@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
-import { SwapIcon, RemoveIcon, TimeIcon } from './Icons';
+import { SwapIcon, RemoveIcon, TimeIcon, CheckCircleIcon } from './Icons';
 import React, { useState } from 'react';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
@@ -14,6 +14,9 @@ interface RecipeCardProps {
 	triggerAnimation?: boolean;
 	newRecipe?: Recipe | null;
 	onAnimationComplete?: () => void;
+	isSelecting?: boolean;
+	isSelected?: boolean;
+	onToggleSelection?: (recipeId: number) => void;
 }
 
 const RecipeCard = ({
@@ -25,6 +28,9 @@ const RecipeCard = ({
 	triggerAnimation,
 	newRecipe,
 	onAnimationComplete,
+	isSelecting = false,
+	isSelected = false,
+	onToggleSelection,
 }: RecipeCardProps) => {
 	const [displayRecipe, setDisplayRecipe] = useState(recipe);
 	const [isFlipping, setIsFlipping] = useState(false);
@@ -126,10 +132,48 @@ const RecipeCard = ({
 		return `${minutes} min`;
 	};
 
+	const handleCardClick = (e: React.MouseEvent) => {
+		if (isSelecting && onToggleSelection) {
+			e.preventDefault();
+			e.stopPropagation();
+			onToggleSelection(recipe.id);
+		}
+	};
+
+	const CardContent = () => (
+		<>
+			<div className="block">
+				<img
+					className="w-full aspect-square object-cover"
+					alt={`${name} recipe`}
+					src={getRecipeImageUrl(image_filename)}
+					onError={e => {
+						e.currentTarget.src = '/onerror_recipe.png';
+					}}
+				/>
+			</div>
+
+			<div className="p-4 flex flex-col flex-grow">
+				<h3 className="text-lg text-foreground mb-2">{name}</h3>
+
+				{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
+
+				<div className="mt-auto">
+					{totalTime > 0 && (
+						<p className="text-sm text-muted flex items-center">
+							<TimeIcon />
+							{formatTime(totalTime)}
+						</p>
+					)}
+				</div>
+			</div>
+		</>
+	);
+
 	return (
 		<div className="recipe-card-container" style={{ perspective: '1000px' }}>
 			<article
-				className={`relative bg-surface border border-custom rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 max-w-[310px] w-full flex flex-col`}
+				className={`relative bg-surface border ${isSelected ? 'border-blue-500 ring-2 ring-blue-500' : 'border-custom'} rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 max-w-[310px] w-full flex flex-col ${isSelecting ? 'cursor-pointer' : ''}`}
 				style={{
 					transformStyle: 'preserve-3d',
 					transition: 'transform 0.4s ease-in-out',
@@ -143,27 +187,60 @@ const RecipeCard = ({
 						transition: 'none',
 					}}
 				>
-					<Link href={generateRecipeUrl(displayRecipe)} className="block">
-						<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(image_filename)} />
-					</Link>
-
-					<div className="p-4 flex flex-col flex-grow">
-						<Link href={generateRecipeUrl(displayRecipe)}>
-							<h3 className="text-lg text-foreground mb-2">{name}</h3>
-						</Link>
-
-						{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
-
-						<div className="mt-auto">
-							{totalTime > 0 && (
-								<p className="text-sm text-muted flex items-center">
-									<TimeIcon />
-									{formatTime(totalTime)}
-								</p>
-							)}
+					{isSelecting ? (
+						// In selection mode, render content without links
+						<div onClick={handleCardClick} className="w-full h-full flex flex-col">
+							<CardContent />
 						</div>
-					</div>
+					) : (
+						// Normal mode, render with links
+						<>
+							<Link href={generateRecipeUrl(displayRecipe)} className="block">
+								<img
+									className="w-full aspect-square object-cover"
+									alt={`${name} recipe`}
+									src={getRecipeImageUrl(image_filename)}
+									onError={e => {
+										e.currentTarget.src = '/onerror_recipe.png';
+									}}
+								/>
+							</Link>
+
+							<div className="p-4 flex flex-col flex-grow">
+								<Link href={generateRecipeUrl(displayRecipe)}>
+									<h3 className="text-lg text-foreground mb-2">{name}</h3>
+								</Link>
+
+								{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
+
+								<div className="mt-auto">
+									{totalTime > 0 && (
+										<p className="text-sm text-muted flex items-center">
+											<TimeIcon />
+											{formatTime(totalTime)}
+										</p>
+									)}
+								</div>
+							</div>
+						</>
+					)}
 				</div>
+
+				{/* Selection overlay - appears in selection mode to capture all clicks */}
+				{isSelecting && (
+					<div
+						className="absolute inset-0 z-10 bg-transparent hover:bg-black/10 transition-colors"
+						onClick={handleCardClick}
+						style={{ cursor: 'pointer' }}
+					>
+						{/* Selection indicator */}
+						{isSelected && (
+							<div className="absolute top-2 right-2">
+								<CheckCircleIcon className="w-6 h-6 text-blue-500" />
+							</div>
+						)}
+					</div>
+				)}
 
 				{showControls && (
 					<>

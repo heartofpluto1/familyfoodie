@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth } from '@/lib/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { triggerCascadeCopyIfNeededForIngredient } from '@/lib/copy-on-write';
 
 interface UpdateIngredientRequest {
 	id: number;
@@ -12,7 +13,7 @@ interface UpdateIngredientRequest {
 	pantryCategoryId: number | null;
 }
 
-async function updateIngredientHandler(request: NextRequest) {
+async function updateIngredientHandler(request: AuthenticatedRequest) {
 	try {
 		const body: UpdateIngredientRequest = await request.json();
 		const { id, name, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId } = body;
@@ -22,16 +23,23 @@ async function updateIngredientHandler(request: NextRequest) {
 			return NextResponse.json({ error: 'ID and name are required' }, { status: 400 });
 		}
 
-		// Update the ingredient
+		// Trigger cascade copy if needed (copy-on-write for non-owned ingredients)
+		const actualIngredientId = await triggerCascadeCopyIfNeededForIngredient(request.household_id, id);
+
+		// Update the ingredient (using the potentially new ingredient ID after copy-on-write)
 		await pool.execute(
 			`UPDATE ingredients 
 			 SET name = ?, fresh = ?, cost = ?, stockcode = ?, 
 			     supermarketCategory_id = ?, pantryCategory_id = ?
-			 WHERE id = ? AND public = 1`,
-			[name, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId, id]
+			 WHERE id = ?`,
+			[name, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId, actualIngredientId]
 		);
 
-		return NextResponse.json({ success: true, message: 'Ingredient updated successfully' });
+		return NextResponse.json({
+			success: true,
+			message: 'Ingredient updated successfully',
+			...(actualIngredientId !== id && { newIngredientId: actualIngredientId, copied: true }),
+		});
 	} catch (error) {
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update ingredient' }, { status: 500 });
 	}

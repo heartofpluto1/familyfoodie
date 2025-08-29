@@ -1,22 +1,25 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
-import { getAuthenticatedUserFromSession } from '@/lib/auth-helpers';
 import { ReactNode } from 'react';
 
-// Generic page component type that works with Next.js 15.5
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PageComponent<P = any> = (props: P) => Promise<ReactNode> | ReactNode;
+// Next.js page props interface for parameterized routes
+interface PageProps {
+	params?: Promise<Record<string, string | string[]>>;
+	searchParams?: Promise<Record<string, string | string[]>>;
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function withAdminAuth<P = any>(WrappedComponent: PageComponent<P>): PageComponent<P> {
+// Page component type that works with Next.js 15.5 App Router
+type PageComponent<P = PageProps> = (props: P) => Promise<ReactNode> | ReactNode;
+
+export function withAdminAuth<P extends PageProps = PageProps>(WrappedComponent: PageComponent<P>): PageComponent<P> {
 	return async function AdminAuthenticatedComponent(props: P): Promise<ReactNode> {
 		const session = await getSession();
 		if (!session) {
 			redirect('login');
 		}
 
-		const user = await getAuthenticatedUserFromSession(session);
-		if (!user || !user.is_admin) {
+		// Session is already a SessionUser with is_admin field
+		if (!session.is_admin) {
 			redirect('/');
 		}
 

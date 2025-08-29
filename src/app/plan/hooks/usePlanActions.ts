@@ -14,6 +14,7 @@ interface UsePlanActionsProps {
 	setAnimatingAutomate?: (animating: boolean) => void;
 	setPendingRecipes?: (recipes: Recipe[] | null) => void;
 	onWeekDelete?: () => void;
+	wasInitialEditMode?: boolean; // Track if we started in edit mode
 }
 
 export function usePlanActions({
@@ -27,6 +28,7 @@ export function usePlanActions({
 	setAnimatingAutomate,
 	setPendingRecipes,
 	onWeekDelete,
+	wasInitialEditMode,
 }: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
 
@@ -49,7 +51,12 @@ export function usePlanActions({
 
 	const handleCancel = (): void => {
 		setEditMode(false);
-		resetToInitial();
+		// If we started in edit mode (auto-populated), clear to empty
+		if (wasInitialEditMode) {
+			setRecipes([]);
+		} else {
+			resetToInitial();
+		}
 	};
 
 	const handleAutomate = async (): Promise<void> => {

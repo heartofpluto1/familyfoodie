@@ -2,12 +2,16 @@ import { redirect } from 'next/navigation';
 import { getEncryptedSession } from '@/lib/session';
 import { ReactNode } from 'react';
 
-// Generic page component type that works with Next.js 15.5
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PageComponent<P = any> = (props: P) => Promise<ReactNode> | ReactNode;
+// Next.js page props interface for parameterized routes
+interface PageProps {
+	params?: Promise<Record<string, string | string[]>>;
+	searchParams?: Promise<Record<string, string | string[]>>;
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function withAuth<P = any>(WrappedComponent: PageComponent<P>): PageComponent<P> {
+// Page component type that works with Next.js 15.5 App Router
+type PageComponent<P = PageProps> = (props: P) => Promise<ReactNode> | ReactNode;
+
+export function withAuth<P extends PageProps = PageProps>(WrappedComponent: PageComponent<P>): PageComponent<P> {
 	return async function AuthenticatedComponent(props: P): Promise<ReactNode> {
 		const session = await getEncryptedSession();
 		if (!session) {

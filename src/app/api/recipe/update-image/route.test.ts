@@ -5,8 +5,7 @@ import * as appHandler from './route';
 import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
 
 // Mock the auth middleware to properly handle authentication
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -31,9 +30,20 @@ jest.mock('@/lib/utils/secureFilename.server', () => ({
 	findAndDeleteHashFiles: jest.fn(),
 }));
 
+// Mock copy-on-write and permissions
+jest.mock('@/lib/copy-on-write', () => ({
+	cascadeCopyWithContext: jest.fn(),
+}));
+
+jest.mock('@/lib/permissions', () => ({
+	canEditResource: jest.fn(),
+	validateRecipeInCollection: jest.fn(),
+}));
+
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
+import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 
 // Get the mocked database
 const mockDatabase = jest.mocked(jest.requireMock('@/lib/db.js'));
@@ -46,6 +56,8 @@ const mockGetRecipeImageUrl = getRecipeImageUrl as jest.MockedFunction<typeof ge
 const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFunction<typeof generateVersionedFilename>;
 const mockExtractBaseHash = extractBaseHash as jest.MockedFunction<typeof extractBaseHash>;
 const mockFindAndDeleteHashFiles = findAndDeleteHashFiles as jest.MockedFunction<typeof findAndDeleteHashFiles>;
+const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
+const mockValidateRecipeInCollection = validateRecipeInCollection as jest.MockedFunction<typeof validateRecipeInCollection>;
 
 // Mock console methods
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -59,6 +71,8 @@ describe('/api/recipe/update-image', () => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
 		mockGetStorageMode.mockReturnValue('local');
+		mockCanEditResource.mockResolvedValue(true); // Default: can edit
+		mockValidateRecipeInCollection.mockResolvedValue(true); // Default: recipe is in collection
 	});
 
 	afterAll(() => {
@@ -74,6 +88,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([
@@ -88,6 +106,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_abc123_v3.jpg',
+				filename: 'recipe_abc123_v3.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.jpg');
@@ -126,6 +145,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '2');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_def456.jpg', pdf_filename: null }]])
@@ -138,6 +161,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_def456_v2.jpg',
+				filename: 'recipe_def456_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_def456_v2.jpg');
@@ -164,6 +188,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '3');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_ghi789.jpg', pdf_filename: null }]])
@@ -176,6 +204,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_ghi789_v2.jpg',
+				filename: 'recipe_ghi789_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_ghi789_v2.jpg');
@@ -203,6 +232,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '4');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_jkl012.png', pdf_filename: null }]])
@@ -215,6 +248,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_jkl012_v2.png',
+				filename: 'recipe_jkl012_v2.png',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_jkl012_v2.png');
@@ -241,6 +275,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '5');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_mno345.webp', pdf_filename: null }]])
@@ -253,6 +291,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_mno345_v2.webp',
+				filename: 'recipe_mno345_v2.webp',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_mno345_v2.webp');
@@ -279,6 +318,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '6');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_pqr678.jpg', pdf_filename: null }]])
@@ -291,6 +334,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_pqr678_v2.jpg',
+				filename: 'recipe_pqr678_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_pqr678_v2.jpg');
@@ -327,7 +371,7 @@ describe('/api/recipe/update-image', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Image file and recipe ID are required',
+						error: 'Image file, recipe ID, and collection ID are required',
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -352,7 +396,7 @@ describe('/api/recipe/update-image', () => {
 
 					expect(response.status).toBe(400);
 					expect(json).toEqual({
-						error: 'Image file and recipe ID are required',
+						error: 'Image file, recipe ID, and collection ID are required',
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
@@ -366,6 +410,7 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -392,6 +437,7 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', largeFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -418,10 +464,9 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '999');
+			formData.append('collectionId', '1');
 
-			mockDatabase.execute.mockResolvedValueOnce([
-				[], // No recipe found
-			]);
+			mockValidateRecipeInCollection.mockResolvedValue(false); // Recipe not in collection
 
 			await testApiHandler({
 				appHandler,
@@ -447,6 +492,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]]);
 
@@ -482,6 +531,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
 
@@ -492,9 +545,10 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_abc_v2.jpg',
+				filename: 'recipe_abc_v2.jpg',
 			});
 
-			mockDeleteFile.mockResolvedValue({ success: true });
+			mockDeleteFile.mockResolvedValue(true);
 
 			await testApiHandler({
 				appHandler,
@@ -521,6 +575,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_xyz.jpg', pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -530,6 +588,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_xyz_v2.jpg',
+				filename: 'recipe_xyz_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_xyz_v2.jpg');
@@ -557,6 +616,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_original.jpg', pdf_filename: null }]])
@@ -569,6 +632,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_original_v2.jpg',
+				filename: 'recipe_original_v2.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_original_v2.jpg');
@@ -600,8 +664,9 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
-			mockDatabase.execute.mockRejectedValue(standardErrorScenarios.databaseError);
+			mockValidateRecipeInCollection.mockRejectedValue(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
 				appHandler,
@@ -627,8 +692,9 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
-			mockDatabase.execute.mockRejectedValue('String error');
+			mockValidateRecipeInCollection.mockRejectedValue('String error');
 
 			await testApiHandler({
 				appHandler,
@@ -653,6 +719,7 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', 'abc');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -678,6 +745,7 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -703,6 +771,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: null }]]) // Recipe with no existing image
@@ -713,6 +785,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValue({
 				success: true,
 				url: '/uploads/recipe_new_abc123_v1.jpg',
+				filename: 'recipe_new_abc123_v1.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_new_abc123_v1.jpg');
@@ -743,6 +816,7 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,
@@ -795,6 +869,10 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc123.jpg', pdf_filename: null }]])
@@ -815,6 +893,7 @@ describe('/api/recipe/update-image', () => {
 			mockUploadFile.mockResolvedValueOnce({
 				success: true,
 				url: '/uploads/recipe_abc123_v3.jpg',
+				filename: 'recipe_abc123_v3.jpg',
 			});
 
 			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_abc123_v3.jpg');
@@ -846,6 +925,7 @@ describe('/api/recipe/update-image', () => {
 			const formData = new FormData();
 			formData.append('image', mockFile);
 			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
 
 			await testApiHandler({
 				appHandler,

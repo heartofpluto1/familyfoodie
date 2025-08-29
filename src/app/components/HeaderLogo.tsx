@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { LogoutIcon, BurgerIcon } from './Icons';
-import type { SessionData } from '@/types/auth';
-import { useRef, useEffect } from 'react';
+import type { Session } from '@/types/auth';
+import { useRef, useEffect, useState } from 'react';
+import UserSettings from './UserSettings';
 
 interface HeaderLogoProps {
-	session: SessionData | null;
+	session: Session | null;
 }
 
 const HeaderLogo = ({ session }: HeaderLogoProps) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
+	const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 	const isAuthenticated = !!session;
-	const user = session?.user;
 
 	const closeMenu = () => {
 		if (detailsRef.current) {
@@ -76,19 +77,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 									>
 										Recipes
 									</Link>
-									<Link
-										href="/ingredients"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden md:inline"
-									>
-										Ingredients
-									</Link>
-									<Link
-										href="/insights"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
-									>
-										Insights
-									</Link>
-									{user?.is_admin && (
+									{session?.user?.is_admin && (
 										<Link
 											href="/admin"
 											className="transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
@@ -123,19 +112,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										>
 											Recipes
 										</Link>
-										<Link
-											href="/ingredients"
-											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
-										>
-											Ingredients
-										</Link>
-										<Link
-											href="/insights"
-											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
-										>
-											Insights
-										</Link>
-										{user?.is_admin && (
+										{session?.user?.is_admin && (
 											<Link href="/admin" className="block px-3 py-2 text-sm transition-colors">
 												Admin
 											</Link>
@@ -149,7 +126,13 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 						<div className={isAuthenticated ? 'border-l border-custom pl-2 sm:pl-4' : ''}>
 							{isAuthenticated ? (
 								<div className="flex items-center space-x-2 sm:space-x-3">
-									<span className="text-xs sm:text-sm text-foreground xs:inline">{user?.username}</span>
+									<button
+										onClick={() => setIsUserSettingsOpen(true)}
+										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
+										title="User settings"
+									>
+										{session?.user?.username}
+									</button>
 									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
 									</Link>
@@ -166,6 +149,9 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 					</div>
 				</div>
 			</div>
+
+			{/* User Settings Panel */}
+			<UserSettings isOpen={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
 		</header>
 	);
 };

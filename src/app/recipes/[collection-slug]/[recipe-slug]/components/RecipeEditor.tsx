@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { RecipeDetail, RecipeIngredient } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
 import { SaveIcon, EditIcon, CancelIcon } from '@/app/components/Icons';
@@ -15,6 +16,7 @@ import { useRecipeOptions } from '@/app/recipes/hooks/useRecipeOptions';
 import { useIngredientApi } from '../hooks/useIngredientApi';
 import { RecipeFormData, NewIngredient } from '@/app/recipes/types';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { UpdateImageResponse, UpdatePdfResponse } from '@/types/fileUpload';
 
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
@@ -24,14 +26,48 @@ interface RecipeEditorProps {
 type EditMode = 'none' | 'details' | 'ingredients';
 
 const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
+	const router = useRouter();
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
-	const ingredientApi = useIngredientApi();
+	const ingredientApi = useIngredientApi(recipe.collection_id);
+
+	// Helper function to handle copy-on-write navigation
+	const handleCopyOnWriteNavigation = (
+		wasCopied: boolean,
+		currentCollectionSlug: string,
+		currentRecipeSlug: string,
+		newRecipeSlug?: string,
+		newCollectionSlug?: string
+	) => {
+		if (!wasCopied) return false;
+
+		// Case 1: Both collection and recipe changed (recipe copied to different collection)
+		if (newCollectionSlug && newRecipeSlug) {
+			router.push(`/recipes/${newCollectionSlug}/${newRecipeSlug}`);
+			return true;
+		}
+
+		// Case 2: Only recipe changed (recipe copied within same collection)
+		if (!newCollectionSlug && newRecipeSlug) {
+			router.push(`/recipes/${currentCollectionSlug}/${newRecipeSlug}`);
+			return true;
+		}
+
+		// Case 3: Only collection changed (moved to different collection, keeping same recipe)
+		if (newCollectionSlug && !newRecipeSlug) {
+			router.push(`/recipes/${newCollectionSlug}/${currentRecipeSlug}`);
+			return true;
+		}
+
+		return false;
+	};
+
+	// Recipe state for dynamic updates
+	const [currentRecipe, setCurrentRecipe] = useState(recipe);
 
 	// Separate edit modes
 	const [editMode, setEditMode] = useState<EditMode>('none');
 	const [isLoading, setIsLoading] = useState(false);
-	const [refreshKey, setRefreshKey] = useState(0);
 	const [showPdfModal, setShowPdfModal] = useState(false);
 	const [showImageModal, setShowImageModal] = useState(false);
 
@@ -137,14 +173,40 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				body: JSON.stringify({
 					id: recipe.id,
 					...recipeForm,
+					// Add explicit current and new collection IDs for move validation
+					currentCollectionId: recipe.collection_id,
+					newCollectionId: recipeForm.collectionId,
 				}),
 			});
 
 			if (response.ok) {
-				showToast('success', 'Success', 'Recipe details updated successfully');
+				const result = await response.json();
+				// Use the message from the API response
+				showToast('success', 'Success', result.message || 'Recipe details updated successfully');
 				setEditMode('none');
-				// Refresh page to show updated data
-				window.location.reload();
+
+				// Handle copy-on-write navigation if needed
+				const wasNavigated = handleCopyOnWriteNavigation(
+					result.wasCopied || result.wasMoved || false,
+					recipe.collection_url_slug,
+					recipe.url_slug,
+					result.newRecipeSlug,
+					result.newCollectionSlug
+				);
+
+				if (!wasNavigated) {
+					// Update the current recipe state with the new details from API response
+					setCurrentRecipe(prev => ({
+						...prev,
+						name: recipeForm.name,
+						description: recipeForm.description,
+						prepTime: recipeForm.prepTime,
+						cookTime: recipeForm.cookTime,
+						seasonName: result.seasonName,
+						primaryTypeName: result.primaryTypeName,
+						secondaryTypeName: result.secondaryTypeName,
+					}));
+				}
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || 'Failed to update recipe details');
@@ -176,17 +238,34 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				credentials: 'include',
 				body: JSON.stringify({
 					recipeId: recipe.id,
+					collectionId: recipe.collection_id,
 					ingredients: ingredientsData,
 					deletedIngredientIds,
 				}),
 			});
 
 			if (response.ok) {
+				const result = await response.json();
 				showToast('success', 'Success', 'Recipe ingredients updated successfully');
 				setEditMode('none');
 				setDeletedIngredientIds([]);
-				// Refresh page to show updated data
-				window.location.reload();
+
+				// Handle copy-on-write navigation if needed
+				const wasNavigated = handleCopyOnWriteNavigation(
+					result.data?.redirectNeeded,
+					recipe.collection_url_slug,
+					recipe.url_slug,
+					result.data?.newRecipeSlug,
+					result.data?.newCollectionSlug
+				);
+
+				if (!wasNavigated) {
+					// Update the current recipe state with the updated ingredients
+					setCurrentRecipe(prev => ({
+						...prev,
+						ingredients: [...ingredients],
+					}));
+				}
 			} else {
 				const error = await response.json();
 				showToast('error', 'Error', error.error || 'Failed to update ingredients');
@@ -199,15 +278,26 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 		}
 	};
 
-	const handleImageUploadComplete = () => {
+	const handleImageUploadComplete = (uploadResponse?: UpdateImageResponse) => {
 		showToast('success', 'Success', 'Recipe image updated successfully');
 		setShowImageModal(false);
-		// Force refresh to show new image
-		setRefreshKey(prev => prev + 1);
-		// Also refresh the page after a short delay
-		setTimeout(() => {
-			window.location.reload();
-		}, 500);
+
+		// Handle copy-on-write navigation if needed
+		const wasNavigated = handleCopyOnWriteNavigation(
+			uploadResponse?.wasCopied || false,
+			recipe.collection_url_slug,
+			recipe.url_slug,
+			uploadResponse?.newRecipeSlug,
+			uploadResponse?.newCollectionSlug
+		);
+
+		if (!wasNavigated && uploadResponse?.filename) {
+			// Update recipe state with new filename
+			setCurrentRecipe(prev => ({
+				...prev,
+				image_filename: uploadResponse.filename,
+			}));
+		}
 	};
 
 	const handleDeleteIngredient = async (id: number) => {
@@ -270,6 +360,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				quantity4: newIngredient.quantity4,
 				measureId: selectedMeasure?.id,
 				preparationId: selectedPreparation?.id,
+				collectionId: recipe.collection_id,
 			});
 
 			if (newId) {
@@ -324,13 +415,26 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 		]);
 	};
 
-	const handlePdfUploadComplete = () => {
+	const handlePdfUploadComplete = (uploadResponse?: UpdatePdfResponse) => {
 		showToast('success', 'Success', 'Recipe PDF updated successfully');
 		setShowPdfModal(false);
-		// Refresh page to show changes
-		setTimeout(() => {
-			window.location.reload();
-		}, 500);
+
+		// Handle copy-on-write navigation if needed
+		const wasNavigated = handleCopyOnWriteNavigation(
+			uploadResponse?.wasCopied || false,
+			recipe.collection_url_slug,
+			recipe.url_slug,
+			uploadResponse?.newRecipeSlug,
+			uploadResponse?.newCollectionSlug
+		);
+
+		if (!wasNavigated && uploadResponse?.recipe?.filename) {
+			// Update recipe state with new PDF filename
+			setCurrentRecipe(prev => ({
+				...prev,
+				pdf_filename: uploadResponse.recipe.filename,
+			}));
+		}
 	};
 
 	return (
@@ -341,7 +445,14 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					<div className="bg-white border border-custom shadow rounded-sm pb-4 space-y-4">
 						{/* Recipe Image Section with contextual edit buttons */}
 						<div className="relative">
-							<img key={refreshKey} src={getRecipeImageUrl(recipe.image_filename)} alt={recipe.name} className="w-full rounded-t-sm" />
+							<img
+								src={getRecipeImageUrl(currentRecipe.image_filename)}
+								alt={currentRecipe.name}
+								className="w-full rounded-t-sm min-h-[300px] object-cover"
+								onError={e => {
+									e.currentTarget.src = '/onerror_recipe.png';
+								}}
+							/>
 							{/* Edit buttons */}
 							<div className="absolute bottom-4 right-4 flex gap-2">
 								{editMode === 'details' ? (
@@ -417,7 +528,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									<RecipeForm formData={recipeForm} onChange={setRecipeForm} options={options} collections={collections} />
 								</div>
 							) : (
-								<RecipeView recipe={recipe} />
+								<RecipeView recipe={currentRecipe} />
 							)}
 						</div>
 					</div>
@@ -471,7 +582,8 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 			<Modal isOpen={showImageModal} onClose={() => setShowImageModal(false)} title="Recipe Image" maxWidth="xl">
 				<ImageUploadWithCrop
 					recipeId={recipe.id}
-					currentImageSrc={recipe ? getRecipeImageUrl(recipe.image_filename) : undefined}
+					collectionId={recipe.collection_id}
+					currentImageSrc={currentRecipe ? getRecipeImageUrl(currentRecipe.image_filename) : undefined}
 					onImageUploaded={handleImageUploadComplete}
 					isEditing={true}
 				/>
@@ -479,7 +591,7 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 
 			{/* PDF Upload Modal */}
 			<Modal isOpen={showPdfModal} onClose={() => setShowPdfModal(false)} title="Recipe PDF" maxWidth="lg">
-				<PdfUpload recipeId={recipe.id} onPdfUploaded={handlePdfUploadComplete} isEditing={true} />
+				<PdfUpload recipeId={recipe.id} collectionId={recipe.collection_id} onPdfUploaded={handlePdfUploadComplete} isEditing={true} />
 			</Modal>
 		</div>
 	);

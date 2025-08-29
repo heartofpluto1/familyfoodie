@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import HeaderLogo from './HeaderLogo';
-import type { SessionData } from '@/types/auth';
+import type { Session } from '@/types/auth';
 
 // Mock Next.js Link component
 jest.mock('next/link', () => {
@@ -18,25 +18,49 @@ jest.mock('next/link', () => {
 jest.mock('./Icons', () => ({
 	LogoutIcon: () => <span data-testid="logout-icon">Logout</span>,
 	BurgerIcon: () => <span data-testid="burger-icon">Menu</span>,
+	CloseIcon: () => <span data-testid="close-icon">Close</span>,
 }));
 
+// Mock UserSettings component
+jest.mock('./UserSettings', () => {
+	return function MockUserSettings({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+		return isOpen ? (
+			<div data-testid="user-settings" onClick={onClose}>
+				User Settings Panel
+			</div>
+		) : null;
+	};
+});
+
 describe('HeaderLogo Component', () => {
-	const mockAuthenticatedSession: SessionData = {
+	const mockAuthenticatedSession: Session = {
 		user: {
 			id: 1,
 			username: 'testuser',
 			email: 'test@example.com',
+			first_name: 'Test',
+			last_name: 'User',
 			is_admin: false,
+			is_active: true,
 		},
+		household_id: 1,
+		household_name: 'Test Household',
+		loginTime: Date.now(),
 	};
 
-	const mockAdminSession: SessionData = {
+	const mockAdminSession: Session = {
 		user: {
 			id: 1,
 			username: 'admin',
 			email: 'admin@example.com',
+			first_name: 'Admin',
+			last_name: 'User',
 			is_admin: true,
+			is_active: true,
 		},
+		household_id: 1,
+		household_name: 'Admin Household',
+		loginTime: Date.now(),
 	};
 
 	beforeEach(() => {
@@ -88,7 +112,6 @@ describe('HeaderLogo Component', () => {
 			expect(screen.getAllByTestId('link-/plan')).toHaveLength(2);
 			expect(screen.getAllByTestId('link-/shop')).toHaveLength(2);
 			expect(screen.getAllByTestId('link-/recipes')).toHaveLength(2);
-			expect(screen.getAllByTestId('link-/ingredients')).toHaveLength(2);
 		});
 
 		it('shows admin navigation for admin users', () => {
@@ -115,7 +138,6 @@ describe('HeaderLogo Component', () => {
 				{ href: '/plan', text: 'Plan' },
 				{ href: '/shop', text: 'Shop' },
 				{ href: '/recipes', text: 'Recipes' },
-				{ href: '/ingredients', text: 'Ingredients' },
 			];
 
 			expectedLinks.forEach(({ href, text }) => {
@@ -246,7 +268,6 @@ describe('HeaderLogo Component', () => {
 				screen.getAllByTestId('link-/plan')[1],
 				screen.getAllByTestId('link-/shop')[1],
 				screen.getAllByTestId('link-/recipes')[1],
-				screen.getAllByTestId('link-/ingredients')[1],
 			];
 
 			mobileLinks.forEach(link => {
@@ -266,15 +287,6 @@ describe('HeaderLogo Component', () => {
 
 			expect(mobileAdminLink).toBeInTheDocument();
 			expect(mobileAdminLink).toHaveAttribute('href', '/admin');
-		});
-
-		it('handles insights link visibility in mobile menu', () => {
-			render(<HeaderLogo session={mockAuthenticatedSession} />);
-
-			// Insights link should be present in mobile menu
-			const mobileInsightsLink = screen.getAllByTestId('link-/insights')[1]; // Mobile version
-			expect(mobileInsightsLink).toBeInTheDocument();
-			expect(mobileInsightsLink).toHaveAttribute('href', '/insights');
 		});
 
 		it('maintains proper mobile menu styling', () => {

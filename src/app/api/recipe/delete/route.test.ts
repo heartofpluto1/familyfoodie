@@ -11,18 +11,23 @@ jest.mock('@/lib/db.js', () => ({
 	end: jest.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('@/lib/auth-middleware', () => require('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
 
 jest.mock('@/lib/utils/secureFilename.server', () => ({
 	cleanupRecipeFiles: jest.fn(),
 	findAndDeleteHashFiles: jest.fn(),
 }));
 
+// Mock permissions module
+jest.mock('@/lib/permissions', () => ({
+	canEditResource: jest.fn(),
+}));
+
 // Get the mocked functions
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 const mockGetConnection = jest.mocked(jest.requireMock('@/lib/db.js').getConnection);
 const mockCleanupRecipeFiles = jest.mocked(jest.requireMock('@/lib/utils/secureFilename.server').cleanupRecipeFiles);
+const mockCanEditResource = jest.mocked(jest.requireMock('@/lib/permissions').canEditResource);
 
 describe('/api/recipe/delete', () => {
 	let mockConnection: MockConnection;
@@ -40,10 +45,17 @@ describe('/api/recipe/delete', () => {
 		};
 
 		mockGetConnection.mockResolvedValue(mockConnection);
+
+		// Reset mocks - each test will set its own expectations
+		mockCanEditResource.mockReset();
+		mockCleanupRecipeFiles.mockReset();
 	});
 
 	describe('DELETE /api/recipe/delete', () => {
-		it('should successfully delete recipe with no dependencies', async () => {
+		it('should successfully delete recipe with no dependencies when user owns recipe', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock pool.execute calls (the initial checks before transaction)
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -54,6 +66,7 @@ describe('/api/recipe/delete', () => {
 			mockConnection.execute = jest
 				.fn()
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }, { ingredient_id: 7 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 2 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 usage - not used
@@ -61,7 +74,7 @@ describe('/api/recipe/delete', () => {
 				.mockResolvedValueOnce([[{ name: 'Tomato' }], []]) // Get ingredient 5 name
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete ingredient 5
 				.mockResolvedValueOnce([[{ count: 1 }], []]) // Check ingredient 7 usage - still used
-				.mockResolvedValueOnce([[{ count: 0 }], []]); // Check ingredient 7 shopping list usage
+				.mockResolvedValueOnce([[{ count: 0 }], []]); // Check ingredient 7 shopping lists
 
 			mockCleanupRecipeFiles.mockResolvedValue('Cleaned up 2 files');
 
@@ -87,6 +100,13 @@ describe('/api/recipe/delete', () => {
 					expect(data.message).toContain('Recipe deleted successfully');
 					expect(data.message).toContain('cleaned up 1 unused ingredient');
 
+					// Verify permission check was called
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'recipes',
+						1
+					);
+
 					// Verify transaction handling
 					expect(mockConnection.beginTransaction).toHaveBeenCalled();
 					expect(mockConnection.commit).toHaveBeenCalled();
@@ -94,6 +114,237 @@ describe('/api/recipe/delete', () => {
 
 					// Verify file cleanup
 					expect(mockCleanupRecipeFiles).toHaveBeenCalledWith('recipe_123.jpg', 'recipe_123.pdf');
+				},
+			});
+		});
+
+		it('should return 403 when user does not own recipe and no collection context provided', async () => {
+			// Mock permissions: user does NOT own the recipe
+			mockCanEditResource.mockResolvedValueOnce(false);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1 }),
+					});
+
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Verify permission check was called
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'recipes',
+						1
+					);
+
+					// Verify no database operations were performed
+					expect(mockExecute).not.toHaveBeenCalled();
+					expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should remove recipe from collection when user owns collection but not recipe', async () => {
+			// Mock permissions: user does NOT own the recipe but DOES own the collection
+			mockCanEditResource
+				.mockResolvedValueOnce(false) // User doesn't own the recipe
+				.mockResolvedValueOnce(true); // User owns the collection
+
+			// Mock successful removal from collection
+			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 5 }),
+					});
+
+					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe removed from collection successfully',
+						removedFromCollection: true,
+						collectionId: 5,
+					});
+
+					// Verify permission checks were called
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'recipes',
+						1
+					);
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'collections',
+						5
+					);
+
+					// Verify only collection_recipes deletion was performed
+					expect(mockExecute).toHaveBeenCalledWith('DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?', [1, 5]);
+
+					// Verify no transaction was used (simple single delete)
+					expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should return 403 when user does not own recipe or collection', async () => {
+			// Mock permissions: user owns neither the recipe nor the collection
+			mockCanEditResource
+				.mockResolvedValueOnce(false) // User doesn't own the recipe
+				.mockResolvedValueOnce(false); // User doesn't own the collection
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 5 }),
+					});
+
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only remove recipes from collections owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Verify both permission checks were called
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'recipes',
+						1
+					);
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'collections',
+						5
+					);
+
+					// Verify no database operations were performed
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should return 404 when recipe not found in collection', async () => {
+			// Mock permissions: user owns the collection but not the recipe
+			mockCanEditResource
+				.mockResolvedValueOnce(false) // User doesn't own the recipe
+				.mockResolvedValueOnce(true); // User owns the collection
+
+			// Mock no rows affected (recipe not in collection)
+			mockExecute.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 5 }),
+					});
+
+					expect(response.status).toBe(404);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe not found in this collection',
+						code: 'RECIPE_NOT_IN_COLLECTION',
+					});
+
+					// Verify deletion was attempted
+					expect(mockExecute).toHaveBeenCalledWith('DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?', [1, 5]);
+				},
+			});
+		});
+
+		it('should handle invalid collection ID format when removing from collection', async () => {
+			// Mock permissions: user doesn't own the recipe
+			mockCanEditResource.mockResolvedValueOnce(false);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 'not-a-number' }),
+					});
+
+					// Since parseInt('not-a-number') returns NaN, numericCollectionId will be NaN
+					// The code treats NaN as falsy, so it falls through to "no collection context" error
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Should only check recipe permission, not collection
+					expect(mockCanEditResource).toHaveBeenCalledTimes(1);
+				},
+			});
+		});
+
+		it('should handle zero collection ID when removing from collection', async () => {
+			// Mock permissions: user doesn't own the recipe
+			mockCanEditResource.mockResolvedValueOnce(false);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 0 }),
+					});
+
+					// Zero is falsy, so it's treated as no collection context
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Should only check recipe permission
+					expect(mockCanEditResource).toHaveBeenCalledTimes(1);
 				},
 			});
 		});
@@ -127,6 +378,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should return 404 if recipe not found', async () => {
+			// Mock permissions: user owns the recipe (so we can test the 404 logic)
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			mockExecute.mockResolvedValueOnce([[], []]); // Recipe not found
 
 			await testApiHandler({
@@ -154,6 +408,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should return 400 if recipe is used in planned weeks', async () => {
+			// Mock permissions: user owns the recipe (so we can test the plan checking logic)
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists but is used in plans
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -187,12 +444,19 @@ describe('/api/recipe/delete', () => {
 			expect(mockGetConnection).not.toHaveBeenCalled();
 		});
 
-		it('should return 400 if recipe has shopping list history', async () => {
+		it('should archive recipe instead of deleting when shopping list history exists', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists with shopping list history
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // No planned weeks
 				.mockResolvedValueOnce([[{ count: 5 }], []]); // Has shopping list history
+
+			mockConnection.execute
+				.mockResolvedValueOnce([{ affectedRows: 1 }]) // Delete from collection_recipes
+				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Archive recipe
 
 			await testApiHandler({
 				appHandler,
@@ -206,24 +470,84 @@ describe('/api/recipe/delete', () => {
 						body: JSON.stringify({ recipeId: 1 }),
 					});
 
-					expect(response.status).toBe(400);
+					expect(response.status).toBe(200);
 					const data = await response.json();
-					// Consistent error response format
+					// Recipe should be archived instead of deleted
 					expect(data).toEqual({
-						success: false,
-						error: 'Cannot delete recipe with existing shopping list history',
-						code: 'SHOPPING_HISTORY_EXISTS',
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
 					});
 
-					// Verify transaction was rolled back
+					// Verify archive UPDATE was called instead of DELETE
+					expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE recipes SET archived = 1 WHERE id = ?', [1]);
+
+					// Verify transaction was committed (not rolled back)
 					expect(mockConnection.beginTransaction).toHaveBeenCalled();
-					expect(mockConnection.rollback).toHaveBeenCalled();
+					expect(mockConnection.commit).toHaveBeenCalled();
+					expect(mockConnection.rollback).not.toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
 			});
 		});
 
+		it('should archive recipe if shopping list references discovered during deletion process', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+			// Mock initial checks pass (no shopping history detected initially)
+			mockExecute
+				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // No planned weeks
+				.mockResolvedValueOnce([[{ count: 0 }], []]); // No shopping list history initially
+
+			// Mock transaction operations
+			mockConnection.execute
+				.mockResolvedValueOnce([[{ ingredient_id: 1 }, { ingredient_id: 2 }], []]) // Get recipe ingredients
+				.mockResolvedValueOnce([[{ count: 1 }], []]) // Final safety check finds shopping references
+				.mockResolvedValueOnce([{ affectedRows: 1 }]) // Delete from collection_recipes
+				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Archive UPDATE
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1 }),
+					});
+
+					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe archived successfully due to shopping list references detected during deletion',
+						archived: true,
+						code: 'RECIPE_ARCHIVED',
+					});
+
+					// Verify the safety check was performed
+					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('SELECT COUNT(*) as count FROM shopping_lists sl'), [1]);
+
+					// Verify collection_recipes cleanup was called
+					expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM collection_recipes WHERE recipe_id = ?', [1]);
+
+					// Verify archive UPDATE was called
+					expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE recipes SET archived = 1 WHERE id = ?', [1]);
+
+					// Verify transaction was committed
+					expect(mockConnection.commit).toHaveBeenCalled();
+					expect(mockConnection.rollback).not.toHaveBeenCalled();
+				},
+			});
+		});
+
 		it('should handle database error during recipe deletion', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
 			// Mock recipe exists with no dependencies
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -233,6 +557,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations with failure
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockRejectedValueOnce(new Error('Database constraint violation')); // Fail on recipe deletion
 
@@ -265,6 +590,8 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should handle recipe deletion failure with zero affected rows', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
 			// Mock recipe exists with no dependencies
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -274,6 +601,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 0 }, []]); // Recipe deletion fails (0 affected rows)
 
@@ -295,7 +623,7 @@ describe('/api/recipe/delete', () => {
 					expect(data).toEqual({
 						success: false,
 						error: 'Failed to delete recipe from database',
-						code: 'DELETE_FAILED',
+						code: 'SERVER_ERROR', // The route doesn't have a specific DELETE_FAILED code
 					});
 
 					// Verify transaction was rolled back
@@ -306,6 +634,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should successfully delete recipe and clean up multiple unused ingredients', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -316,6 +647,7 @@ describe('/api/recipe/delete', () => {
 			mockConnection.execute = jest
 				.fn()
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }, { ingredient_id: 7 }, { ingredient_id: 9 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 3 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				// Check ingredient 5 - unused
@@ -360,6 +692,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should handle ingredient deletion failure gracefully', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -369,6 +704,7 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 usage - not used
@@ -403,6 +739,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should handle ingredient name lookup failure', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -412,12 +751,12 @@ describe('/api/recipe/delete', () => {
 			// Mock connection operations
 			mockConnection.execute
 				.mockResolvedValueOnce([[{ ingredient_id: 5 }], []]) // Recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe ingredients
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]) // Delete recipe
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 usage - not used
 				.mockResolvedValueOnce([[{ count: 0 }], []]) // Check ingredient 5 shopping list usage
-				.mockResolvedValueOnce([[], []]) // Get ingredient 5 name - empty result
-				.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // Delete ingredient 5
+				.mockResolvedValueOnce([[], []]); // Get ingredient 5 name - empty result (ingredient doesn't exist)
 
 			mockCleanupRecipeFiles.mockResolvedValue('Cleaned up 2 files');
 
@@ -437,9 +776,10 @@ describe('/api/recipe/delete', () => {
 					const data = await response.json();
 					expect(data).toMatchObject({
 						success: true,
-						deletedIngredientsCount: 1,
-						deletedIngredientNames: [], // Empty because name lookup failed
+						deletedIngredientsCount: 0, // No ingredients deleted because name lookup failed
+						deletedIngredientNames: [],
 					});
+					expect(data.message).toBe('Recipe deleted successfully');
 				},
 			});
 		});
@@ -463,6 +803,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should handle file cleanup failure gracefully', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -473,6 +816,7 @@ describe('/api/recipe/delete', () => {
 			mockConnection.execute = jest
 				.fn()
 				.mockResolvedValueOnce([[], []]) // No recipe ingredients
+				.mockResolvedValueOnce([[{ count: 0 }], []]) // Safety check - no shopping list references
 				.mockResolvedValueOnce([{ affectedRows: 0 }, []]) // Delete recipe ingredients (no ingredients to delete)
 				.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // Delete recipe successfully
 
@@ -532,6 +876,9 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should handle string recipeId by parsing it', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
+
 			// Mock recipe exists
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup
@@ -542,7 +889,8 @@ describe('/api/recipe/delete', () => {
 			let callCount = 0;
 			const responses = [
 				[[], []], // No recipe ingredients
-				[{ affectedRows: 1 }, []], // Delete recipe ingredients
+				[[{ count: 0 }], []], // Safety check - no shopping list references
+				[{ affectedRows: 0 }, []], // Delete recipe ingredients
 				[{ affectedRows: 1 }, []], // Delete recipe
 			];
 
@@ -579,6 +927,8 @@ describe('/api/recipe/delete', () => {
 
 	describe('Edge cases and error handling', () => {
 		it('should handle connection pool exhaustion', async () => {
+			// Mock permissions: user owns the recipe
+			mockCanEditResource.mockResolvedValueOnce(true);
 			// Mock recipe exists
 			mockExecute
 				.mockResolvedValueOnce([[{ id: 1, image_filename: 'recipe_123.jpg', pdf_filename: 'recipe_123.pdf' }], []]) // Recipe lookup

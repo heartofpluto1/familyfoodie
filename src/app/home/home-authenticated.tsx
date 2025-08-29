@@ -6,33 +6,41 @@ import { IntroShoppingCartIcon } from '@/app/components/Icons';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
+import NewUserWelcome from './components/NewUserWelcome';
 
 interface HomeAuthenticatedProps {
 	plans: Menu[];
 	stats: Stats;
+	householdName: string;
 }
 
-export default function HomeAuthenticated({ plans, stats }: HomeAuthenticatedProps) {
+export default function HomeAuthenticated({ plans, stats, householdName }: HomeAuthenticatedProps) {
 	return (
 		<div className="min-h-screen bg-background">
 			<div className="container mx-auto px-4 py-8">
-				<div className="mb-8">
-					<HeaderPage title="Welcome back!" subtitle="Last 6 months of meal planning." />
-				</div>
-
-				{plans.length === 0 && (
-					<div className="bg-surface border border-custom rounded-sm p-8 text-center">
-						<p className="text-secondary">No menus found. Start planning your first meal!</p>
-						<Link
-							href="/plan"
-							className="mt-4 bg-accent text-background px-4 py-2 rounded-md text-sm font-medium hover:bg-accent/90 transition-colors inline-block"
-						>
-							Create Your First Plan
-						</Link>
-					</div>
+				{plans.length < 2 ? (
+					<>
+						<NewUserWelcome householdName={householdName} />
+						{plans.length > 0 && (
+							<div className="mt-8 space-y-4">
+								<h3 className="text-xl text-foreground text-center">Your Planned Weeks</h3>
+								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+									{plans.map(({ year, week, meals }) => (
+										<MenuCard key={`${year}-${week}`} year={year} week={week} meals={meals} />
+									))}
+								</div>
+							</div>
+						)}
+					</>
+				) : (
+					<>
+						<div className="mb-8">
+							<HeaderPage title={`Welcome to the ${householdName} household`} subtitle="Last 6 months of meal planning." />
+						</div>
+					</>
 				)}
 
-				{stats && (
+				{plans.length >= 2 && stats && (
 					<div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
 						<div className="bg-surface border border-custom rounded-sm p-2 sm:p-4 text-center">
 							<p className="text-lg sm:text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
@@ -49,13 +57,26 @@ export default function HomeAuthenticated({ plans, stats }: HomeAuthenticatedPro
 					</div>
 				)}
 
-				{plans.length > 0 && (
+				{plans.length >= 2 && (
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
 						{plans.map(({ year, week, meals }) => (
 							<MenuCard key={`${year}-${week}`} year={year} week={week} meals={meals} />
 						))}
 					</div>
 				)}
+
+				{/* Bottom navigation links */}
+				<div className="flex justify-center gap-8 py-8">
+					<Link
+						href="/ingredients"
+						className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm"
+					>
+						Ingredients
+					</Link>
+					<Link href="/insights" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm">
+						Insights
+					</Link>
+				</div>
 			</div>
 		</div>
 	);
@@ -112,8 +133,8 @@ function MenuCard({ year, week, meals }: Menu) {
 
 			<div className="">
 				<div className="">
-					{meals.map(meal => (
-						<Meal key={meal.id} meal={meal} isLast={meals[meals.length - 1].id === meal.id} />
+					{meals.map((meal, index) => (
+						<Meal key={`${meal.id}-${index}`} meal={meal} isLast={index === meals.length - 1} />
 					))}
 				</div>
 			</div>
