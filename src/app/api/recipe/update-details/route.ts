@@ -25,14 +25,11 @@ interface DatabaseError extends Error {
 }
 
 async function updateDetailsHandler(request: AuthenticatedRequest) {
-	console.log('[UPDATE-DETAILS] Request received, household_id:', request.household_id);
-
 	let body: UpdateRecipeDetailsRequest;
 
 	// Parse and validate JSON
 	try {
 		body = await request.json();
-		console.log('[UPDATE-DETAILS] Request body:', body);
 	} catch (error) {
 		console.error('[UPDATE-DETAILS] Failed to parse JSON:', error);
 		return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
@@ -116,27 +113,14 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 	const safeSecondaryTypeId = secondaryTypeId === undefined ? null : secondaryTypeId;
 
 	try {
-		console.log('[UPDATE-DETAILS] Starting update for recipe:', {
-			recipeId,
-			currentCollectionId,
-			newCollectionId,
-			householdId: request.household_id,
-			isMoving: currentCollectionId !== newCollectionId,
-		});
-
 		// Validate that the recipe belongs to the current collection and household has access
-		console.log('[UPDATE-DETAILS] Validating recipe in current collection...');
 		const isRecipeInCollection = await validateRecipeInCollection(recipeId, currentCollectionId, request.household_id);
 		if (!isRecipeInCollection) {
-			console.log('[UPDATE-DETAILS] Recipe not found in current collection');
 			return NextResponse.json({ error: 'Recipe not found in current collection' }, { status: 404 });
 		}
-		console.log('[UPDATE-DETAILS] Recipe validation passed');
 
 		// Check if user owns the recipe
-		console.log('[UPDATE-DETAILS] Checking edit permissions...');
 		const canEdit = await canEditResource(request.household_id, 'recipes', recipeId);
-		console.log('[UPDATE-DETAILS] Can edit:', canEdit);
 
 		let actualRecipeId = recipeId;
 		let actualCollectionId = currentCollectionId;
@@ -147,29 +131,16 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 
 		// If user doesn't own the recipe, trigger cascade copy with context
 		if (!canEdit) {
-			console.log('[UPDATE-DETAILS] User does not own recipe, triggering copy-on-write...');
 			const cascadeResult = await cascadeCopyWithContext(request.household_id, currentCollectionId, recipeId);
-			console.log('[UPDATE-DETAILS] Cascade copy result:', cascadeResult);
 			actualRecipeId = cascadeResult.newRecipeId;
 			actualCollectionId = cascadeResult.newCollectionId;
 			actionsTaken = cascadeResult.actionsTaken;
 			wasCopied = actionsTaken.includes('recipe_copied') || actionsTaken.includes('collection_copied');
 			newRecipeSlug = cascadeResult.newRecipeSlug;
 			newCollectionSlug = cascadeResult.newCollectionSlug;
-			console.log('[UPDATE-DETAILS] Will update copied recipe:', { actualRecipeId, actualCollectionId, wasCopied });
 		}
 
 		// Update the recipe details (using the potentially new recipe ID after copy-on-write)
-		console.log('[UPDATE-DETAILS] Executing UPDATE query with params:', {
-			name: trimmedName,
-			description: safeDescription,
-			prepTime: safePrepTime,
-			cookTime: safeCookTime,
-			seasonId: safeSeasonId,
-			primaryTypeId: safePrimaryTypeId,
-			secondaryTypeId: safeSecondaryTypeId,
-			recipeId: actualRecipeId,
-		});
 
 		const [result] = await pool.execute<ResultSetHeader>(
 			`UPDATE recipes 
@@ -178,10 +149,7 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, actualRecipeId]
 		);
 
-		console.log('[UPDATE-DETAILS] Update result:', { affectedRows: result.affectedRows });
-
 		if (result.affectedRows === 0) {
-			console.log('[UPDATE-DETAILS] No rows affected - recipe not found');
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
 		}
 
@@ -191,14 +159,10 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 		let movedToCollectionSlug: string | undefined;
 
 		if (isMovingCollections) {
-			console.log('[UPDATE-DETAILS] User requested move from collection', currentCollectionId, 'to', newCollectionId);
-
 			// Only attempt move if user has access to the target collection
 			const canAccessNewCollection = await canEditResource(request.household_id, 'collections', newCollectionId);
 
 			if (canAccessNewCollection) {
-				console.log('[UPDATE-DETAILS] Moving recipe to new collection...');
-
 				// Remove from current collection (use actualCollectionId in case of copy-on-write)
 				// actualCollectionId is where the recipe actually is after potential copy-on-write
 				await pool.execute(`DELETE FROM collection_recipes WHERE collection_id = ? AND recipe_id = ?`, [actualCollectionId, actualRecipeId]);
@@ -206,7 +170,6 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 				// Add to new collection (preserve display order as 0 for new additions)
 				await pool.execute(`INSERT INTO collection_recipes (collection_id, recipe_id, display_order) VALUES (?, ?, 0)`, [newCollectionId, actualRecipeId]);
 
-				console.log('[UPDATE-DETAILS] Recipe moved successfully to collection:', newCollectionId);
 				recipeMoved = true;
 
 				// Get the slug of the new collection
@@ -215,11 +178,7 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 					unknown,
 				];
 				movedToCollectionSlug = collectionRows[0]?.url_slug;
-			} else {
-				console.log('[UPDATE-DETAILS] Cannot move recipe - household does not have access to target collection, skipping move');
 			}
-		} else {
-			console.log('[UPDATE-DETAILS] No collection move requested (current === new)');
 		}
 
 		// Build appropriate message based on what happened
@@ -254,7 +213,6 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 			secondaryTypeId: safeSecondaryTypeId,
 		};
 
-		console.log('[UPDATE-DETAILS] Returning success response:', response);
 		return NextResponse.json(response);
 	} catch (error: unknown) {
 		console.error('[UPDATE-DETAILS] Error occurred:', error);
@@ -263,7 +221,6 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 		// Handle foreign key constraint errors
 		const dbError = error as DatabaseError;
 		if (dbError.code === 'ER_NO_REFERENCED_ROW_2' || dbError.errno === 1452) {
-			console.log('[UPDATE-DETAILS] Foreign key constraint error');
 			return NextResponse.json({ error: 'Referenced season, type, or collection does not exist' }, { status: 400 });
 		}
 
