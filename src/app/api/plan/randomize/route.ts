@@ -49,6 +49,12 @@ async function handler(request: AuthenticatedRequest) {
 		const count = countParam ? parseInt(countParam) : 3; // Default to 3 if not specified
 
 		const availableRecipes = await getRecipesForRandomization(request.household_id);
+
+		// Handle null/undefined from database
+		if (!availableRecipes) {
+			throw new Error('Failed to fetch recipes from database');
+		}
+
 		const randomizedRecipes = selectRandomRecipes(availableRecipes, count);
 
 		return NextResponse.json({
