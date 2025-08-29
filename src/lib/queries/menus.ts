@@ -268,7 +268,7 @@ export async function getCurrentWeekRecipes(household_id: number): Promise<Recip
 	const { week, year } = getCurrentWeek();
 
 	const query = `
-		SELECT 
+		SELECT DISTINCT
 			r.id,
 			r.name,
 			r.image_filename,
@@ -277,11 +277,13 @@ export async function getCurrentWeekRecipes(household_id: number): Promise<Recip
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			c.url_slug as collection_url_slug
+			(SELECT c.url_slug 
+			 FROM collection_recipes cr 
+			 INNER JOIN collections c ON cr.collection_id = c.id 
+			 WHERE cr.recipe_id = r.id 
+			 LIMIT 1) as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
-		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
-		INNER JOIN collections c ON cr.collection_id = c.id
 		WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
 		ORDER BY rw.id ASC
 	`;
@@ -297,7 +299,7 @@ export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]
 	const { week, year } = getNextWeek();
 
 	const query = `
-		SELECT 
+		SELECT DISTINCT
 			r.id,
 			r.name,
 			r.image_filename,
@@ -306,11 +308,13 @@ export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			c.url_slug as collection_url_slug
+			(SELECT c.url_slug 
+			 FROM collection_recipes cr 
+			 INNER JOIN collections c ON cr.collection_id = c.id 
+			 WHERE cr.recipe_id = r.id 
+			 LIMIT 1) as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
-		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
-		INNER JOIN collections c ON cr.collection_id = c.id
 		WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
 		ORDER BY rw.id ASC
 	`;
@@ -769,7 +773,7 @@ export async function getAllPlannedWeeks(household_id: number): Promise<Array<{ 
 	const weeksWithRecipes = await Promise.all(
 		plannedWeeks.map(async ({ week, year }) => {
 			const recipesQuery = `
-				SELECT 
+				SELECT DISTINCT
 					r.id,
 					r.name,
 					r.image_filename,
@@ -778,11 +782,13 @@ export async function getAllPlannedWeeks(household_id: number): Promise<Array<{ 
 					r.cookTime,
 					r.description,
 					r.url_slug,
-					c.url_slug as collection_url_slug
+					(SELECT c.url_slug 
+					 FROM collection_recipes cr 
+					 INNER JOIN collections c ON cr.collection_id = c.id 
+					 WHERE cr.recipe_id = r.id 
+					 LIMIT 1) as collection_url_slug
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id
-				INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
-				INNER JOIN collections c ON cr.collection_id = c.id
 				WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
 				ORDER BY rw.id ASC
 			`;
