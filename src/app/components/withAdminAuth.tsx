@@ -18,8 +18,8 @@ export function withAdminAuth<P extends PageProps = PageProps>(WrappedComponent:
 			redirect('login');
 		}
 
-		// Session is already a SessionUser with is_admin field
-		if (!session.is_admin) {
+		// Check if user is admin
+		if (!session.user.is_admin) {
 			redirect('/');
 		}
 
