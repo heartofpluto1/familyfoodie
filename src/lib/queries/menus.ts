@@ -28,7 +28,7 @@ export async function getRecipeWeeks(household_id: number, months: number = 6): 
 	const currentWeek = getWeekNumber(new Date());
 
 	const query = `
-      SELECT 
+      SELECT DISTINCT
         plans.id,
         plans.week,
         plans.year,
@@ -37,16 +37,18 @@ export async function getRecipeWeeks(household_id: number, months: number = 6): 
         recipes.pdf_filename,
         recipes.name as recipe_name,
         recipes.url_slug,
-        c.url_slug as collection_url_slug
+        (SELECT c.url_slug 
+         FROM collection_recipes cr 
+         INNER JOIN collections c ON cr.collection_id = c.id 
+         WHERE cr.recipe_id = recipes.id 
+         LIMIT 1) as collection_url_slug
       FROM plans
       JOIN recipes ON plans.recipe_id = recipes.id
-      INNER JOIN collection_recipes cr ON recipes.id = cr.recipe_id
-      INNER JOIN collections c ON cr.collection_id = c.id
       WHERE 
         plans.household_id = ? AND
         ((plans.year = ? AND plans.week <= ?) OR
         (plans.year = ? AND plans.week >= ?))
-      ORDER BY plans.year DESC, plans.week DESC
+      ORDER BY plans.year DESC, plans.week DESC, plans.id DESC
     `;
 
 	const [rows] = await pool.execute(query, [household_id, currentYear, currentWeek, monthsAgoYear, monthsAgoWeek]);
