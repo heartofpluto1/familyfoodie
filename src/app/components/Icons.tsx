@@ -272,3 +272,35 @@ export const CancelIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 		<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 	</svg>
 );
+
+export const CursorClickIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth={2}
+			d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+		/>
+	</svg>
+);
+
+export const CheckCircleIcon = ({ className = 'w-6 h-6' }: IconProps) => (
+	<svg className={className} fill="currentColor" viewBox="0 0 24 24">
+		<path
+			fillRule="evenodd"
+			d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+			clipRule="evenodd"
+		/>
+	</svg>
+);
+
+export const CopyIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<path
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth={2}
+			d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+		/>
+	</svg>
+);
