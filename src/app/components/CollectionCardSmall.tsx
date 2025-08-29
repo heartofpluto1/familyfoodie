@@ -62,7 +62,7 @@ const CollectionCardSmall = ({
 			{/* Main collection card - positioned in front */}
 			<div className="relative w-full h-[205px] z-10">
 				<article
-					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black text-black"
+					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-white dark:bg-black text-black"
 					style={{
 						boxShadow: '1px 1px 2.5px rgba(0, 0, 0, 0.22)',
 					}}
@@ -117,7 +117,7 @@ const CollectionCardSmall = ({
 						{/* Subscribe/Unsubscribe bookmark button (smaller) */}
 						{onToggleSubscription && (
 							<button
-								className="absolute top-2 right-2 w-6 h-6 rounded-full btn-default flex items-center justify-center disabled:opacity-50"
+								className="absolute top-2 right-2 w-6 h-6 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center disabled:opacity-50 transition-all hover:scale-110"
 								onClick={e => {
 									e.preventDefault();
 									onToggleSubscription();
@@ -126,11 +126,11 @@ const CollectionCardSmall = ({
 								title={isLoading ? 'Loading...' : subscribed ? 'Unsubscribe' : 'Subscribe'}
 							>
 								{isLoading ? (
-									<div className="w-3 h-3 border-2 border-gray-300 border-t-background rounded-full animate-spin" />
+									<div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
 								) : subscribed ? (
-									<BookmarkIcon className="w-3 h-3 text-background" />
+									<BookmarkIcon className="w-3 h-3 text-white" />
 								) : (
-									<BookmarkOutlineIcon className="w-3 h-3 text-background" />
+									<BookmarkOutlineIcon className="w-3 h-3 text-white" />
 								)}
 							</button>
 						)}

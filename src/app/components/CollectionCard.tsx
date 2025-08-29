@@ -53,7 +53,7 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 			{/* Main collection card - positioned in front */}
 			<div className="relative w-full h-[410px] z-10">
 				<article
-					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-black text-black"
+					className="relative rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 w-full h-full flex flex-col bg-white dark:bg-black text-black"
 					style={{
 						boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.22)',
 					}}
@@ -109,7 +109,7 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 						{/* Subscribe/Unsubscribe bookmark button */}
 						{onToggleSubscription && (
 							<button
-								className="absolute top-3 right-3 w-8 h-8 rounded-full btn-default flex items-center justify-center disabled:opacity-50"
+								className="absolute top-3 right-3 w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center disabled:opacity-50 transition-all hover:scale-110"
 								onClick={e => {
 									e.preventDefault();
 									onToggleSubscription();
@@ -118,11 +118,11 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 								title={isLoading ? 'Loading...' : subscribed ? 'Unsubscribe' : 'Subscribe'}
 							>
 								{isLoading ? (
-									<div className="w-4 h-4 border-2 border-gray-300 border-t-background rounded-full animate-spin" />
+									<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
 								) : subscribed ? (
-									<BookmarkIcon className="w-4 h-4 text-background" />
+									<BookmarkIcon className="w-4 h-4 text-white" />
 								) : (
-									<BookmarkOutlineIcon className="w-4 h-4 text-background" />
+									<BookmarkOutlineIcon className="w-4 h-4 text-white" />
 								)}
 							</button>
 						)}
