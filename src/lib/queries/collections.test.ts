@@ -115,7 +115,7 @@ describe('Collections Queries with Household Context', () => {
 			const result = await getPublicCollections(1);
 
 			expect(result).toEqual(mockCollections);
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE c.public = 1'), [1]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE c.public = 1'), [1, 1, 1, 1]);
 		});
 
 		it('should filter only public collections', async () => {
@@ -123,7 +123,7 @@ describe('Collections Queries with Household Context', () => {
 
 			await getPublicCollections(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE c.public = 1'), [1]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE c.public = 1'), [1, 1, 1, 1]);
 		});
 	});
 

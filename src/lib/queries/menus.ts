@@ -480,19 +480,21 @@ export async function getRecipesForRandomization(household_id: number): Promise<
 		FROM recipes r
 		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 		INNER JOIN collections c ON cr.collection_id = c.id
+		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		WHERE r.archived = 0 
-		  AND c.household_id = ?
+		  AND (c.household_id = ? OR cs.household_id IS NOT NULL)
 		  AND r.id NOT IN (
 			SELECT DISTINCT recipe_id 
 			FROM plans 
-			WHERE household_id = ? AND ((year = ? AND week >= ?) OR (year > ? AND year <= ?))		  )
+			WHERE household_id = ? AND ((year = ? AND week >= ?) OR (year > ? AND year <= ?))
+		  )
 		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, c.url_slug
 		ORDER BY r.name ASC
 	`;
 
-	const [rows] = await pool.execute(query, [household_id, household_id, sixMonthsAgoYear, sixMonthsAgoWeek, sixMonthsAgoYear, currentYear]);
+	const [rows] = await pool.execute(query, [household_id, household_id, household_id, sixMonthsAgoYear, sixMonthsAgoWeek, sixMonthsAgoYear, currentYear]);
 
 	const recipes = rows as (Recipe & { ingredients: string })[];
 	return recipes.map(row => ({
@@ -958,7 +960,6 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 		SELECT r.*,
 		       CASE WHEN r.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
 		       r.household_id = ? as can_edit,
-		       GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections,
 		       cr.collection_id,
 		       c.title as collection_title,
 		       c.url_slug as collection_url_slug,
@@ -1063,13 +1064,39 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
  * Get ingredients accessible to household with enhanced discovery access (Agent 2)
  * Household + collection_id=1 (Spencer's essentials) + subscribed collections
  */
-export async function getMyIngredients(householdId: number): Promise<any[]> {
+export async function getMyIngredients(householdId: number): Promise<
+	{
+		id: number;
+		name: string;
+		fresh: boolean;
+		price: number | null;
+		stockcode: number | null;
+		supermarketCategory: string | null;
+		pantryCategory: string;
+		pantryCategory_name: string;
+		pantryCategory_id: number;
+		recipeCount: number;
+		access_type: string;
+		can_edit: boolean;
+		household_id: number;
+	}[]
+> {
 	const query = `
-		SELECT DISTINCT i.*,
+		SELECT DISTINCT i.id,
+		       i.name,
+		       i.fresh,
+		       i.cost as price,
+		       i.stockcode,
+		       i.household_id,
+		       i.pantryCategory_id,
+		       sc.name as supermarketCategory,
+		       pc.name as pantryCategory,
 		       pc.name as pantryCategory_name,
+		       COUNT(DISTINCT ri.recipe_id) as recipeCount,
 		       CASE WHEN i.household_id = ? THEN 'owned' ELSE 'accessible' END as access_type,
 		       i.household_id = ? as can_edit
 		FROM ingredients i
+		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
 		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
 		LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
 		LEFT JOIN recipes r ON ri.recipe_id = r.id
@@ -1087,9 +1114,24 @@ export async function getMyIngredients(householdId: number): Promise<any[]> {
 		  AND i2.parent_id = i.id
 		  AND i.household_id != ?
 		)
-		ORDER BY access_type ASC, i.name ASC  -- Prioritize owned ingredients
+		GROUP BY i.id, i.name, i.fresh, i.cost, i.stockcode, i.household_id, i.pantryCategory_id, sc.name, pc.name
+		ORDER BY access_type ASC, sc.id, i.name ASC  -- Prioritize owned ingredients, then by supermarket category
 	`;
 
 	const [rows] = await pool.execute(query, [householdId, householdId, householdId, householdId, householdId, householdId]);
-	return rows as any[];
+	return rows as {
+		id: number;
+		name: string;
+		fresh: boolean;
+		price: number | null;
+		stockcode: number | null;
+		supermarketCategory: string | null;
+		pantryCategory: string;
+		pantryCategory_name: string;
+		pantryCategory_id: number;
+		recipeCount: number;
+		access_type: string;
+		can_edit: boolean;
+		household_id: number;
+	}[];
 }

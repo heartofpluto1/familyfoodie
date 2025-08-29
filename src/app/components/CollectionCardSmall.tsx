@@ -1,14 +1,28 @@
 'use client';
 
+import { BookmarkIcon, BookmarkOutlineIcon } from './Icons';
+
 interface CollectionCardSmallProps {
 	coverImage: string;
 	darkCoverImage?: string;
 	title?: string;
 	subtitle?: string;
 	subscribed: boolean;
+	recipeCount?: number;
+	onToggleSubscription?: () => void;
+	isLoading?: boolean;
 }
 
-const CollectionCardSmall = ({ coverImage, darkCoverImage, subscribed, title, subtitle }: CollectionCardSmallProps) => {
+const CollectionCardSmall = ({
+	coverImage,
+	darkCoverImage,
+	subscribed,
+	title,
+	subtitle,
+	recipeCount,
+	onToggleSubscription,
+	isLoading,
+}: CollectionCardSmallProps) => {
 	// Peek card configurations (scaled down by half)
 	const peekCards = [
 		{ height: '190px', top: '5px', rotation: 3.6 },
@@ -84,16 +98,40 @@ const CollectionCardSmall = ({ coverImage, darkCoverImage, subscribed, title, su
 							</p>
 						</div>
 
-						{/* Subscribe button (smaller) */}
-						{!subscribed && (
-							<button
-								className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-3 py-1 rounded-sm text-xs font-semibold hover:bg-blue-700 transition-colors"
-								onClick={e => {
-									e.preventDefault();
-									console.log(`Subscribed to: ${title}`);
+						{/* Recipe count badge - triangle pointing to top-left */}
+						{recipeCount !== undefined && (
+							<div
+								className="absolute bottom-0 right-0 bg-white bg-opacity-90 text-black dark:bg-black dark:bg-opacity-60 dark:text-white flex items-end justify-end text-xs font-medium"
+								style={{
+									width: '48px',
+									height: '48px',
+									clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)',
+									paddingBottom: '4px',
+									paddingRight: '4px',
 								}}
 							>
-								Subscribe
+								{recipeCount}
+							</div>
+						)}
+
+						{/* Subscribe/Unsubscribe bookmark button (smaller) */}
+						{onToggleSubscription && (
+							<button
+								className="absolute top-2 right-2 w-6 h-6 rounded-full btn-default flex items-center justify-center disabled:opacity-50"
+								onClick={e => {
+									e.preventDefault();
+									onToggleSubscription();
+								}}
+								disabled={isLoading}
+								title={isLoading ? 'Loading...' : subscribed ? 'Unsubscribe' : 'Subscribe'}
+							>
+								{isLoading ? (
+									<div className="w-3 h-3 border-2 border-gray-300 border-t-background rounded-full animate-spin" />
+								) : subscribed ? (
+									<BookmarkIcon className="w-3 h-3 text-background" />
+								) : (
+									<BookmarkOutlineIcon className="w-3 h-3 text-background" />
+								)}
 							</button>
 						)}
 					</div>

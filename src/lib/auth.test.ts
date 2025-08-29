@@ -57,8 +57,8 @@ describe('Authentication with Household Context', () => {
 				email: 'test@example.com',
 				first_name: 'Test',
 				last_name: 'User',
-				is_active: 1,
-				is_admin: 0,
+				is_active: true,
+				is_admin: false,
 				household_id: 1,
 				household_name: 'Spencer',
 			});

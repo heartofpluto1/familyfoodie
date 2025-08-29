@@ -22,38 +22,6 @@ export async function getIngredients(household_id: number) {
 	return rows as Ingredient[];
 }
 
-export async function getAllIngredients() {
-	const [rows] = await pool.execute(`
-		SELECT
-			i.id,
-			i.name,
-			i.fresh,
-			i.cost as price,
-			i.stockcode,
-			sc.name as supermarketCategory,
-			pc.name as pantryCategory,
-			COUNT(DISTINCT ri.recipe_id) as recipeCount
-		FROM ingredients i
-		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
-		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
-		LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
-		LEFT JOIN recipes r ON ri.recipe_id = r.id
-		WHERE i.public = 1
-		GROUP BY i.id, i.name, i.fresh, i.cost, i.stockcode, sc.name, pc.name
-		ORDER BY sc.id, i.name;
-	`);
-	return rows as {
-		id: number;
-		name: string;
-		fresh: boolean;
-		price: number | null;
-		stockcode: number | null;
-		supermarketCategory: string | null;
-		pantryCategory: string | null;
-		recipeCount: number;
-	}[];
-}
-
 export async function getSupermarketCategories() {
 	const [rows] = await pool.execute(`
 		SELECT id, name 

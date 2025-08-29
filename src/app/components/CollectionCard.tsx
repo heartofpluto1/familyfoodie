@@ -1,5 +1,7 @@
 'use client';
 
+import { BookmarkIcon, BookmarkOutlineIcon } from './Icons';
+
 interface CollectionCardProps {
 	coverImage: string;
 	darkCoverImage?: string;
@@ -7,9 +9,11 @@ interface CollectionCardProps {
 	subtitle?: string;
 	subscribed: boolean;
 	recipeCount?: number;
+	onToggleSubscription?: () => void;
+	isLoading?: boolean;
 }
 
-const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitle, recipeCount }: CollectionCardProps) => {
+const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitle, recipeCount, onToggleSubscription, isLoading }: CollectionCardProps) => {
 	// Peek card configurations
 	const peekCards = [
 		{ height: '380px', top: '10px', rotation: 3.6 },
@@ -102,16 +106,24 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 							</div>
 						)}
 
-						{/* Subscribe button */}
-						{!subscribed && (
+						{/* Subscribe/Unsubscribe bookmark button */}
+						{onToggleSubscription && (
 							<button
-								className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-sm text-sm font-semibold hover:bg-blue-700 transition-colors"
+								className="absolute top-3 right-3 w-8 h-8 rounded-full btn-default flex items-center justify-center disabled:opacity-50"
 								onClick={e => {
 									e.preventDefault();
-									console.log(`Subscribed to: ${title}`);
+									onToggleSubscription();
 								}}
+								disabled={isLoading}
+								title={isLoading ? 'Loading...' : subscribed ? 'Unsubscribe' : 'Subscribe'}
 							>
-								Subscribe
+								{isLoading ? (
+									<div className="w-4 h-4 border-2 border-gray-300 border-t-background rounded-full animate-spin" />
+								) : subscribed ? (
+									<BookmarkIcon className="w-4 h-4 text-background" />
+								) : (
+									<BookmarkOutlineIcon className="w-4 h-4 text-background" />
+								)}
 							</button>
 						)}
 					</div>

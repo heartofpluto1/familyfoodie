@@ -270,7 +270,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getMyIngredients(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY access_type ASC, i.name ASC'), [1, 1, 1, 1, 1, 1]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY access_type ASC, sc.id, i.name ASC'), [1, 1, 1, 1, 1, 1]);
 		});
 
 		it('should exclude household copies of other ingredients', async () => {

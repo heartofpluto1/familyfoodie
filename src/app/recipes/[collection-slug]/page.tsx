@@ -2,8 +2,9 @@ import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import CollectionClient from './collection-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
-import { getCollectionsForDisplay, getCollectionById } from '@/lib/queries/collections';
+import { getCollectionsForDisplay, getCollectionByIdWithHousehold } from '@/lib/queries/collections';
 import { parseSlugPath } from '@/lib/utils/urlHelpers';
+import { getSession } from '@/lib/session';
 import withAuth from '@/app/components/withAuth';
 
 export async function generateMetadata({ params }: { params: Promise<{ 'collection-slug': string }> }): Promise<Metadata> {
@@ -17,7 +18,16 @@ export async function generateMetadata({ params }: { params: Promise<{ 'collecti
 		};
 	}
 
-	const collection = await getCollectionById(parsed.id);
+	// Get session for household context
+	const session = await getSession();
+	if (!session || !session.household_id) {
+		return {
+			title: 'Collection Not Found',
+			description: 'The requested collection could not be found',
+		};
+	}
+
+	const collection = await getCollectionByIdWithHousehold(parsed.id, session.household_id);
 	if (!collection) {
 		return {
 			title: 'Collection Not Found',
@@ -44,13 +54,19 @@ async function RecipesPage({ params }: RecipesPageProps) {
 		redirect('/recipes');
 	}
 
+	// Get session for household context
+	const session = await getSession();
+	if (!session || !session.household_id) {
+		redirect('/login');
+	}
+
 	const [recipes, collections, selectedCollection] = await Promise.all([
 		getAllRecipesWithDetails(parsed.id),
 		getCollectionsForDisplay(),
-		getCollectionById(parsed.id),
+		getCollectionByIdWithHousehold(parsed.id, session.household_id),
 	]);
 
-	// If collection not found, show 404
+	// If collection not found or user doesn't have access, show 404
 	if (!selectedCollection) {
 		notFound();
 	}

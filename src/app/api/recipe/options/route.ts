@@ -61,7 +61,7 @@ async function getHandler(request: NextRequest & { household_id?: number }) {
 			id: ingredient.id,
 			name: ingredient.name,
 			pantryCategory_id: ingredient.pantryCategory_id,
-			pantryCategory_name: ingredient.pantryCategory_name || null,
+			pantryCategory_name: ingredient.pantryCategory_name,
 			household_id: ingredient.household_id,
 		}));
 

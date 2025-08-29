@@ -1,7 +1,7 @@
 import HeaderPage from '@/app/components/HeaderPage';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Stats, Meal, Menu, Recipe } from '@/types/menus';
+import type { Stats, Meal, Menu } from '@/types/menus';
 import { IntroShoppingCartIcon } from '@/app/components/Icons';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
@@ -12,15 +12,14 @@ interface HomeAuthenticatedProps {
 	plans: Menu[];
 	stats: Stats;
 	householdName: string;
-	sampleRecipes?: Recipe[];
 }
 
-export default function HomeAuthenticated({ plans, stats, householdName, sampleRecipes }: HomeAuthenticatedProps) {
+export default function HomeAuthenticated({ plans, stats, householdName }: HomeAuthenticatedProps) {
 	return (
 		<div className="min-h-screen bg-background">
 			<div className="container mx-auto px-4 py-8">
 				{plans.length < 2 ? (
-					<NewUserWelcome householdName={householdName} sampleRecipes={sampleRecipes} />
+					<NewUserWelcome householdName={householdName} plans={plans} />
 				) : (
 					<>
 						<div className="mb-8">
@@ -53,6 +52,19 @@ export default function HomeAuthenticated({ plans, stats, householdName, sampleR
 						))}
 					</div>
 				)}
+
+				{/* Bottom navigation links */}
+				<div className="flex justify-center gap-8 py-8">
+					<Link
+						href="/ingredients"
+						className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm"
+					>
+						Ingredients
+					</Link>
+					<Link href="/insights" className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm">
+						Insights
+					</Link>
+				</div>
 			</div>
 		</div>
 	);

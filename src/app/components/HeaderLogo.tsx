@@ -76,18 +76,6 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 									>
 										Recipes
 									</Link>
-									<Link
-										href="/ingredients"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden md:inline"
-									>
-										Ingredients
-									</Link>
-									<Link
-										href="/insights"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
-									>
-										Insights
-									</Link>
 									{user?.is_admin && (
 										<Link
 											href="/admin"
@@ -122,18 +110,6 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
 										>
 											Recipes
-										</Link>
-										<Link
-											href="/ingredients"
-											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
-										>
-											Ingredients
-										</Link>
-										<Link
-											href="/insights"
-											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
-										>
-											Insights
 										</Link>
 										{user?.is_admin && (
 											<Link href="/admin" className="block px-3 py-2 text-sm transition-colors">

@@ -22,8 +22,20 @@ interface TopRecipe extends RowDataPacket {
 	times_planned: number;
 }
 
+// Get count of weeks with plans for a household
+export async function getPlannedWeeksCount(householdId: number): Promise<number> {
+	const [rows] = await pool.execute<RowDataPacket[]>(
+		`SELECT COUNT(DISTINCT CONCAT(year, '-', week)) as weeks_count
+		FROM plans
+		WHERE household_id = ?`,
+		[householdId]
+	);
+
+	return rows[0]?.weeks_count || 0;
+}
+
 // Get average weekly spending over the last year
-export async function getAverageWeeklySpending() {
+export async function getAverageWeeklySpending(householdId: number) {
 	const oneYearAgo = new Date();
 	oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 	const yearAgo = oneYearAgo.getFullYear();
@@ -35,12 +47,12 @@ export async function getAverageWeeklySpending() {
 			year, 
 			SUM(cost) as total_cost
 		FROM shopping_lists
-		WHERE 1=1
+		WHERE household_id = ?
 			AND ((year > ?) OR (year = ? AND week >= ?))
 			AND cost IS NOT NULL
 		GROUP BY year, week
 		ORDER BY year DESC, week DESC`,
-		[yearAgo, yearAgo, weekAgo]
+		[householdId, yearAgo, yearAgo, weekAgo]
 	);
 
 	if (rows.length === 0) return { average: 0, weeks: 0 };
@@ -56,7 +68,7 @@ export async function getAverageWeeklySpending() {
 }
 
 // Get top 10 fruits and vegetables from last 12 months (rolling)
-export async function getTopFruitsAndVegetables() {
+export async function getTopFruitsAndVegetables(householdId: number) {
 	const twelveMonthsAgo = new Date();
 	twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
@@ -72,7 +84,7 @@ export async function getTopFruitsAndVegetables() {
 		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
-		WHERE 1=1
+		WHERE sl.household_id = ?
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
 			AND (sc.name IN ('fresh-fruitvege') 
@@ -81,14 +93,14 @@ export async function getTopFruitsAndVegetables() {
 		GROUP BY COALESCE(i.name, sl.name)
 		ORDER BY frequency DESC
 		LIMIT 10`,
-		[cutoffYear, cutoffYear, cutoffWeek]
+		[householdId, cutoffYear, cutoffYear, cutoffWeek]
 	);
 
 	return rows;
 }
 
 // Get top 10 herbs from last 12 months (rolling)
-export async function getTopHerbs() {
+export async function getTopHerbs(householdId: number) {
 	const twelveMonthsAgo = new Date();
 	twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
@@ -104,7 +116,7 @@ export async function getTopHerbs() {
 		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
-		WHERE 1=1
+		WHERE sl.household_id = ?
 			AND ((sl.year > ?) OR (sl.year = ? AND sl.week >= ?))
 			AND sl.fresh = 1
 			AND (sc.name IN ('fresh-herbs') 
@@ -112,14 +124,14 @@ export async function getTopHerbs() {
 		GROUP BY COALESCE(i.name, sl.name)
 		ORDER BY frequency DESC
 		LIMIT 10`,
-		[cutoffYear, cutoffYear, cutoffWeek]
+		[householdId, cutoffYear, cutoffYear, cutoffWeek]
 	);
 
 	return rows;
 }
 
 // Get top 10 recipes by frequency in recipe weeks (last 12 months rolling)
-export async function getTopRecipes() {
+export async function getTopRecipes(householdId: number) {
 	const twelveMonthsAgo = new Date();
 	twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
@@ -140,30 +152,31 @@ export async function getTopRecipes() {
 		INNER JOIN recipes r ON rw.recipe_id = r.id
 		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 		INNER JOIN collections c ON cr.collection_id = c.id
-		WHERE 1=1
+		WHERE rw.household_id = ?
 			AND ((rw.year > ?) OR (rw.year = ? AND rw.week >= ?))
 		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.url_slug, c.url_slug
 		ORDER BY times_planned DESC
 		LIMIT 10`,
-		[cutoffYear, cutoffYear, cutoffWeek]
+		[householdId, cutoffYear, cutoffYear, cutoffWeek]
 	);
 
 	return rows;
 }
 
 // Get spending trend over last 12 weeks
-export async function getSpendingTrend() {
+export async function getSpendingTrend(householdId: number) {
 	const [rows] = await pool.execute<WeeklySpending[]>(
 		`SELECT 
 			week, 
 			year, 
 			SUM(cost) as total_cost
 		FROM shopping_lists
-		WHERE 1=1
+		WHERE household_id = ?
 			AND cost IS NOT NULL
 		GROUP BY year, week
 		ORDER BY year DESC, week DESC
-		LIMIT 12`
+		LIMIT 12`,
+		[householdId]
 	);
 
 	// Reverse to show oldest to newest
@@ -171,7 +184,7 @@ export async function getSpendingTrend() {
 }
 
 // Get potential garden savings for top items during Spring (Sept, Oct, Nov)
-export async function getGardenSavings(topItems: TopIngredient[]) {
+export async function getGardenSavings(topItems: TopIngredient[], householdId: number) {
 	if (topItems.length === 0) return [];
 
 	// Take top 5 items
@@ -192,7 +205,7 @@ export async function getGardenSavings(topItems: TopIngredient[]) {
 		FROM shopping_lists sl
 		LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		WHERE 1=1
+		WHERE sl.household_id = ?
 			AND sl.cost IS NOT NULL
 			AND sl.cost > 0
 			AND COALESCE(i.name, sl.name) IN (${itemNames.map(() => '?').join(', ')})
@@ -203,7 +216,7 @@ export async function getGardenSavings(topItems: TopIngredient[]) {
 			)
 		GROUP BY COALESCE(i.name, sl.name)
 		ORDER BY total_cost DESC`,
-		itemNames
+		[householdId, ...itemNames]
 	);
 
 	return rows;
@@ -232,7 +245,7 @@ interface RecipePairing extends RowDataPacket {
 }
 
 // Get recipe pairing suggestions based on shared fractional fresh ingredients
-export async function getRecipePairingSuggestions() {
+export async function getRecipePairingSuggestions(householdId: number) {
 	const [rows] = await pool.execute<RecipePairing[]>(
 		`SELECT 
 			recipe1_id,
@@ -296,6 +309,8 @@ export async function getRecipePairingSuggestions() {
 			WHERE r1.archived = 0 
 				AND r2.archived = 0
 				AND i.fresh = 1
+				AND (r1.household_id = ? OR c1.id = 1 OR c1.public = 1)
+				AND (r2.household_id = ? OR c2.id = 1 OR c2.public = 1)
 				AND (sc.name IN ('fresh-fruitvege', 'fresh-herbs') 
 					OR sc.name LIKE '%fruit%' 
 					OR sc.name LIKE '%vege%'
@@ -325,7 +340,8 @@ export async function getRecipePairingSuggestions() {
 				WHEN category_name LIKE '%fruit%' OR category_name LIKE '%vege%' THEN 2
 				ELSE 3
 			END,
-			shared_ingredient ASC`
+			shared_ingredient ASC`,
+		[householdId, householdId]
 	);
 
 	return rows;

@@ -113,10 +113,14 @@ export async function getPublicCollections(householdId: number): Promise<Collect
 	const query = `
 		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, 
 		       c.created_at, c.updated_at, h.name as household_name,
-		       CASE WHEN cs.household_id IS NOT NULL THEN 'subscribed' ELSE 'public' END as access_type,
+		       CASE 
+		         WHEN c.household_id = ? THEN 'owned'
+		         WHEN cs.household_id IS NOT NULL THEN 'subscribed' 
+		         ELSE 'public' 
+		       END as access_type,
 		       COUNT(CASE WHEN r.archived = 0 THEN cr.recipe_id END) as recipe_count,
-		       false as can_edit,
-		       cs.household_id IS NULL as can_subscribe,
+		       c.household_id = ? as can_edit,
+		       cs.household_id IS NULL AND c.household_id != ? as can_subscribe,
 		       c.household_id
 		FROM collections c
 		JOIN households h ON c.household_id = h.id
@@ -128,7 +132,7 @@ export async function getPublicCollections(householdId: number): Promise<Collect
 		ORDER BY c.title ASC
 	`;
 
-	const [rows] = await pool.execute(query, [householdId]);
+	const [rows] = await pool.execute(query, [householdId, householdId, householdId, householdId]);
 	return rows as Collection[];
 }
 

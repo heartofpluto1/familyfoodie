@@ -92,7 +92,6 @@ describe('HeaderLogo Component', () => {
 			expect(screen.getAllByTestId('link-/plan')).toHaveLength(2);
 			expect(screen.getAllByTestId('link-/shop')).toHaveLength(2);
 			expect(screen.getAllByTestId('link-/recipes')).toHaveLength(2);
-			expect(screen.getAllByTestId('link-/ingredients')).toHaveLength(2);
 		});
 
 		it('shows admin navigation for admin users', () => {
@@ -119,7 +118,6 @@ describe('HeaderLogo Component', () => {
 				{ href: '/plan', text: 'Plan' },
 				{ href: '/shop', text: 'Shop' },
 				{ href: '/recipes', text: 'Recipes' },
-				{ href: '/ingredients', text: 'Ingredients' },
 			];
 
 			expectedLinks.forEach(({ href, text }) => {
@@ -250,7 +248,6 @@ describe('HeaderLogo Component', () => {
 				screen.getAllByTestId('link-/plan')[1],
 				screen.getAllByTestId('link-/shop')[1],
 				screen.getAllByTestId('link-/recipes')[1],
-				screen.getAllByTestId('link-/ingredients')[1],
 			];
 
 			mobileLinks.forEach(link => {
@@ -270,15 +267,6 @@ describe('HeaderLogo Component', () => {
 
 			expect(mobileAdminLink).toBeInTheDocument();
 			expect(mobileAdminLink).toHaveAttribute('href', '/admin');
-		});
-
-		it('handles insights link visibility in mobile menu', () => {
-			render(<HeaderLogo session={mockAuthenticatedSession} />);
-
-			// Insights link should be present in mobile menu
-			const mobileInsightsLink = screen.getAllByTestId('link-/insights')[1]; // Mobile version
-			expect(mobileInsightsLink).toBeInTheDocument();
-			expect(mobileInsightsLink).toHaveAttribute('href', '/insights');
 		});
 
 		it('maintains proper mobile menu styling', () => {
