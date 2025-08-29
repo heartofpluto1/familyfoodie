@@ -43,16 +43,6 @@ export interface DateStamp {
 }
 
 // Additional types for database models
-export interface Recipe {
-	id: number;
-	name: string;
-	prepTime?: number;
-	cookTime: number;
-	filename?: string;
-	description?: string;
-	archived: boolean;
-	public: boolean;
-}
 
 export interface RecipeIngredient {
 	id: number;

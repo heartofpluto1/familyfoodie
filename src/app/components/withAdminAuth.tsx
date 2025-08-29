@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
-import { getAuthenticatedUserFromSession } from '@/lib/auth-helpers';
 import { ReactNode } from 'react';
 
 // Next.js page props interface for parameterized routes
@@ -19,8 +18,8 @@ export function withAdminAuth<P extends PageProps = PageProps>(WrappedComponent:
 			redirect('login');
 		}
 
-		const user = await getAuthenticatedUserFromSession(session);
-		if (!user || !user.is_admin) {
+		// Session is already a SessionUser with is_admin field
+		if (!session.is_admin) {
 			redirect('/');
 		}
 

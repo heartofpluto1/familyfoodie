@@ -2,19 +2,19 @@
 
 import Link from 'next/link';
 import { LogoutIcon, BurgerIcon } from './Icons';
-import type { SessionData } from '@/types/auth';
+import type { SessionUser } from '@/types/auth';
 import { useRef, useEffect, useState } from 'react';
 import UserSettings from './UserSettings';
 
 interface HeaderLogoProps {
-	session: SessionData | null;
+	session: SessionUser | null;
 }
 
 const HeaderLogo = ({ session }: HeaderLogoProps) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
 	const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 	const isAuthenticated = !!session;
-	const user = session?.user;
+	const user = session;
 
 	const closeMenu = () => {
 		if (detailsRef.current) {

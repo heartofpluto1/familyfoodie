@@ -25,6 +25,7 @@ const createMockRecipe = (id: number, name: string, ingredients: string[] = []):
 	url_slug: `recipe-${id}`,
 	collection_url_slug: 'test-collection',
 	ingredients,
+	household_id: 1,
 });
 
 describe('/api/plan/randomize', () => {

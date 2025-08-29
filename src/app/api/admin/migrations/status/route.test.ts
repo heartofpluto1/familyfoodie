@@ -2,7 +2,7 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks } from '@/lib/test-utils';
+import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, mockAdminUser } from '@/lib/test-utils';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import path from 'path';
 
@@ -77,13 +77,7 @@ describe('/api/admin/migrations/status', () => {
 		mockRequireAdminUser.mockReset();
 		mockPathJoin.mockImplementation((...args) => args.join('/'));
 		// Default to admin user
-		mockRequireAdminUser.mockResolvedValue({
-			id: 1,
-			username: 'admin',
-			email: 'admin@example.com',
-			is_admin: true,
-			is_active: true,
-		});
+		mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 	});
 
 	afterAll(() => {

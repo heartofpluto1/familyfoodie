@@ -156,6 +156,7 @@ interface RecipeRow {
 	collection_url_slug?: string;
 	seasonName?: string;
 	ingredients?: string;
+	household_id: number;
 }
 
 /**
@@ -173,6 +174,7 @@ export async function getAllRecipesWithDetails(collectionId?: number): Promise<R
 			r.cookTime,
 			r.description,
 			r.url_slug,
+			r.household_id,
 			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
@@ -194,7 +196,7 @@ export async function getAllRecipesWithDetails(collectionId?: number): Promise<R
 		params.push(collectionId);
 	}
 
-	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, cr.collection_id, c.title, c.url_slug, s.name
+	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name
 		ORDER BY r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);

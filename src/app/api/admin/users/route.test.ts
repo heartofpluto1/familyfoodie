@@ -4,7 +4,7 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import { getAllUsers, getUserStats } from '@/lib/queries/admin/users';
-import { setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { setupConsoleMocks, standardErrorScenarios, mockAdminUser } from '@/lib/test-utils';
 import type { User } from '@/types/user';
 
 // Mock the auth helpers
@@ -67,14 +67,6 @@ const mockUserStats = {
 	total: 3,
 	active: 2,
 	admins: 1,
-};
-
-const mockAdminUserAuth = {
-	id: 1,
-	username: 'admin',
-	email: 'admin@example.com',
-	is_admin: true,
-	is_active: true,
 };
 
 describe('/api/admin/users', () => {
@@ -153,7 +145,7 @@ describe('/api/admin/users', () => {
 
 		describe('Success Path Tests', () => {
 			it('returns all users without stats for admin users', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -173,7 +165,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('returns all users with stats when includeStats=true', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockResolvedValue(mockUserStats);
 
@@ -196,7 +188,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles empty user list gracefully', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue([]);
 				mockGetUserStats.mockResolvedValue({
 					total: 0,
@@ -237,7 +229,7 @@ describe('/api/admin/users', () => {
 					last_login: i % 3 === 0 ? '2024-12-01T10:00:00Z' : null,
 				}));
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(largeUserList);
 
 				await testApiHandler({
@@ -254,7 +246,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('does not include stats when includeStats=false', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -298,7 +290,7 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(specialUsers);
 
 				await testApiHandler({
@@ -316,7 +308,7 @@ describe('/api/admin/users', () => {
 
 		describe('Error Handling Tests', () => {
 			it('handles database connection failures', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockRejectedValue(standardErrorScenarios.databaseError);
 
 				await testApiHandler({
@@ -335,7 +327,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles getUserStats failure when includeStats=true', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockRejectedValue(new Error('Stats query failed'));
 
@@ -356,7 +348,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles getAllUsers query failure', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockRejectedValue(new Error('Query execution failed'));
 
 				await testApiHandler({
@@ -375,7 +367,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles unknown error types', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockRejectedValue('String error');
 
 				await testApiHandler({
@@ -408,7 +400,7 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(usersWithNulls);
 
 				await testApiHandler({
@@ -426,7 +418,7 @@ describe('/api/admin/users', () => {
 
 		describe('Query Parameter Validation Tests', () => {
 			it('ignores invalid includeStats values', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -445,7 +437,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles multiple query parameters', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockResolvedValue(mockUserStats);
 
@@ -466,7 +458,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles case-sensitive includeStats parameter', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -485,7 +477,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles empty query string', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -508,7 +500,7 @@ describe('/api/admin/users', () => {
 			// These tests verify that behavior
 
 			it('should reject POST requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -532,7 +524,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should reject PUT requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -551,7 +543,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should reject DELETE requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -566,7 +558,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should reject PATCH requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -585,7 +577,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should accept HEAD requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -618,7 +610,7 @@ describe('/api/admin/users', () => {
 
 		describe('Response Format & Data Integrity Tests', () => {
 			it('maintains consistent response structure', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -636,7 +628,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('maintains user data structure integrity', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue([mockUsers[0]]);
 
 				await testApiHandler({
@@ -667,7 +659,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('maintains stats structure integrity when included', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockResolvedValue(mockUserStats);
 
@@ -707,7 +699,7 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(usersWithDates);
 
 				await testApiHandler({
@@ -727,7 +719,7 @@ describe('/api/admin/users', () => {
 
 		describe('Edge Cases & Boundary Tests', () => {
 			it('handles mixed active/inactive users', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockResolvedValue({
 					total: 3,
@@ -754,7 +746,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles users with null last_login', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -785,7 +777,7 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(longDataUsers);
 
 				await testApiHandler({
@@ -802,7 +794,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles stats with zero values', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue([]);
 				mockGetUserStats.mockResolvedValue({
 					total: 0,
@@ -826,7 +818,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles concurrent requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockResolvedValue(mockUserStats);
 
@@ -874,7 +866,7 @@ describe('/api/admin/users', () => {
 					last_login: null,
 				}));
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(veryLargeUserList);
 
 				await testApiHandler({
@@ -895,7 +887,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles rapid sequential requests efficiently', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUserAuth);
+				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({

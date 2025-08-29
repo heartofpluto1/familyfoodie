@@ -4,7 +4,7 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import { getUserById, updateUser, deleteUser } from '@/lib/queries/admin/users';
-import { setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { setupConsoleMocks, standardErrorScenarios, mockAdminUser } from '@/lib/test-utils';
 import type { User, UserUpdate } from '@/types/user';
 
 // Mock the auth helpers
@@ -41,13 +41,8 @@ const mockUser: User = {
 	last_login: '2024-01-02T00:00:00Z',
 };
 
-const mockAdminUser = {
-	id: 2,
-	username: 'admin',
-	email: 'admin@example.com',
-	is_admin: true,
-	is_active: true,
-};
+// Create a custom admin user with ID 2 to avoid self-modification conflicts
+const testAdminUser = { ...mockAdminUser, id: 2 };
 
 describe('/api/admin/users/[id]', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -99,7 +94,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Input Validation', () => {
 			it('returns 400 for invalid user ID', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -116,7 +111,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('returns 400 for non-numeric user ID', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -132,7 +127,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('handles decimal user ID by converting to integer', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockGetUserById.mockResolvedValue(mockUser);
 
 				await testApiHandler({
@@ -152,7 +147,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Success Path', () => {
 			it('returns user data for valid admin request', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockGetUserById.mockResolvedValue(mockUser);
 
 				await testApiHandler({
@@ -171,7 +166,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('returns 404 when user not found', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockGetUserById.mockResolvedValue(null);
 
 				await testApiHandler({
@@ -190,7 +185,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database error occurs', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockGetUserById.mockRejectedValue(standardErrorScenarios.databaseError);
 
 				await testApiHandler({
@@ -234,7 +229,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Input Validation', () => {
 			it('returns 400 for invalid user ID', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -309,7 +304,7 @@ describe('/api/admin/users/[id]', () => {
 
 				const updatedUser = { ...mockUser, ...updates };
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockUpdateUser.mockResolvedValue(true);
 				mockGetUserById.mockResolvedValue(updatedUser);
 
@@ -343,7 +338,7 @@ describe('/api/admin/users/[id]', () => {
 
 				const updatedUser = { ...mockUser, ...updates };
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockUpdateUser.mockResolvedValue(true);
 				mockGetUserById.mockResolvedValue(updatedUser);
 
@@ -404,7 +399,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('handles empty update object', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockUpdateUser.mockResolvedValue(true);
 				mockGetUserById.mockResolvedValue(mockUser);
 
@@ -432,7 +427,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when updateUser fails', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockUpdateUser.mockRejectedValue(standardErrorScenarios.databaseError);
 
 				await testApiHandler({
@@ -453,7 +448,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('returns 500 when getUserById fails after update', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockUpdateUser.mockResolvedValue(true);
 				mockGetUserById.mockRejectedValue(standardErrorScenarios.databaseError);
 
@@ -475,7 +470,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('returns 500 when JSON parsing fails', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -518,7 +513,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Input Validation', () => {
 			it('returns 400 for invalid user ID', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 
 				await testApiHandler({
 					appHandler,
@@ -555,7 +550,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Success Path', () => {
 			it('deletes user successfully', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockDeleteUser.mockResolvedValue(true);
 
 				await testApiHandler({
@@ -575,7 +570,7 @@ describe('/api/admin/users/[id]', () => {
 			});
 
 			it('allows admin to delete other users', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser); // admin has id: 2
+				mockRequireAdminUser.mockResolvedValue(testAdminUser); // admin has id: 2
 				mockDeleteUser.mockResolvedValue(true);
 
 				await testApiHandler({
@@ -597,7 +592,7 @@ describe('/api/admin/users/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when deleteUser fails', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminUser.mockResolvedValue(testAdminUser);
 				mockDeleteUser.mockRejectedValue(standardErrorScenarios.databaseError);
 
 				await testApiHandler({
@@ -633,7 +628,7 @@ describe('/api/admin/users/[id]', () => {
 
 	describe('Edge Cases', () => {
 		it('handles very large user ID', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminUser.mockResolvedValue(testAdminUser);
 			mockGetUserById.mockResolvedValue(null);
 
 			await testApiHandler({
@@ -651,7 +646,7 @@ describe('/api/admin/users/[id]', () => {
 		});
 
 		it('handles scientific notation in user ID', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminUser.mockResolvedValue(testAdminUser);
 			mockGetUserById.mockResolvedValue(null);
 
 			await testApiHandler({
@@ -670,7 +665,7 @@ describe('/api/admin/users/[id]', () => {
 		});
 
 		it('handles user ID with leading/trailing spaces', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminUser.mockResolvedValue(testAdminUser);
 			mockGetUserById.mockResolvedValue(mockUser);
 
 			await testApiHandler({
@@ -687,7 +682,7 @@ describe('/api/admin/users/[id]', () => {
 		});
 
 		it('handles null values in PATCH update', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminUser.mockResolvedValue(testAdminUser);
 			mockUpdateUser.mockResolvedValue(true);
 			mockGetUserById.mockResolvedValue(mockUser);
 

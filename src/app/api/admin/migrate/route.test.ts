@@ -4,7 +4,7 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { requireAdminUser } from '@/lib/auth-helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
-import { setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { setupConsoleMocks, standardErrorScenarios, mockAdminUser } from '@/lib/test-utils';
 
 // Mock the authentication modules
 jest.mock('@/lib/auth-helpers', () => ({
@@ -33,15 +33,6 @@ const mockEnv = (env: Record<string, string | undefined>) => {
 	return () => {
 		process.env = originalEnv;
 	};
-};
-
-// Mock admin user data
-const mockAdminUser = {
-	id: 1,
-	username: 'admin',
-	email: 'admin@example.com',
-	is_admin: true,
-	is_active: true,
 };
 
 describe('/api/admin/migrate', () => {
