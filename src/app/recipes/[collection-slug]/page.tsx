@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import CollectionClient from './collection-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
-import { getCollectionsForDisplay, getCollectionByIdWithHousehold } from '@/lib/queries/collections';
+import { getOwnedCollections, getCollectionByIdWithHousehold } from '@/lib/queries/collections';
 import { parseSlugPath } from '@/lib/utils/urlHelpers';
 import { getSession } from '@/lib/session';
 import withAuth from '@/app/components/withAuth';
@@ -62,7 +62,7 @@ async function RecipesPage({ params }: RecipesPageProps) {
 
 	const [recipes, collections, selectedCollection] = await Promise.all([
 		getAllRecipesWithDetails(parsed.id),
-		getCollectionsForDisplay(),
+		getOwnedCollections(session.household_id),
 		getCollectionByIdWithHousehold(parsed.id, session.household_id),
 	]);
 

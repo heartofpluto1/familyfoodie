@@ -79,6 +79,32 @@ export async function getCollectionsForDisplay(): Promise<Collection[]> {
 }
 
 /**
+ * Get collections owned by a household (only owned, not subscribed)
+ * Use this for operations where only ownership matters (e.g., copying recipes)
+ */
+export async function getOwnedCollections(householdId: number): Promise<Collection[]> {
+	const query = `
+		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, 
+		       c.created_at, c.updated_at, h.name as household_name,
+		       'owned' as access_type,
+		       COUNT(CASE WHEN r.archived = 0 THEN cr.recipe_id END) as recipe_count,
+		       true as can_edit,
+		       false as can_subscribe,
+		       c.household_id
+		FROM collections c
+		JOIN households h ON c.household_id = h.id
+		LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
+		LEFT JOIN recipes r ON cr.recipe_id = r.id
+		WHERE c.household_id = ?
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id
+		ORDER BY c.title ASC
+	`;
+
+	const [rows] = await pool.execute(query, [householdId]);
+	return rows as Collection[];
+}
+
+/**
  * Get collections owned by or subscribed to by a household (Agent 2 implementation)
  * Returns collections the user can access for meal planning
  */

@@ -229,7 +229,7 @@ const RecipeCard = ({
 				{/* Selection overlay - appears in selection mode to capture all clicks */}
 				{isSelecting && (
 					<div
-						className="absolute inset-0 z-10 bg-transparent hover:bg-black hover:bg-opacity-5 transition-colors"
+						className="absolute inset-0 z-10 bg-transparent hover:bg-black/10 transition-colors"
 						onClick={handleCardClick}
 						style={{ cursor: 'pointer' }}
 					>
