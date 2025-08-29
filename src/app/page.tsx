@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getRecipeWeeks } from '@/lib/queries/menus';
+import { getRecipeWeeks, getAllRecipesWithDetailsHousehold } from '@/lib/queries/menus';
 import { getSession } from '@/lib/session';
 import HomeAuthenticated from './home/home-authenticated';
 import HomeUnauthenticated from './home/home-unauthenticated';
@@ -30,8 +30,26 @@ export default async function HomePage() {
 
 	// User is authenticated - fetch data and show dashboard
 	const { data: plans, stats } = await getRecipeWeeks(household_id, 6);
+
+	// If user has less than 2 plans, fetch sample recipes for demo
+	let sampleRecipes = undefined;
+	if ((plans?.length || 0) < 2) {
+		try {
+			const allRecipes = await getAllRecipesWithDetailsHousehold(household_id);
+			// Get up to 4 recipes with good images and timing data for demo
+			sampleRecipes = allRecipes.filter(recipe => recipe.image_filename && (recipe.prepTime || recipe.cookTime)).slice(0, 4);
+		} catch (error) {
+			console.error('Error fetching sample recipes:', error);
+		}
+	}
+
 	return (
-		<HomeAuthenticated plans={plans || []} stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }} householdName={session.household_name} />
+		<HomeAuthenticated
+			plans={plans || []}
+			stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }}
+			householdName={session.household_name}
+			sampleRecipes={sampleRecipes}
+		/>
 	);
 }
 

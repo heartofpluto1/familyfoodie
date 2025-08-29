@@ -1,39 +1,35 @@
 import HeaderPage from '@/app/components/HeaderPage';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Stats, Meal, Menu } from '@/types/menus';
+import type { Stats, Meal, Menu, Recipe } from '@/types/menus';
 import { IntroShoppingCartIcon } from '@/app/components/Icons';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
+import NewUserWelcome from './components/NewUserWelcome';
 
 interface HomeAuthenticatedProps {
 	plans: Menu[];
 	stats: Stats;
 	householdName: string;
+	sampleRecipes?: Recipe[];
 }
 
-export default function HomeAuthenticated({ plans, stats, householdName }: HomeAuthenticatedProps) {
+export default function HomeAuthenticated({ plans, stats, householdName, sampleRecipes }: HomeAuthenticatedProps) {
 	return (
 		<div className="min-h-screen bg-background">
 			<div className="container mx-auto px-4 py-8">
-				<div className="mb-8">
-					<HeaderPage title={`Welcome to the ${householdName} household`} subtitle="Last 6 months of meal planning." />
-				</div>
-
-				{plans.length === 0 && (
-					<div className="bg-surface border border-custom rounded-sm p-8 text-center">
-						<p className="text-secondary">No menus found. Start planning your first meal!</p>
-						<Link
-							href="/plan"
-							className="mt-4 bg-accent text-background px-4 py-2 rounded-md text-sm font-medium hover:bg-accent/90 transition-colors inline-block"
-						>
-							Create Your First Plan
-						</Link>
-					</div>
+				{plans.length < 2 ? (
+					<NewUserWelcome householdName={householdName} sampleRecipes={sampleRecipes} />
+				) : (
+					<>
+						<div className="mb-8">
+							<HeaderPage title={`Welcome to the ${householdName} household`} subtitle="Last 6 months of meal planning." />
+						</div>
+					</>
 				)}
 
-				{stats && (
+				{plans.length >= 2 && stats && (
 					<div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
 						<div className="bg-surface border border-custom rounded-sm p-2 sm:p-4 text-center">
 							<p className="text-lg sm:text-2xl font-semibold text-foreground">{stats.totalWeeks}</p>
@@ -50,7 +46,7 @@ export default function HomeAuthenticated({ plans, stats, householdName }: HomeA
 					</div>
 				)}
 
-				{plans.length > 0 && (
+				{plans.length >= 2 && (
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
 						{plans.map(({ year, week, meals }) => (
 							<MenuCard key={`${year}-${week}`} year={year} week={week} meals={meals} />
