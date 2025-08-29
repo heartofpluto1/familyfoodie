@@ -30,7 +30,9 @@ export default async function HomePage() {
 
 	// User is authenticated - fetch data and show dashboard
 	const { data: plans, stats } = await getRecipeWeeks(household_id, 6);
-	return <HomeAuthenticated plans={plans || []} stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }} />;
+	return (
+		<HomeAuthenticated plans={plans || []} stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }} householdName={session.household_name} />
+	);
 }
 
 // Force dynamic rendering for authenticated/unauthenticated check

@@ -10,14 +10,15 @@ import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 interface HomeAuthenticatedProps {
 	plans: Menu[];
 	stats: Stats;
+	householdName: string;
 }
 
-export default function HomeAuthenticated({ plans, stats }: HomeAuthenticatedProps) {
+export default function HomeAuthenticated({ plans, stats, householdName }: HomeAuthenticatedProps) {
 	return (
 		<div className="min-h-screen bg-background">
 			<div className="container mx-auto px-4 py-8">
 				<div className="mb-8">
-					<HeaderPage title="Welcome back!" subtitle="Last 6 months of meal planning." />
+					<HeaderPage title={`Welcome to the ${householdName} household`} subtitle="Last 6 months of meal planning." />
 				</div>
 
 				{plans.length === 0 && (
