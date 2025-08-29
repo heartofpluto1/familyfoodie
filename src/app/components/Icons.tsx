@@ -44,6 +44,12 @@ export const ChevronDownIcon = ({ className = 'w-4 h-4' }: IconProps) => (
 	</svg>
 );
 
+export const ChevronLeftIcon = ({ className = 'w-4 h-4' }: IconProps) => (
+	<svg className={className} viewBox="0 0 24 24" fill="none">
+		<polyline points="15 18 9 12 15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+	</svg>
+);
+
 export const DragHandleIcon = ({ className = 'w-2 h-6' }: IconProps) => (
 	<svg className={className} viewBox="0 0 6 24" fill="currentColor">
 		<circle cx="3" cy="4" r="1.5" />

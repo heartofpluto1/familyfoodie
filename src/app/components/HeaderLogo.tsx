@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { LogoutIcon, BurgerIcon } from './Icons';
 import type { SessionData } from '@/types/auth';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import UserSettings from './UserSettings';
 
 interface HeaderLogoProps {
 	session: SessionData | null;
@@ -11,6 +12,7 @@ interface HeaderLogoProps {
 
 const HeaderLogo = ({ session }: HeaderLogoProps) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
+	const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 	const isAuthenticated = !!session;
 	const user = session?.user;
 
@@ -125,7 +127,13 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 						<div className={isAuthenticated ? 'border-l border-custom pl-2 sm:pl-4' : ''}>
 							{isAuthenticated ? (
 								<div className="flex items-center space-x-2 sm:space-x-3">
-									<span className="text-xs sm:text-sm text-foreground xs:inline">{user?.username}</span>
+									<button
+										onClick={() => setIsUserSettingsOpen(true)}
+										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
+										title="User settings"
+									>
+										{user?.username}
+									</button>
 									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
 									</Link>
@@ -142,6 +150,9 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 					</div>
 				</div>
 			</div>
+
+			{/* User Settings Panel */}
+			<UserSettings isOpen={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
 		</header>
 	);
 };
