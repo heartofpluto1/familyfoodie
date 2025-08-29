@@ -275,21 +275,21 @@ describe('/api/plan/week', () => {
 		// Success Cases
 		it('should successfully fetch recipes for valid week/year', async () => {
 			const mockRecipes = [
-				{ 
-					id: 1, 
-					name: 'Recipe 1', 
-					image_filename: 'recipe1.jpg', 
-					pdf_filename: 'recipe1.pdf', 
-					url_slug: 'recipe-1', 
-					collection_url_slug: 'test-collection'
+				{
+					id: 1,
+					name: 'Recipe 1',
+					image_filename: 'recipe1.jpg',
+					pdf_filename: 'recipe1.pdf',
+					url_slug: 'recipe-1',
+					collection_url_slug: 'test-collection',
 				},
-				{ 
-					id: 2, 
-					name: 'Recipe 2', 
-					image_filename: 'recipe2.jpg', 
-					pdf_filename: 'recipe2.pdf', 
-					url_slug: 'recipe-2', 
-					collection_url_slug: 'test-collection'
+				{
+					id: 2,
+					name: 'Recipe 2',
+					image_filename: 'recipe2.jpg',
+					pdf_filename: 'recipe2.pdf',
+					url_slug: 'recipe-2',
+					collection_url_slug: 'test-collection',
 				},
 			] as ReturnType<typeof getNextWeekRecipes> extends Promise<infer T> ? T : never;
 			mockGetNextWeekRecipes.mockResolvedValueOnce(mockRecipes);
