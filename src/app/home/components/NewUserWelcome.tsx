@@ -88,15 +88,6 @@ export default function NewUserWelcome({ householdName, plans = [] }: NewUserWel
 					</div>
 				</div>
 			)}
-
-			{/* Motivation Footer */}
-			<div className="text-center">
-				<p className="text-sm text-muted">
-					<strong>You&rsquo;re just one recipe away from getting started!</strong>
-					<br />
-					Join hundreds of families who never stress about dinner again.
-				</p>
-			</div>
 		</div>
 	);
 }
