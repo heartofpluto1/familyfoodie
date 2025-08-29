@@ -118,7 +118,7 @@ describe('/api/recipe/delete', () => {
 			});
 		});
 
-		it('should return 403 when user does not own recipe', async () => {
+		it('should return 403 when user does not own recipe and no collection context provided', async () => {
 			// Mock permissions: user does NOT own the recipe
 			mockCanEditResource.mockResolvedValueOnce(false);
 
@@ -152,6 +152,199 @@ describe('/api/recipe/delete', () => {
 					// Verify no database operations were performed
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should remove recipe from collection when user owns collection but not recipe', async () => {
+			// Mock permissions: user does NOT own the recipe but DOES own the collection
+			mockCanEditResource
+				.mockResolvedValueOnce(false) // User doesn't own the recipe
+				.mockResolvedValueOnce(true); // User owns the collection
+
+			// Mock successful removal from collection
+			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 5 }),
+					});
+
+					expect(response.status).toBe(200);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: true,
+						message: 'Recipe removed from collection successfully',
+						removedFromCollection: true,
+						collectionId: 5,
+					});
+
+					// Verify permission checks were called
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'recipes',
+						1
+					);
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'collections',
+						5
+					);
+
+					// Verify only collection_recipes deletion was performed
+					expect(mockExecute).toHaveBeenCalledWith('DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?', [1, 5]);
+
+					// Verify no transaction was used (simple single delete)
+					expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should return 403 when user does not own recipe or collection', async () => {
+			// Mock permissions: user owns neither the recipe nor the collection
+			mockCanEditResource
+				.mockResolvedValueOnce(false) // User doesn't own the recipe
+				.mockResolvedValueOnce(false); // User doesn't own the collection
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 5 }),
+					});
+
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only remove recipes from collections owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Verify both permission checks were called
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'recipes',
+						1
+					);
+					expect(mockCanEditResource).toHaveBeenCalledWith(
+						expect.any(Number), // household_id from auth
+						'collections',
+						5
+					);
+
+					// Verify no database operations were performed
+					expect(mockExecute).not.toHaveBeenCalled();
+				},
+			});
+		});
+
+		it('should return 404 when recipe not found in collection', async () => {
+			// Mock permissions: user owns the collection but not the recipe
+			mockCanEditResource
+				.mockResolvedValueOnce(false) // User doesn't own the recipe
+				.mockResolvedValueOnce(true); // User owns the collection
+
+			// Mock no rows affected (recipe not in collection)
+			mockExecute.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 5 }),
+					});
+
+					expect(response.status).toBe(404);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'Recipe not found in this collection',
+						code: 'RECIPE_NOT_IN_COLLECTION',
+					});
+
+					// Verify deletion was attempted
+					expect(mockExecute).toHaveBeenCalledWith('DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?', [1, 5]);
+				},
+			});
+		});
+
+		it('should handle invalid collection ID format when removing from collection', async () => {
+			// Mock permissions: user doesn't own the recipe
+			mockCanEditResource.mockResolvedValueOnce(false);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 'not-a-number' }),
+					});
+
+					// Since parseInt('not-a-number') returns NaN, numericCollectionId will be NaN
+					// The code treats NaN as falsy, so it falls through to "no collection context" error
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Should only check recipe permission, not collection
+					expect(mockCanEditResource).toHaveBeenCalledTimes(1);
+				},
+			});
+		});
+
+		it('should handle zero collection ID when removing from collection', async () => {
+			// Mock permissions: user doesn't own the recipe
+			mockCanEditResource.mockResolvedValueOnce(false);
+
+			await testApiHandler({
+				appHandler,
+				requestPatcher: mockAuthenticatedUser,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ recipeId: 1, collectionId: 0 }),
+					});
+
+					// Zero is falsy, so it's treated as no collection context
+					expect(response.status).toBe(403);
+					const data = await response.json();
+					expect(data).toEqual({
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					});
+
+					// Should only check recipe permission
+					expect(mockCanEditResource).toHaveBeenCalledTimes(1);
 				},
 			});
 		});

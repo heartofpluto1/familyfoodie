@@ -96,20 +96,32 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 	const handleDeleteRecipe = async () => {
 		setIsDeleting(true);
 		try {
+			// Include collection ID to allow removal from collection if user doesn't own recipe
 			const response = await fetch('/api/recipe/delete', {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ recipeId: recipe.id }),
+				body: JSON.stringify({
+					recipeId: recipe.id,
+					collectionId: recipe.collection_id, // Pass the collection context
+				}),
 			});
 
 			if (response.ok) {
-				showToast('success', 'Recipe Deleted', `"${recipe.name}" has been deleted successfully`);
+				const result = await response.json();
+				// Use the message from the API
+				showToast('success', result.removedFromCollection ? 'Recipe Removed' : 'Recipe Deleted', result.message);
 				router.push(`/recipes/${recipe.collection_url_slug || ''}`);
 			} else {
-				const errorData = await response.text();
-				console.error('Failed to delete recipe:', response.status, errorData);
-				showToast('error', 'Delete Failed', 'Failed to delete recipe. Please try again.');
+				try {
+					const errorData = await response.json();
+					console.error('Failed to delete recipe:', response.status, errorData);
+					// Use the error message from the API
+					showToast('error', 'Delete Failed', errorData.error || 'Failed to delete recipe. Please try again.');
+				} catch {
+					// If response isn't JSON, show generic error
+					showToast('error', 'Delete Failed', 'Failed to delete recipe. Please try again.');
+				}
 			}
 		} catch (error) {
 			console.error('Error deleting recipe:', error);

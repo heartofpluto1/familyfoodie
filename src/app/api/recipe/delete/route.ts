@@ -47,11 +47,13 @@ function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { succ
 
 async function deleteHandler(request: AuthenticatedRequest) {
 	let recipeId: unknown;
+	let collectionId: unknown;
 
 	// Handle JSON parsing with proper error handling
 	try {
 		const body = await request.json();
 		recipeId = body.recipeId;
+		collectionId = body.collectionId; // Optional: collection context
 	} catch {
 		return NextResponse.json({ success: false, error: 'Invalid JSON in request body', code: 'INVALID_JSON' }, { status: 400 });
 	}
@@ -63,19 +65,63 @@ async function deleteHandler(request: AuthenticatedRequest) {
 	}
 
 	const numericRecipeId = parseInt(recipeId as string);
+	const numericCollectionId = collectionId ? parseInt(collectionId as string) : null;
 
 	try {
 		// Check if user can edit this recipe (household ownership)
-		const canEdit = await canEditResource(request.household_id, 'recipes', numericRecipeId);
-		if (!canEdit) {
-			return NextResponse.json(
-				{
-					success: false,
-					error: 'You can only delete recipes owned by your household',
-					code: 'PERMISSION_DENIED',
-				},
-				{ status: 403 }
-			);
+		const canEditRecipe = await canEditResource(request.household_id, 'recipes', numericRecipeId);
+
+		// If user doesn't own the recipe, check if they can remove it from their collection
+		if (!canEditRecipe) {
+			// If no collection context provided, deny the request
+			if (!numericCollectionId) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'You can only delete recipes owned by your household',
+						code: 'PERMISSION_DENIED',
+					},
+					{ status: 403 }
+				);
+			}
+
+			// Check if user owns the collection
+			const canEditCollection = await canEditResource(request.household_id, 'collections', numericCollectionId);
+
+			if (!canEditCollection) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'You can only remove recipes from collections owned by your household',
+						code: 'PERMISSION_DENIED',
+					},
+					{ status: 403 }
+				);
+			}
+
+			// User owns the collection but not the recipe - just remove from collection
+			const [result] = await pool.execute<ResultSetHeader>('DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id = ?', [
+				numericRecipeId,
+				numericCollectionId,
+			]);
+
+			if (result.affectedRows === 0) {
+				return NextResponse.json(
+					{
+						success: false,
+						error: 'Recipe not found in this collection',
+						code: 'RECIPE_NOT_IN_COLLECTION',
+					},
+					{ status: 404 }
+				);
+			}
+
+			return NextResponse.json({
+				success: true,
+				message: 'Recipe removed from collection successfully',
+				removedFromCollection: true,
+				collectionId: numericCollectionId,
+			});
 		}
 
 		// First, check if the recipe exists and get its filenames
