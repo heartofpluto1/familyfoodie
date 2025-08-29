@@ -1,17 +1,11 @@
 import Link from 'next/link';
 import { IntroPlanIcon, IntroShoppingCartIcon, SparklesIcon } from '@/app/components/Icons';
-import type { Menu, Meal } from '@/types/menus';
-import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
-import { formatWeekDateRange } from '@/lib/utils/weekDates';
-import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
-import Image from 'next/image';
 
 interface NewUserWelcomeProps {
 	householdName: string;
-	plans?: Menu[];
 }
 
-export default function NewUserWelcome({ householdName, plans = [] }: NewUserWelcomeProps) {
+export default function NewUserWelcome({ householdName }: NewUserWelcomeProps) {
 	return (
 		<div className="space-y-8">
 			{/* Hero Section */}
@@ -74,78 +68,6 @@ export default function NewUserWelcome({ householdName, plans = [] }: NewUserWel
 					>
 						Plan Full Week
 					</Link>
-				</div>
-			</div>
-
-			{/* Planned Weeks - show if user has any plans */}
-			{plans.length > 0 && (
-				<div className="space-y-4">
-					<h3 className="text-xl text-foreground text-center">Your Planned Weeks</h3>
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-						{plans.map(({ year, week, meals }) => (
-							<MenuCard key={`${year}-${week}`} year={year} week={week} meals={meals} />
-						))}
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function Meal({ meal, isLast }: { meal: Meal; isLast: boolean }) {
-	return (
-		<div className={`${!isLast ? 'border-b border-light' : ''}`}>
-			<p className="font-sm text-foreground text-sm leading-snug flex items-center gap-3 pr-3">
-				<span className="w-12 h-12 bg-gray-200 overflow-hidden flex-shrink-0">
-					<Image
-						src={getRecipeImageUrl(meal.image_filename)}
-						alt="thumb"
-						width="48"
-						height="48"
-						className="w-full h-full object-cover"
-						unoptimized={true}
-					/>
-				</span>
-				<Link
-					href={generateRecipeUrl({
-						url_slug: meal.url_slug,
-						collection_url_slug: meal.collection_url_slug,
-					} as Parameters<typeof generateRecipeUrl>[0])}
-					className="text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors hover:underline"
-				>
-					{meal.name}
-				</Link>
-			</p>
-		</div>
-	);
-}
-
-function MenuCard({ year, week, meals }: Menu) {
-	const weekDateRange = formatWeekDateRange(week, year);
-
-	return (
-		<div className="bg-surface border border-custom rounded-sm overflow-hidden hover:shadow-md transition-shadow">
-			<div className="bg-accent text-background px-3 py-3">
-				<div className="flex items-center justify-between">
-					<div>
-						<h3 className="text-lg">Week {week}</h3>
-						<p className="text-xs text-muted mt-0.5">{weekDateRange}</p>
-					</div>
-					<a
-						href={`/shop/${year}/${week}`}
-						className="opacity-90 hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
-						title="Shopping list"
-					>
-						<IntroShoppingCartIcon className="w-5 h-5" />
-					</a>
-				</div>
-			</div>
-
-			<div className="">
-				<div className="">
-					{meals.map((meal, index) => (
-						<Meal key={`${meal.id}-${index}`} meal={meal} isLast={index === meals.length - 1} />
-					))}
 				</div>
 			</div>
 		</div>

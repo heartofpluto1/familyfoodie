@@ -19,7 +19,19 @@ export default function HomeAuthenticated({ plans, stats, householdName }: HomeA
 		<div className="min-h-screen bg-background">
 			<div className="container mx-auto px-4 py-8">
 				{plans.length < 2 ? (
-					<NewUserWelcome householdName={householdName} plans={plans} />
+					<>
+						<NewUserWelcome householdName={householdName} />
+						{plans.length > 0 && (
+							<div className="mt-8 space-y-4">
+								<h3 className="text-xl text-foreground text-center">Your Planned Weeks</h3>
+								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+									{plans.map(({ year, week, meals }) => (
+										<MenuCard key={`${year}-${week}`} year={year} week={week} meals={meals} />
+									))}
+								</div>
+							</div>
+						)}
+					</>
 				) : (
 					<>
 						<div className="mb-8">
@@ -121,8 +133,8 @@ function MenuCard({ year, week, meals }: Menu) {
 
 			<div className="">
 				<div className="">
-					{meals.map(meal => (
-						<Meal key={meal.id} meal={meal} isLast={meals[meals.length - 1].id === meal.id} />
+					{meals.map((meal, index) => (
+						<Meal key={`${meal.id}-${index}`} meal={meal} isLast={index === meals.length - 1} />
 					))}
 				</div>
 			</div>
