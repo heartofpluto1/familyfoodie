@@ -158,9 +158,10 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 
 		// Check if we need to trigger copy-on-write
 		let targetRecipeId = recipeIdNum;
-		let targetCollectionId = collectionIdNum;
 		let targetImageFilename = currentImageFilename;
 		let wasCopied = false;
+		let newRecipeSlug: string | undefined;
+		let newCollectionSlug: string | undefined;
 
 		// Check if household can edit this recipe
 		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
@@ -169,8 +170,9 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 			// Recipe is not owned - trigger copy-on-write
 			const copyResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIdNum);
 			targetRecipeId = copyResult.newRecipeId;
-			targetCollectionId = copyResult.newCollectionId;
 			wasCopied = true;
+			newRecipeSlug = copyResult.newRecipeSlug;
+			newCollectionSlug = copyResult.newCollectionSlug;
 
 			// Get the new recipe's current image filename
 			const [newRecipeRows] = await pool.execute<RecipeRow[]>('SELECT image_filename FROM recipes WHERE id = ?', [targetRecipeId]);
@@ -232,7 +234,7 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 		// Generate URL for immediate display
 		const imageUrl = getRecipeImageUrl(uploadFilename);
 
-		const response: UpdateImageResponse & { recipeId?: number; collectionId?: number; wasCopied?: boolean } = {
+		const response: UpdateImageResponse = {
 			success: true,
 			message: wasCopied ? 'Recipe copied and image updated successfully' : 'Recipe image updated successfully',
 			filename: uploadFilename,
@@ -240,9 +242,11 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 			displayUrl: imageUrl,
 			storageMode: getStorageMode(),
 			cleanup: cleanupSummary || 'No old files to clean up',
-			recipeId: targetRecipeId,
-			collectionId: targetCollectionId,
-			wasCopied,
+			...(wasCopied && {
+				wasCopied,
+				newRecipeSlug,
+				newCollectionSlug,
+			}),
 		};
 
 		return NextResponse.json(response);

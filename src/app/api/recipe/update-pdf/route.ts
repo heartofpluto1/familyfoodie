@@ -7,6 +7,7 @@ import { getRecipePdfUrl, generateVersionedFilename, extractBaseHash } from '@/l
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 import { cascadeCopyWithContext } from '@/lib/copy-on-write';
+import { UpdatePdfResponse } from '@/types/fileUpload';
 import jsPDF from 'jspdf';
 
 interface RecipeRow extends RowDataPacket {
@@ -233,9 +234,10 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 
 		// Check if we need to trigger copy-on-write
 		let targetRecipeId = recipeIdNum;
-		let targetCollectionId = collectionIdNum;
 		let targetPdfFilename = currentPdfFilename;
 		let wasCopied = false;
+		let newRecipeSlug: string | undefined;
+		let newCollectionSlug: string | undefined;
 
 		// Check if household can edit this recipe
 		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
@@ -244,8 +246,9 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 			// Recipe is not owned - trigger copy-on-write
 			const copyResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIdNum);
 			targetRecipeId = copyResult.newRecipeId;
-			targetCollectionId = copyResult.newCollectionId;
 			wasCopied = true;
+			newRecipeSlug = copyResult.newRecipeSlug;
+			newCollectionSlug = copyResult.newCollectionSlug;
 
 			// Get the new recipe's current PDF filename
 			const [newRecipeRows] = await pool.execute<RecipeRow[]>('SELECT pdf_filename FROM recipes WHERE id = ?', [targetRecipeId]);
@@ -324,29 +327,7 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 		const pdfUrl = getRecipePdfUrl(uploadFilename);
 
 		// Build response with structured data
-		const response: {
-			success: boolean;
-			message: string;
-			recipe: {
-				id: number;
-				pdfUrl: string;
-				filename: string;
-			};
-			upload: {
-				storageUrl: string;
-				storageMode: string;
-				timestamp: string;
-				fileSize: string;
-			};
-			collectionId?: number;
-			recipeId?: number;
-			wasCopied?: boolean;
-			conversion?: {
-				originalFormat: string;
-				convertedTo: string;
-				originalFileName: string;
-			};
-		} = {
+		const response: UpdatePdfResponse = {
 			success: true,
 			message: wasCopied ? 'Recipe copied and PDF updated successfully' : 'Recipe PDF updated successfully',
 			recipe: {
@@ -360,9 +341,11 @@ async function updatePdfHandler(request: AuthenticatedRequest) {
 				timestamp: new Date().toISOString(),
 				fileSize: `${Math.round(buffer.length / 1024)}KB`,
 			},
-			recipeId: targetRecipeId,
-			collectionId: targetCollectionId,
-			wasCopied,
+			...(wasCopied && {
+				wasCopied,
+				newRecipeSlug,
+				newCollectionSlug,
+			}),
 		};
 
 		// Add conversion details if it was an image

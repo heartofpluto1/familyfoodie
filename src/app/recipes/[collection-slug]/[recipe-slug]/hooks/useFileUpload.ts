@@ -64,7 +64,6 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 
 			if (response.ok) {
 				const responseData = await response.json();
-				showToast('success', 'Success', `${fileParamName} uploaded successfully`);
 				clearFile();
 				return { success: true, data: responseData };
 			} else {
@@ -101,7 +100,6 @@ export const useFileUpload = (options: UseFileUploadOptions) => {
 
 			if (response.ok) {
 				const responseData = await response.json();
-				showToast('success', 'Success', `${fileParamName} uploaded successfully`);
 				clearFile();
 				return { success: true, data: responseData };
 			} else {

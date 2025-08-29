@@ -30,7 +30,7 @@ describe('Copy-on-Write Functions', () => {
 			commit: jest.fn().mockResolvedValue(undefined),
 			rollback: jest.fn().mockResolvedValue(undefined),
 			release: jest.fn().mockResolvedValue(undefined),
-			execute: jest.fn(),
+			execute: jest.fn().mockResolvedValue([[], []]),
 		};
 
 		mockPool.getConnection.mockResolvedValue(mockConnection as unknown as import('mysql2/promise').PoolConnection);
@@ -183,6 +183,16 @@ describe('Copy-on-Write Functions', () => {
 			mockCopyOperations.getRecipeById.mockResolvedValue(mockRecipe);
 			mockCopyOperations.copyCollection.mockResolvedValue(100);
 			mockCopyOperations.copyRecipe.mockResolvedValue(200);
+			// Mock execute calls for getting slugs
+			mockConnection.execute.mockImplementation((query: string) => {
+				if (query.includes('recipes')) {
+					return Promise.resolve([[{ url_slug: 'copied-recipe' }], []]);
+				}
+				if (query.includes('collections')) {
+					return Promise.resolve([[{ url_slug: 'copied-collection' }], []]);
+				}
+				return Promise.resolve([[], []]);
+			});
 
 			const result = await cascadeCopyWithContext(1, 1, 1);
 
@@ -201,6 +211,13 @@ describe('Copy-on-Write Functions', () => {
 			mockCopyOperations.getCollectionById.mockResolvedValue(ownedCollection);
 			mockCopyOperations.getRecipeById.mockResolvedValue(mockRecipe);
 			mockCopyOperations.copyRecipe.mockResolvedValue(200);
+			// Mock execute calls for getting slugs
+			mockConnection.execute.mockImplementation((query: string) => {
+				if (query.includes('recipes')) {
+					return Promise.resolve([[{ url_slug: 'copied-recipe' }], []]);
+				}
+				return Promise.resolve([[], []]);
+			});
 
 			const result = await cascadeCopyWithContext(1, 1, 1);
 
@@ -233,6 +250,13 @@ describe('Copy-on-Write Functions', () => {
 			mockCopyOperations.getCollectionById.mockResolvedValue(mockCollection);
 			mockCopyOperations.getRecipeById.mockResolvedValue(ownedRecipe);
 			mockCopyOperations.copyCollection.mockResolvedValue(300);
+			// Mock execute calls for getting slugs
+			mockConnection.execute.mockImplementation((query: string) => {
+				if (query.includes('collections')) {
+					return Promise.resolve([[{ url_slug: 'copied-collection' }], []]);
+				}
+				return Promise.resolve([[], []]);
+			});
 
 			const result = await cascadeCopyWithContext(1, 1, 1);
 

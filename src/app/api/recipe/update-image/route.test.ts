@@ -129,9 +129,6 @@ describe('/api/recipe/update-image', () => {
 						displayUrl: '/static/recipes/recipe_abc123_v3.jpg',
 						storageMode: 'local',
 						cleanup: 'Cleaned up 2 old file(s): recipe_abc123_v1.jpg, recipe_abc123_v2.jpg',
-						recipeId: 1,
-						collectionId: 1,
-						wasCopied: false,
 					});
 
 					expect(mockExtractBaseHash).toHaveBeenCalledWith('recipe_abc123.jpg');

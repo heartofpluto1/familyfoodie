@@ -85,14 +85,16 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 		let actionsTaken: string[] = [];
 
 		// If user doesn't own the recipe, trigger cascade copy with context
+		let newRecipeSlug: string | undefined;
+		let newCollectionSlug: string | undefined;
+
 		if (!canEditRecipe) {
 			const cascadeResult = await cascadeCopyWithContext(request.household_id, collectionId, recipeId);
 
 			targetRecipeId = cascadeResult.newRecipeId;
 			actionsTaken = cascadeResult.actionsTaken;
-
-			// If a new recipe was created, we need to return the new recipe ID
-			// so the frontend can redirect to the correct URL
+			newRecipeSlug = cascadeResult.newRecipeSlug;
+			newCollectionSlug = cascadeResult.newCollectionSlug;
 		}
 
 		// Initialize operation counters
@@ -214,30 +216,6 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 
 		// Calculate final ingredient count
 		const ingredientsCount = addedCount + updatedCount;
-
-		// Get new slugs if recipe was copied
-		let newRecipeSlug: string | undefined;
-		let newCollectionSlug: string | undefined;
-
-		if (actionsTaken.includes('recipe_copied')) {
-			const [recipeRows] = await connection.execute<RowDataPacket[]>('SELECT url_slug FROM recipes WHERE id = ?', [targetRecipeId]);
-			newRecipeSlug = recipeRows[0]?.url_slug;
-		}
-
-		if (actionsTaken.includes('collection_copied')) {
-			// Note: collectionId might have changed if collection was copied
-			// We need to find the new collection ID from the cascade copy result
-			// For now, we'll query based on the recipe's collection associations
-			const [collectionRows] = await connection.execute<RowDataPacket[]>(
-				`SELECT c.url_slug 
-				 FROM collections c 
-				 JOIN collection_recipes cr ON c.id = cr.collection_id 
-				 WHERE cr.recipe_id = ? AND c.household_id = ?
-				 LIMIT 1`,
-				[targetRecipeId, request.household_id]
-			);
-			newCollectionSlug = collectionRows[0]?.url_slug;
-		}
 
 		return NextResponse.json({
 			success: true,

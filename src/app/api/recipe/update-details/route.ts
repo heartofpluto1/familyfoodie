@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
 import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
-import { triggerCascadeCopyIfNeeded } from '@/lib/copy-on-write';
+import { cascadeCopyWithContext } from '@/lib/copy-on-write';
+import { validateRecipeInCollection, canEditResource } from '@/lib/permissions';
 
 interface UpdateRecipeDetailsRequest {
 	id: number | string;
@@ -13,7 +14,7 @@ interface UpdateRecipeDetailsRequest {
 	seasonId?: number | null;
 	primaryTypeId?: number | null;
 	secondaryTypeId?: number | null;
-	collectionId?: number | null;
+	collectionId: number;
 }
 
 interface DatabaseError extends Error {
@@ -34,12 +35,13 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 
 	const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId, collectionId } = body;
 
-	// Validate and parse recipe ID
-	let recipeId: number;
-	if (id === undefined || id === null) {
-		return NextResponse.json({ error: 'Recipe ID and name are required' }, { status: 400 });
+	// Validate required fields
+	if (id === undefined || id === null || !collectionId) {
+		return NextResponse.json({ error: 'Recipe ID, collection ID, and name are required' }, { status: 400 });
 	}
 
+	// Validate and parse recipe ID
+	let recipeId: number;
 	if (typeof id === 'string') {
 		recipeId = parseInt(id, 10);
 		if (isNaN(recipeId)) {
@@ -49,9 +51,14 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 		recipeId = id;
 	}
 
+	// Validate collection ID
+	if (typeof collectionId !== 'number' || !Number.isInteger(collectionId) || collectionId <= 0) {
+		return NextResponse.json({ error: 'Collection ID must be a positive integer' }, { status: 400 });
+	}
+
 	// Validate recipe name
 	if (!name || typeof name !== 'string') {
-		return NextResponse.json({ error: 'Recipe ID and name are required' }, { status: 400 });
+		return NextResponse.json({ error: 'Recipe ID, collection ID, and name are required' }, { status: 400 });
 	}
 
 	const trimmedName = name.trim();
@@ -83,7 +90,7 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 	}
 
 	// Validate foreign key IDs
-	const foreignKeys = [seasonId, primaryTypeId, secondaryTypeId, collectionId];
+	const foreignKeys = [seasonId, primaryTypeId, secondaryTypeId];
 	for (const fkId of foreignKeys) {
 		if (fkId !== undefined && fkId !== null) {
 			if (typeof fkId !== 'number' || fkId <= 0 || !Number.isInteger(fkId)) {
@@ -99,18 +106,41 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 	const safeSeasonId = seasonId === undefined ? null : seasonId;
 	const safePrimaryTypeId = primaryTypeId === undefined ? null : primaryTypeId;
 	const safeSecondaryTypeId = secondaryTypeId === undefined ? null : secondaryTypeId;
-	const safeCollectionId = collectionId === undefined ? null : collectionId;
 
 	try {
-		// Trigger cascade copy if needed (copy-on-write for non-owned recipes)
-		const actualRecipeId = await triggerCascadeCopyIfNeeded(request.household_id, recipeId);
+		// Validate that the recipe belongs to the collection and household has access
+		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, request.household_id);
+		if (!isRecipeInCollection) {
+			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
+		}
+
+		// Check if user owns the recipe
+		const canEdit = await canEditResource(request.household_id, 'recipes', recipeId);
+
+		let actualRecipeId = recipeId;
+		let actualCollectionId = collectionId;
+		let wasCopied = false;
+		let newRecipeSlug: string | undefined;
+		let newCollectionSlug: string | undefined;
+		let actionsTaken: string[] = [];
+
+		// If user doesn't own the recipe, trigger cascade copy with context
+		if (!canEdit) {
+			const cascadeResult = await cascadeCopyWithContext(request.household_id, collectionId, recipeId);
+			actualRecipeId = cascadeResult.newRecipeId;
+			actualCollectionId = cascadeResult.newCollectionId;
+			actionsTaken = cascadeResult.actionsTaken;
+			wasCopied = actionsTaken.includes('recipe_copied') || actionsTaken.includes('collection_copied');
+			newRecipeSlug = cascadeResult.newRecipeSlug;
+			newCollectionSlug = cascadeResult.newCollectionSlug;
+		}
 
 		// Update the recipe details (using the potentially new recipe ID after copy-on-write)
 		const [result] = await pool.execute<ResultSetHeader>(
 			`UPDATE recipes 
 			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?, collection_id = ?
 			 WHERE id = ?`,
-			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, safeCollectionId, actualRecipeId]
+			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, actualCollectionId, actualRecipeId]
 		);
 
 		if (result.affectedRows === 0) {
@@ -120,7 +150,18 @@ async function updateDetailsHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({
 			success: true,
 			message: 'Recipe details updated successfully',
-			...(actualRecipeId !== recipeId && { newRecipeId: actualRecipeId, copied: true }),
+			...(wasCopied && {
+				wasCopied: true,
+				newRecipeSlug,
+				newCollectionSlug,
+			}),
+			name: trimmedName,
+			description: safeDescription,
+			prepTime: safePrepTime,
+			cookTime: safeCookTime,
+			seasonId: safeSeasonId,
+			primaryTypeId: safePrimaryTypeId,
+			secondaryTypeId: safeSecondaryTypeId,
 		});
 	} catch (error: unknown) {
 		// Handle foreign key constraint errors

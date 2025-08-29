@@ -31,6 +31,8 @@ export interface CascadeCopyResult {
 	newCollectionId: number;
 	newRecipeId: number;
 	actionsTaken: string[];
+	newRecipeSlug?: string;
+	newCollectionSlug?: string;
 }
 
 export interface FullCascadeCopyResult extends CascadeCopyResult {
@@ -166,11 +168,29 @@ export async function cascadeCopyWithContext(householdId: number, collectionId: 
 			await updateJunctionTableForCollectionRecipe(connection, newCollectionId, recipeId, newRecipeId);
 		}
 
+		// Get slugs if resources were copied
+		let newRecipeSlug: string | undefined;
+		let newCollectionSlug: string | undefined;
+
+		if (actionsTaken.includes('recipe_copied')) {
+			const [recipeRows] = await connection.execute('SELECT url_slug FROM recipes WHERE id = ?', [newRecipeId]);
+			const recipes = recipeRows as Array<{ url_slug: string }>;
+			newRecipeSlug = recipes[0]?.url_slug;
+		}
+
+		if (actionsTaken.includes('collection_copied')) {
+			const [collectionRows] = await connection.execute('SELECT url_slug FROM collections WHERE id = ?', [newCollectionId]);
+			const collections = collectionRows as Array<{ url_slug: string }>;
+			newCollectionSlug = collections[0]?.url_slug;
+		}
+
 		await connection.commit();
 		return {
 			newCollectionId,
 			newRecipeId,
 			actionsTaken,
+			newRecipeSlug,
+			newCollectionSlug,
 		};
 	} catch (error) {
 		await connection.rollback();
@@ -219,6 +239,8 @@ export async function cascadeCopyIngredientWithContext(
 			newRecipeId: cascadeResult.newRecipeId,
 			newIngredientId,
 			actionsTaken,
+			newRecipeSlug: cascadeResult.newRecipeSlug,
+			newCollectionSlug: cascadeResult.newCollectionSlug,
 		};
 	} catch (error) {
 		await connection.rollback();
@@ -276,10 +298,28 @@ async function cascadeCopyWithContextInTransaction(
 		await updateJunctionTableForCollectionRecipe(connection, newCollectionId, recipeId, newRecipeId);
 	}
 
+	// Get slugs if resources were copied
+	let newRecipeSlug: string | undefined;
+	let newCollectionSlug: string | undefined;
+
+	if (actionsTaken.includes('recipe_copied')) {
+		const [recipeRows] = await connection.execute('SELECT url_slug FROM recipes WHERE id = ?', [newRecipeId]);
+		const recipes = recipeRows as Array<{ url_slug: string }>;
+		newRecipeSlug = recipes[0]?.url_slug;
+	}
+
+	if (actionsTaken.includes('collection_copied')) {
+		const [collectionRows] = await connection.execute('SELECT url_slug FROM collections WHERE id = ?', [newCollectionId]);
+		const collections = collectionRows as Array<{ url_slug: string }>;
+		newCollectionSlug = collections[0]?.url_slug;
+	}
+
 	return {
 		newCollectionId,
 		newRecipeId,
 		actionsTaken,
+		newRecipeSlug,
+		newCollectionSlug,
 	};
 }
 

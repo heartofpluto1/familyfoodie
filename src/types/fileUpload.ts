@@ -7,6 +7,10 @@ export interface UpdateImageResponse {
 	storageMode: string;
 	cleanup?: string; // For update-image cleanup status
 	previousImage?: string; // For upload-image when replacing existing image
+	// Copy-on-write fields
+	wasCopied?: boolean;
+	newRecipeSlug?: string;
+	newCollectionSlug?: string;
 }
 
 export interface UpdatePdfResponse {
@@ -28,4 +32,8 @@ export interface UpdatePdfResponse {
 		convertedTo: string;
 		originalFileName: string;
 	};
+	// Copy-on-write fields
+	wasCopied?: boolean;
+	newRecipeSlug?: string;
+	newCollectionSlug?: string;
 }

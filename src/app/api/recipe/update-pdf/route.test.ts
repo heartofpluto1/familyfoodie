@@ -164,9 +164,6 @@ describe('/api/recipe/update-pdf', () => {
 							timestamp: expect.any(String),
 							fileSize: expect.any(String),
 						},
-						recipeId: 1,
-						collectionId: 1,
-						wasCopied: false,
 					});
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.pdf, recipe_abc123_v2.pdf');
 					// Verify no cleanup details in response
@@ -220,9 +217,6 @@ describe('/api/recipe/update-pdf', () => {
 							convertedTo: 'application/pdf',
 							originalFileName: 'recipe-photo.jpg',
 						},
-						recipeId: 2,
-						collectionId: 1,
-						wasCopied: false,
 					});
 
 					// Verify PDF metadata was set correctly
