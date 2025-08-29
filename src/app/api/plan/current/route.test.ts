@@ -36,6 +36,7 @@ describe('/api/plan/current', () => {
 			description: 'Classic Italian pasta dish',
 			collection_id: 1,
 			collection_title: 'Italian Classics',
+			household_id: 1,
 		},
 		{
 			id: 2,
@@ -49,6 +50,7 @@ describe('/api/plan/current', () => {
 			description: 'Creamy Indian curry',
 			collection_id: 2,
 			collection_title: 'Indian Delights',
+			household_id: 1,
 		},
 		{
 			id: 3,
@@ -61,6 +63,7 @@ describe('/api/plan/current', () => {
 			description: 'Fresh Mediterranean salad',
 			collection_id: 3,
 			collection_title: 'Mediterranean',
+			household_id: 1,
 		},
 	];
 
@@ -247,6 +250,7 @@ describe('/api/plan/current', () => {
 				pdf_filename: `recipe${i + 1}.pdf`,
 				url_slug: `recipe-${i + 1}`,
 				collection_url_slug: 'test-collection',
+				household_id: 1,
 			}));
 			mockGetCurrentWeekRecipes.mockResolvedValueOnce(manyRecipes);
 
@@ -275,6 +279,7 @@ describe('/api/plan/current', () => {
 					pdf_filename: 'simple.pdf',
 					url_slug: 'simple-recipe',
 					collection_url_slug: 'basic',
+					household_id: 1,
 					// No prepTime, cookTime, description, etc.
 				},
 			];
@@ -312,6 +317,7 @@ describe('/api/plan/current', () => {
 					ingredients: ['Tomato', 'Basil', 'Mozzarella'],
 					collection_id: 5,
 					collection_title: 'Full Collection',
+					household_id: 1,
 				},
 			];
 			mockGetCurrentWeekRecipes.mockResolvedValueOnce(recipesWithAllFields);
@@ -491,6 +497,7 @@ describe('/api/plan/current', () => {
 					pdf_filename: 'special.pdf',
 					url_slug: 'recipe-special',
 					collection_url_slug: 'test',
+					household_id: 1,
 				},
 				{
 					id: 2,
@@ -499,6 +506,7 @@ describe('/api/plan/current', () => {
 					pdf_filename: 'emoji.pdf',
 					url_slug: 'recipe-emoji',
 					collection_url_slug: 'test',
+					household_id: 1,
 				},
 			];
 			mockGetCurrentWeekRecipes.mockResolvedValueOnce(recipesWithSpecialChars);

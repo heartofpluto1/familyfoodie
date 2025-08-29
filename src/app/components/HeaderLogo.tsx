@@ -14,7 +14,6 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
 	const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 	const isAuthenticated = !!session;
-	const user = session;
 
 	const closeMenu = () => {
 		if (detailsRef.current) {
@@ -78,7 +77,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 									>
 										Recipes
 									</Link>
-									{user?.is_admin && (
+									{session?.is_admin && (
 										<Link
 											href="/admin"
 											className="transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
@@ -113,7 +112,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										>
 											Recipes
 										</Link>
-										{user?.is_admin && (
+										{session?.is_admin && (
 											<Link href="/admin" className="block px-3 py-2 text-sm transition-colors">
 												Admin
 											</Link>
@@ -132,7 +131,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
 										title="User settings"
 									>
-										{user?.username}
+										{session?.username}
 									</button>
 									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
