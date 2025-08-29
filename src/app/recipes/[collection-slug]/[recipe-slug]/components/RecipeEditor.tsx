@@ -173,17 +173,21 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 				body: JSON.stringify({
 					id: recipe.id,
 					...recipeForm,
+					// Add explicit current and new collection IDs for move validation
+					currentCollectionId: recipe.collection_id,
+					newCollectionId: recipeForm.collectionId,
 				}),
 			});
 
 			if (response.ok) {
 				const result = await response.json();
-				showToast('success', 'Success', 'Recipe details updated successfully');
+				// Use the message from the API response
+				showToast('success', 'Success', result.message || 'Recipe details updated successfully');
 				setEditMode('none');
 
 				// Handle copy-on-write navigation if needed
 				const wasNavigated = handleCopyOnWriteNavigation(
-					result.copied,
+					result.wasCopied || result.wasMoved || false,
 					recipe.collection_url_slug,
 					recipe.url_slug,
 					result.newRecipeSlug,
@@ -441,7 +445,14 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					<div className="bg-white border border-custom shadow rounded-sm pb-4 space-y-4">
 						{/* Recipe Image Section with contextual edit buttons */}
 						<div className="relative">
-							<img src={getRecipeImageUrl(currentRecipe.image_filename)} alt={currentRecipe.name} className="w-full rounded-t-sm" />
+							<img
+								src={getRecipeImageUrl(currentRecipe.image_filename)}
+								alt={currentRecipe.name}
+								className="w-full rounded-t-sm min-h-[300px] object-cover"
+								onError={e => {
+									e.currentTarget.src = '/onerror_recipe.png';
+								}}
+							/>
 							{/* Edit buttons */}
 							<div className="absolute bottom-4 right-4 flex gap-2">
 								{editMode === 'details' ? (

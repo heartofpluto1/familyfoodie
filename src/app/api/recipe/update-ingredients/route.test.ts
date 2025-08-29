@@ -437,6 +437,7 @@ describe('/api/recipe/update-ingredients', () => {
 				newRecipeId: 100,
 				newCollectionId: 1,
 				actionsTaken: ['recipe_copied'],
+				newRecipeSlug: 'copied-recipe',
 			});
 
 			// Mock connection operations

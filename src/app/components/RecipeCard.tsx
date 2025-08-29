@@ -143,7 +143,14 @@ const RecipeCard = ({
 	const CardContent = () => (
 		<>
 			<div className="block">
-				<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(image_filename)} />
+				<img 
+					className="w-full aspect-square object-cover" 
+					alt={`${name} recipe`} 
+					src={getRecipeImageUrl(image_filename)} 
+					onError={e => {
+						e.currentTarget.src = '/onerror_recipe.png';
+					}}
+				/>
 			</div>
 
 			<div className="p-4 flex flex-col flex-grow">
@@ -189,7 +196,14 @@ const RecipeCard = ({
 						// Normal mode, render with links
 						<>
 							<Link href={generateRecipeUrl(displayRecipe)} className="block">
-								<img className="w-full aspect-square object-cover" alt={`${name} recipe`} src={getRecipeImageUrl(image_filename)} />
+								<img 
+									className="w-full aspect-square object-cover" 
+									alt={`${name} recipe`} 
+									src={getRecipeImageUrl(image_filename)} 
+									onError={e => {
+										e.currentTarget.src = '/onerror_recipe.png';
+									}}
+								/>
 							</Link>
 
 							<div className="p-4 flex flex-col flex-grow">

@@ -57,7 +57,20 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 					{/* Image with dark mode support using semantic picture element */}
 					<picture className="absolute inset-0 w-full h-full">
 						{darkCoverImage && <source media="(prefers-color-scheme: dark)" srcSet={darkCoverImage} />}
-						<img src={coverImage} alt="Collection cover" className="w-full h-full object-cover" />
+						<img
+							src={coverImage}
+							alt="Collection cover"
+							className="w-full h-full object-cover"
+							onError={e => {
+								// Remove all source elements to prevent re-evaluation
+								const picture = e.currentTarget.parentElement;
+								if (picture && picture.tagName === 'PICTURE') {
+									const sources = picture.querySelectorAll('source');
+									sources.forEach(source => source.remove());
+								}
+								e.currentTarget.src = '/onerror_collection.png';
+							}}
+						/>
 					</picture>
 
 					<div

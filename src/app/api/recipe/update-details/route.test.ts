@@ -37,6 +37,7 @@ describe('/api/recipe/update-details', () => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
 		// Reset the mocks before each test
+		mockExecute.mockReset();
 		mockCascadeCopyWithContext.mockReset();
 		mockValidateRecipeInCollection.mockReset();
 		mockCanEditResource.mockReset();
@@ -73,7 +74,8 @@ describe('/api/recipe/update-details', () => {
 							seasonId: 3,
 							primaryTypeId: 4,
 							secondaryTypeId: 5,
-							collectionId: 6,
+							currentCollectionId: 6,
+							newCollectionId: 6,
 						}),
 					});
 
@@ -100,7 +102,6 @@ describe('/api/recipe/update-details', () => {
 						3,
 						4,
 						5,
-						6,
 						1,
 					]);
 				},
@@ -109,12 +110,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should successfully update recipe details with required fields only when user owns recipe', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 2,
-				actionsTaken: ['recipe copied'],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -127,10 +125,10 @@ describe('/api/recipe/update-details', () => {
 							'Content-Type': 'application/json',
 						},
 						body: JSON.stringify({
-							id: 2,
-							name: 'Basic Recipe Details',
-							description: 'Basic description',
-							collectionId: 1,
+							id: 1,
+							name: 'Basic Recipe Update',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -139,8 +137,8 @@ describe('/api/recipe/update-details', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe details updated successfully',
-						name: 'Basic Recipe Details',
-						description: 'Basic description',
+						name: 'Basic Recipe Update',
+						description: null,
 						prepTime: null,
 						cookTime: null,
 						seasonId: null,
@@ -150,15 +148,14 @@ describe('/api/recipe/update-details', () => {
 
 					// Verify optional fields are passed as null
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
-						'Basic Recipe Details',
-						'Basic description',
+						'Basic Recipe Update',
+						null, // description
 						null, // prepTime
 						null, // cookTime
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
-						null, // collectionId
-						2,
+						1,
 					]);
 				},
 				requestPatcher: mockAuthenticatedUser,
@@ -166,13 +163,19 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should trigger copy-on-write when user does not own recipe', async () => {
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(false); // User doesn't own the recipe
+
 			// Mock copy-on-write: recipe not owned, returns NEW ID
 			const originalRecipeId = 5;
 			const copiedRecipeId = 123;
 			mockCascadeCopyWithContext.mockResolvedValueOnce({
 				newCollectionId: 1,
 				newRecipeId: copiedRecipeId,
-				actionsTaken: ['recipe copied'],
+				actionsTaken: ['recipe_copied'],
+				newRecipeSlug: 'copied-recipe',
+				newCollectionSlug: 'copied-collection',
 			});
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
@@ -187,8 +190,10 @@ describe('/api/recipe/update-details', () => {
 						},
 						body: JSON.stringify({
 							id: originalRecipeId,
-							name: 'Recipe to Copy',
-							description: 'This recipe will be copied',
+							name: 'Copied Recipe',
+							description: 'Copied description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -196,27 +201,35 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data).toEqual({
 						success: true,
-						message: 'Recipe details updated successfully',
-						newRecipeId: copiedRecipeId,
-						copied: true,
+						message: 'Recipe copied and details updated successfully',
+						wasCopied: true,
+						newRecipeSlug: 'copied-recipe',
+						newCollectionSlug: 'copied-collection',
+						name: 'Copied Recipe',
+						description: 'Copied description',
+						prepTime: null,
+						cookTime: null,
+						seasonId: null,
+						primaryTypeId: null,
+						secondaryTypeId: null,
 					});
 
 					// Verify copy-on-write was called
 					expect(mockCascadeCopyWithContext).toHaveBeenCalledWith(
 						expect.any(Number), // household_id from auth
+						1, // collectionId
 						originalRecipeId
 					);
 
 					// Verify update was called with the NEW recipe ID
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
-						'Recipe to Copy',
-						'This recipe will be copied',
+						'Copied Recipe',
+						'Copied description',
 						null, // prepTime
 						null, // cookTime
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
-						null, // collectionId
 						copiedRecipeId, // NEW ID after copy
 					]);
 				},
@@ -225,12 +238,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should convert zero values in time fields to null for backward compatibility', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -244,10 +254,11 @@ describe('/api/recipe/update-details', () => {
 						},
 						body: JSON.stringify({
 							id: 1,
-							name: 'Zero Time Recipe',
-							description: 'No prep or cook time',
+							name: 'Recipe with zeros',
 							prepTime: 0,
 							cookTime: 0,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -256,18 +267,24 @@ describe('/api/recipe/update-details', () => {
 					expect(data).toEqual({
 						success: true,
 						message: 'Recipe details updated successfully',
+						name: 'Recipe with zeros',
+						description: null,
+						prepTime: null,
+						cookTime: null,
+						seasonId: null,
+						primaryTypeId: null,
+						secondaryTypeId: null,
 					});
 
 					// Verify zero values are converted to null in database call
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), [
-						'Zero Time Recipe',
-						'No prep or cook time',
+						'Recipe with zeros',
+						null,
 						null, // prepTime converted from 0 to null
 						null, // cookTime converted from 0 to null
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
-						null, // collectionId
 						1,
 					]);
 				},
@@ -292,7 +309,7 @@ describe('/api/recipe/update-details', () => {
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID, collection ID, and name are required');
+					expect(data.error).toBe('Recipe ID, current collection ID, and new collection ID are required');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -318,7 +335,7 @@ describe('/api/recipe/update-details', () => {
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID, collection ID, and name are required');
+					expect(data.error).toBe('Recipe ID, current collection ID, and new collection ID are required');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
@@ -337,24 +354,22 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: '',
 							description: 'Description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID, collection ID, and name are required');
+					expect(data.error).toBe('Recipe name is required');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('should return 404 if recipe not found', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 999,
-				actionsTaken: ['recipe copied'],
-			});
+			// Mock permissions - recipe doesn't exist in collection
+			mockValidateRecipeInCollection.mockResolvedValueOnce(false);
 
 			mockExecute.mockResolvedValueOnce([
 				{ affectedRows: 0 }, // No rows affected
@@ -372,25 +387,25 @@ describe('/api/recipe/update-details', () => {
 							id: 999,
 							name: 'Non-existent Recipe',
 							description: 'This recipe does not exist',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
 					expect(response.status).toBe(404);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe not found');
+					expect(data.error).toBe('Recipe not found in current collection');
 				},
 				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('should return 500 on database error', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
+			// Mock the UPDATE query to throw database error
 			mockExecute.mockRejectedValueOnce(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
@@ -405,6 +420,8 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: 'Recipe Name',
 							description: 'Description',
+							currentCollectionId: 1,
+							newCollectionId: 1, // Same collection, no move
 						}),
 					});
 
@@ -429,6 +446,8 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: 'Recipe Name',
 							description: 'Description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -459,12 +478,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should handle undefined description by converting to null', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -479,6 +495,8 @@ describe('/api/recipe/update-details', () => {
 						body: JSON.stringify({
 							id: 1,
 							name: 'Recipe without description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -493,7 +511,6 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
-						null, // collectionId
 						1,
 					]);
 				},
@@ -516,6 +533,8 @@ describe('/api/recipe/update-details', () => {
 							description: 'Testing negative values',
 							prepTime: -10,
 							cookTime: -15,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -545,6 +564,8 @@ describe('/api/recipe/update-details', () => {
 							description: 'Testing large values',
 							prepTime: 999999,
 							cookTime: 888888,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -575,13 +596,14 @@ describe('/api/recipe/update-details', () => {
 							seasonId: -1,
 							primaryTypeId: -2,
 							secondaryTypeId: -3,
-							collectionId: -4,
+							currentCollectionId: -4,
+							newCollectionId: -4,
 						}),
 					});
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Collection ID must be a positive integer');
+					expect(data.error).toBe('Current collection ID must be a positive integer');
 
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -591,12 +613,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should properly parse string ID to integer', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 123,
-				actionsTaken: ['recipe copied'],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -612,6 +631,8 @@ describe('/api/recipe/update-details', () => {
 							id: '123', // String ID
 							name: 'Recipe Name',
 							description: 'Description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -626,7 +647,6 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
-						null, // collectionId
 						123, // ID should be parsed to integer
 					]);
 				},
@@ -647,12 +667,14 @@ describe('/api/recipe/update-details', () => {
 							id: 'not-a-number',
 							name: 'Recipe Name',
 							description: 'Description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID, collection ID, and name are required');
+					expect(data.error).toBe('Recipe ID must be a valid number');
 
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -677,12 +699,14 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: longName,
 							description: validDescription,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
 					expect(response.status).toBe(400);
 					const data = await response.json();
-					expect(data.error).toBe('Recipe ID, collection ID, and name are required');
+					expect(data.error).toBe('Recipe name must not exceed 64 characters');
 
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
@@ -695,12 +719,9 @@ describe('/api/recipe/update-details', () => {
 			const validName = 'Valid Recipe Name';
 			const longDescription = 'b'.repeat(10000); // longtext can handle this
 
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -716,7 +737,8 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: validName,
 							description: longDescription,
-							collectionId: 1,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -733,12 +755,9 @@ describe('/api/recipe/update-details', () => {
 			const specialName = 'Recipe™ with "quotes" & émojis 🍕';
 			const specialDescription = 'Description with ñoñó, <tags>, & "special" characters™';
 
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -754,7 +773,8 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: specialName,
 							description: specialDescription,
-							collectionId: 1,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -768,12 +788,9 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should handle explicit null values for optional fields', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
 			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -794,7 +811,8 @@ describe('/api/recipe/update-details', () => {
 							seasonId: null,
 							primaryTypeId: null,
 							secondaryTypeId: null,
-							collectionId: null,
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -809,7 +827,6 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
-						null, // collectionId
 						1,
 					]);
 				},
@@ -830,6 +847,8 @@ describe('/api/recipe/update-details', () => {
 							id: 1,
 							name: '   \t\n   ', // Only whitespace
 							description: 'Valid description',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -845,14 +864,11 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should return 400 when foreign key references do not exist', async () => {
-			// Mock copy-on-write: recipe already owned, returns same ID
-			mockCascadeCopyWithContext.mockResolvedValueOnce({
-				newCollectionId: 1,
-				newRecipeId: 1,
-				actionsTaken: [],
-			});
+			// Mock permissions - recipe exists in collection, user owns it
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			// Mock database to return foreign key constraint error
+			// Mock database to return foreign key constraint error on UPDATE
 			mockExecute.mockRejectedValueOnce({
 				code: 'ER_NO_REFERENCED_ROW_2',
 				errno: 1452,
@@ -874,7 +890,8 @@ describe('/api/recipe/update-details', () => {
 							seasonId: 999, // Non-existent season
 							primaryTypeId: 888, // Non-existent primary type
 							secondaryTypeId: 777, // Non-existent secondary type
-							collectionId: 666, // Non-existent collection
+							currentCollectionId: 1, // Valid collection
+							newCollectionId: 1,
 						}),
 					});
 
@@ -887,6 +904,10 @@ describe('/api/recipe/update-details', () => {
 		});
 
 		it('should return 500 when copy-on-write fails', async () => {
+			// Mock permissions
+			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+			mockCanEditResource.mockResolvedValueOnce(false); // User doesn't own the recipe
+
 			// Mock copy-on-write to throw an error
 			mockCascadeCopyWithContext.mockRejectedValueOnce(new Error('Failed to copy recipe'));
 
@@ -902,6 +923,8 @@ describe('/api/recipe/update-details', () => {
 							id: 10,
 							name: 'Recipe that fails to copy',
 							description: 'This will fail during copy-on-write',
+							currentCollectionId: 1,
+							newCollectionId: 1,
 						}),
 					});
 
@@ -912,13 +935,360 @@ describe('/api/recipe/update-details', () => {
 					// Verify copy-on-write was attempted
 					expect(mockCascadeCopyWithContext).toHaveBeenCalledWith(
 						expect.any(Number), // household_id from auth
-						10
+						1, // collectionId
+						10 // recipeId
 					);
 
 					// Verify UPDATE was never called since copy failed
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
 				requestPatcher: mockAuthenticatedUser,
+			});
+		});
+
+		// Collection Move Tests
+		describe('Collection Move Functionality', () => {
+			it('should update recipe without moving when currentCollectionId equals newCollectionId', async () => {
+				// User owns the recipe
+				mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+				mockCanEditResource.mockResolvedValueOnce(true);
+
+				// Recipe update succeeds
+				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								id: 1,
+								name: 'Updated Recipe',
+								description: 'Updated description',
+								currentCollectionId: 5,
+								newCollectionId: 5, // Same as current
+							}),
+						});
+
+						expect(response.status).toBe(200);
+						const data = await response.json();
+
+						expect(data.success).toBe(true);
+						expect(data.message).toBe('Recipe details updated successfully');
+						expect(data.recipeMoved).toBeUndefined();
+
+						// Verify no DELETE/INSERT for collection move
+						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
+			});
+
+			it('should successfully move owned recipe to a new collection', async () => {
+				// User owns the recipe
+				mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+				mockCanEditResource
+					.mockResolvedValueOnce(true) // owns recipe
+					.mockResolvedValueOnce(true); // has access to new collection
+
+				// Recipe update succeeds
+				mockExecute
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // DELETE from old collection
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // INSERT to new collection
+					.mockResolvedValueOnce([[{ url_slug: 'new-collection' }], []]); // SELECT collection slug
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								id: 1,
+								name: 'Recipe to Move',
+								description: 'Moving to new collection',
+								currentCollectionId: 5,
+								newCollectionId: 10, // Different collection
+							}),
+						});
+
+						expect(response.status).toBe(200);
+						const data = await response.json();
+
+						expect(data.success).toBe(true);
+						expect(data.message).toBe('Recipe details updated and moved to new collection successfully');
+						expect(data.wasMoved).toBe(true);
+						expect(data.newCollectionId).toBe(10);
+
+						// Verify DELETE and INSERT were called
+						expect(mockExecute).toHaveBeenCalledWith(
+							expect.stringContaining('DELETE FROM collection_recipes'),
+							[5, 1] // currentCollectionId, recipeId
+						);
+						expect(mockExecute).toHaveBeenCalledWith(
+							expect.stringContaining('INSERT INTO collection_recipes'),
+							[10, 1] // newCollectionId, recipeId (display_order is hardcoded as 0)
+						);
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
+			});
+
+			it('should copy recipe and move to new collection when user does not own recipe', async () => {
+				// Recipe exists in collection
+				mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+
+				// User doesn't own recipe but has access to new collection
+				mockCanEditResource
+					.mockResolvedValueOnce(false) // doesn't own recipe
+					.mockResolvedValueOnce(true); // has access to new collection
+
+				// Copy-on-write triggers
+				mockCascadeCopyWithContext.mockResolvedValueOnce({
+					newCollectionId: 5, // Same as current (no collection copy needed)
+					newRecipeId: 100, // New recipe ID after copy
+					actionsTaken: ['recipe_copied'],
+					newRecipeSlug: 'copied-recipe',
+				});
+
+				// Recipe update and move succeed
+				mockExecute
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE copied recipe
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // DELETE from old collection
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // INSERT to new collection
+					.mockResolvedValueOnce([[{ url_slug: 'target-collection' }], []]); // SELECT collection slug
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								id: 1,
+								name: 'Recipe to Copy and Move',
+								description: 'Will be copied then moved',
+								currentCollectionId: 5,
+								newCollectionId: 10,
+							}),
+						});
+
+						expect(response.status).toBe(200);
+						const data = await response.json();
+
+						expect(data.success).toBe(true);
+						expect(data.message).toBe('Recipe copied, moved to new collection, and details updated successfully');
+						expect(data.wasCopied).toBe(true);
+						expect(data.wasMoved).toBe(true);
+						expect(data.newCollectionId).toBe(10);
+						expect(data.newRecipeSlug).toBe('copied-recipe');
+
+						// Verify copy-on-write was called
+						expect(mockCascadeCopyWithContext).toHaveBeenCalledWith(
+							expect.any(Number), // household_id
+							5, // currentCollectionId
+							1 // recipeId
+						);
+
+						// Verify move operations used the COPIED recipe ID
+						expect(mockExecute).toHaveBeenCalledWith(
+							expect.stringContaining('DELETE FROM collection_recipes'),
+							[5, 100] // currentCollectionId, COPIED recipeId
+						);
+						expect(mockExecute).toHaveBeenCalledWith(
+							expect.stringContaining('INSERT INTO collection_recipes'),
+							[10, 100] // newCollectionId, COPIED recipeId (display_order is hardcoded as 0)
+						);
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
+			});
+
+			it('should update recipe but skip move when user lacks permission to target collection', async () => {
+				// Recipe exists in collection
+				mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+
+				// User owns recipe but doesn't have access to new collection
+				mockCanEditResource
+					.mockResolvedValueOnce(true) // owns recipe
+					.mockResolvedValueOnce(false); // NO access to new collection
+
+				// Recipe update succeeds, but no move operations
+				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE only
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								id: 1,
+								name: 'Recipe Cannot Move',
+								description: 'User lacks permission to target collection',
+								currentCollectionId: 5,
+								newCollectionId: 10, // User doesn't have access to this
+							}),
+						});
+
+						expect(response.status).toBe(200);
+						const data = await response.json();
+
+						// Update succeeds but move is silently skipped
+						expect(data.success).toBe(true);
+						expect(data.message).toBe('Recipe details updated successfully');
+						expect(data.recipeMoved).toBeUndefined(); // No move happened
+						expect(data.movedToCollectionId).toBeUndefined();
+
+						// Verify permission check for new collection
+						expect(mockCanEditResource).toHaveBeenCalledWith(
+							expect.any(Number), // household_id
+							'collections',
+							10 // newCollectionId
+						);
+
+						// Verify no DELETE/INSERT operations
+						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
+			});
+
+			it('should not attempt move when currentCollectionId equals newCollectionId even with copy-on-write', async () => {
+				// Recipe exists in collection
+				mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+
+				// User doesn't own recipe, triggering copy-on-write
+				mockCanEditResource.mockResolvedValueOnce(false); // doesn't own recipe
+
+				// Copy-on-write changes the collection
+				mockCascadeCopyWithContext.mockResolvedValueOnce({
+					newCollectionId: 15, // Different from original due to copy
+					newRecipeId: 100,
+					actionsTaken: ['collection_copied', 'recipe_copied'],
+					newRecipeSlug: 'copied-recipe',
+					newCollectionSlug: 'copied-collection',
+				});
+
+				// Only UPDATE should happen, no move operations
+				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE only
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								id: 1,
+								name: 'Recipe Same Collection',
+								description: 'No move requested',
+								currentCollectionId: 5,
+								newCollectionId: 5, // Same as current - no move intended
+							}),
+						});
+
+						expect(response.status).toBe(200);
+						const data = await response.json();
+
+						// Copy happened but no move
+						expect(data.success).toBe(true);
+						expect(data.message).toBe('Recipe copied and details updated successfully');
+						expect(data.wasCopied).toBe(true);
+						expect(data.newRecipeSlug).toBe('copied-recipe');
+						expect(data.newCollectionSlug).toBe('copied-collection');
+						expect(data.recipeMoved).toBeUndefined(); // No move, even though copy changed collection
+
+						// Verify copy-on-write was called
+						expect(mockCascadeCopyWithContext).toHaveBeenCalledWith(
+							expect.any(Number), // household_id
+							5, // currentCollectionId
+							1 // recipeId
+						);
+
+						// Verify no DELETE/INSERT operations (no move attempted)
+						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
+			});
+
+			it('should skip move silently after copy-on-write when user lacks access to target collection', async () => {
+				// Recipe exists in collection
+				mockValidateRecipeInCollection.mockResolvedValueOnce(true);
+
+				// User doesn't own recipe and doesn't have access to new collection
+				mockCanEditResource
+					.mockResolvedValueOnce(false) // doesn't own recipe
+					.mockResolvedValueOnce(false); // NO access to new collection
+
+				// Copy-on-write happens
+				mockCascadeCopyWithContext.mockResolvedValueOnce({
+					newCollectionId: 15, // Changed due to collection copy
+					newRecipeId: 100,
+					actionsTaken: ['collection_copied', 'recipe_copied'],
+					newRecipeSlug: 'copied-recipe',
+					newCollectionSlug: 'copied-collection',
+				});
+
+				// Only UPDATE should happen, move is skipped
+				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE only
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'PUT',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								id: 1,
+								name: 'Recipe Copy but No Move',
+								description: 'Copy happens but move is denied',
+								currentCollectionId: 5,
+								newCollectionId: 10, // User doesn't have access to this
+							}),
+						});
+
+						expect(response.status).toBe(200);
+						const data = await response.json();
+
+						// Copy succeeded but move was silently skipped
+						expect(data.success).toBe(true);
+						expect(data.message).toBe('Recipe copied and details updated successfully');
+						expect(data.wasCopied).toBe(true);
+						expect(data.newRecipeSlug).toBe('copied-recipe');
+						expect(data.newCollectionSlug).toBe('copied-collection');
+						expect(data.recipeMoved).toBeUndefined(); // Move was skipped
+						expect(data.movedToCollectionId).toBeUndefined();
+
+						// Verify copy-on-write was called
+						expect(mockCascadeCopyWithContext).toHaveBeenCalledWith(
+							expect.any(Number), // household_id
+							5, // currentCollectionId
+							1 // recipeId
+						);
+
+						// Verify permission check for new collection
+						expect(mockCanEditResource).toHaveBeenCalledWith(
+							expect.any(Number), // household_id
+							'collections',
+							10 // newCollectionId that was requested
+						);
+
+						// Verify no DELETE/INSERT operations (move was denied)
+						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
+						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
+					},
+					requestPatcher: mockAuthenticatedUser,
+				});
 			});
 		});
 	});
