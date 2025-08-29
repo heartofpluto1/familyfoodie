@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { LogoutIcon, BurgerIcon } from './Icons';
-import type { SessionUser } from '@/types/auth';
+import type { Session } from '@/types/auth';
 import { useRef, useEffect, useState } from 'react';
 import UserSettings from './UserSettings';
 
 interface HeaderLogoProps {
-	session: SessionUser | null;
+	session: Session | null;
 }
 
 const HeaderLogo = ({ session }: HeaderLogoProps) => {
@@ -77,7 +77,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 									>
 										Recipes
 									</Link>
-									{session?.is_admin && (
+									{session?.user?.is_admin && (
 										<Link
 											href="/admin"
 											className="transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
@@ -112,7 +112,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										>
 											Recipes
 										</Link>
-										{session?.is_admin && (
+										{session?.user?.is_admin && (
 											<Link href="/admin" className="block px-3 py-2 text-sm transition-colors">
 												Admin
 											</Link>
@@ -131,7 +131,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
 										title="User settings"
 									>
-										{session?.username}
+										{session?.user?.username}
 									</button>
 									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -10,3 +10,11 @@ export interface SessionUser {
 	household_id: number;
 	household_name: string;
 }
+
+// Session structure returned by getSession()
+export interface Session {
+	user: Omit<SessionUser, 'household_id' | 'household_name'>;
+	household_id: number;
+	household_name: string;
+	loginTime: number;
+}

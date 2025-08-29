@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import HeaderLogo from './HeaderLogo';
-import type { SessionUser } from '@/types/auth';
+import type { Session } from '@/types/auth';
 
 // Mock Next.js Link component
 jest.mock('next/link', () => {
@@ -33,28 +33,34 @@ jest.mock('./UserSettings', () => {
 });
 
 describe('HeaderLogo Component', () => {
-	const mockAuthenticatedSession: SessionUser = {
-		id: 1,
-		username: 'testuser',
-		email: 'test@example.com',
-		first_name: 'Test',
-		last_name: 'User',
-		is_admin: false,
-		is_active: true,
+	const mockAuthenticatedSession: Session = {
+		user: {
+			id: 1,
+			username: 'testuser',
+			email: 'test@example.com',
+			first_name: 'Test',
+			last_name: 'User',
+			is_admin: false,
+			is_active: true,
+		},
 		household_id: 1,
 		household_name: 'Test Household',
+		loginTime: Date.now(),
 	};
 
-	const mockAdminSession: SessionUser = {
-		id: 1,
-		username: 'admin',
-		email: 'admin@example.com',
-		first_name: 'Admin',
-		last_name: 'User',
-		is_admin: true,
-		is_active: true,
+	const mockAdminSession: Session = {
+		user: {
+			id: 1,
+			username: 'admin',
+			email: 'admin@example.com',
+			first_name: 'Admin',
+			last_name: 'User',
+			is_admin: true,
+			is_active: true,
+		},
 		household_id: 1,
 		household_name: 'Admin Household',
+		loginTime: Date.now(),
 	};
 
 	beforeEach(() => {
