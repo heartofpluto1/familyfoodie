@@ -18,7 +18,19 @@ jest.mock('next/link', () => {
 jest.mock('./Icons', () => ({
 	LogoutIcon: () => <span data-testid="logout-icon">Logout</span>,
 	BurgerIcon: () => <span data-testid="burger-icon">Menu</span>,
+	CloseIcon: () => <span data-testid="close-icon">Close</span>,
 }));
+
+// Mock UserSettings component
+jest.mock('./UserSettings', () => {
+	return function MockUserSettings({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+		return isOpen ? (
+			<div data-testid="user-settings" onClick={onClose}>
+				User Settings Panel
+			</div>
+		) : null;
+	};
+});
 
 describe('HeaderLogo Component', () => {
 	const mockAuthenticatedSession: SessionData = {
