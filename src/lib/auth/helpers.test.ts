@@ -253,7 +253,12 @@ describe('Auth Helpers', () => {
 			mockGetServerSession.mockResolvedValueOnce(mockSession);
 			mockExecute.mockRejectedValueOnce(new Error('Database connection failed'));
 
-			await expect(requireAdminAuth()).rejects.toThrow('Database connection failed');
+			const result = await requireAdminAuth();
+
+			expect(result.authorized).toBe(false);
+			if (!result.authorized) {
+				expect(result.response).toBeInstanceOf(NextResponse);
+			}
 		});
 
 		it('should prevent SQL injection in user ID', async () => {
@@ -390,9 +395,19 @@ describe('Auth Helpers', () => {
 			mockGetServerSession.mockResolvedValueOnce(mockSession);
 			mockExecute.mockRejectedValueOnce(new Error('ECONNREFUSED: Connection to database failed at 192.168.1.100:3306'));
 
-			// This should throw (as per current implementation)
-			await expect(requireAdminAuth()).rejects.toThrow();
-			// In production, this error should be caught and sanitized at the route level
+			const result = await requireAdminAuth();
+
+			// Should return unauthorized without exposing database error details
+			expect(result.authorized).toBe(false);
+			if (!result.authorized) {
+				const response = result.response as NextResponse;
+				// Get the response body to check error message
+				const body = await response.json();
+				expect(body.error).toBe('Unauthorized');
+				// Should not contain sensitive database details
+				expect(JSON.stringify(body)).not.toContain('192.168.1.100');
+				expect(JSON.stringify(body)).not.toContain('ECONNREFUSED');
+			}
 		});
 	});
 });
