@@ -273,6 +273,7 @@ export function MySQLAdapter(): Adapter {
 			}
 
 			// Still store in nextauth_accounts for session management
+			// Convert undefined to null for MySQL
 			await pool.execute(
 				`INSERT INTO nextauth_accounts (
           user_id, type, provider, provider_account_id,
@@ -284,13 +285,13 @@ export function MySQLAdapter(): Adapter {
 					account.type,
 					account.provider,
 					account.providerAccountId,
-					account.refresh_token,
-					account.access_token,
-					account.expires_at,
-					account.token_type,
-					account.scope,
-					account.id_token,
-					account.session_state,
+					account.refresh_token ?? null,
+					account.access_token ?? null,
+					account.expires_at ?? null,
+					account.token_type ?? null,
+					account.scope ?? null,
+					account.id_token ?? null,
+					account.session_state ?? null,
 				]
 			);
 		},
