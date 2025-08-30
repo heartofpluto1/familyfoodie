@@ -1,5 +1,10 @@
--- Migration: 008_add_oauth_support.sql
+-- Migration: 021_add_oauth_support.sql
 -- Convert to pure OAuth authentication (idempotent)
+-- Date: 2025-08-30
+-- Description: Remove password authentication and convert to OAuth-only with NextAuth.js support
+
+-- Disable foreign key checks during migration
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- Drop legacy authentication columns
 ALTER TABLE users DROP COLUMN IF EXISTS username;
@@ -129,6 +134,8 @@ DELIMITER ;
 -- Enable event scheduler if not already enabled
 SET GLOBAL event_scheduler = ON;
 
--- Insert migration record (only if not already run)
-INSERT IGNORE INTO schema_migrations (version, executed_at, execution_time_ms) VALUES
-('008_add_oauth_support.sql', NOW(), 0);
+-- Re-enable foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Report completion
+SELECT 'Migration 021 completed: Converted to OAuth authentication, removed password fields, added NextAuth tables' as status;
