@@ -143,6 +143,13 @@ export function MySQLAdapter(): Adapter {
 
 			const user = users[0];
 			console.log('✅ Found user:', { id: user.id, email: user.email, oauth_provider: user.oauth_provider, oauth_provider_id: user.oauth_provider_id });
+			
+			// If user has placeholder OAuth credentials, treat them as non-OAuth user for NextAuth
+			if (user.oauth_provider && PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id)) {
+				console.log('🔄 User has placeholder OAuth, returning null to trigger account creation/linking flow');
+				return null;
+			}
+			
 			return {
 				id: user.id.toString(),
 				email: user.email,
