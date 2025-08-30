@@ -389,11 +389,7 @@ describe('/api/collections/delete', () => {
 					expect(mockDeleteFile).toHaveBeenCalledWith('custom_123.jpg', 'jpg', 'collections');
 					expect(mockDeleteFile).toHaveBeenCalledWith('custom_123_dark.jpg', 'jpg', 'collections');
 
-					// Verify storage mode was logged
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Storage mode: local');
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith(
-						'Deleting collection files for filename: custom_123.jpg, filename_dark: custom_123_dark.jpg'
-					);
+					// Storage mode logging was removed in the merge
 				},
 			});
 		});
@@ -492,8 +488,7 @@ describe('/api/collections/delete', () => {
 					// Verify no file deletion calls were made for default images
 					expect(mockDeleteFile).not.toHaveBeenCalled();
 
-					// Verify appropriate logging
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Skipping file deletion for default collection images');
+					// File deletion skip logging was removed in the merge
 				},
 			});
 		});
@@ -766,9 +761,7 @@ describe('/api/collections/delete', () => {
 						},
 					});
 
-					// Verify appropriate logging for both scenarios
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Successfully deleted light mode image');
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('dark mode image not found, skipping deletion');
+					// File deletion success logging was removed in the merge
 				},
 			});
 		});
@@ -799,11 +792,7 @@ describe('/api/collections/delete', () => {
 
 					expect(response.status).toBe(200);
 
-					// Verify storage mode and filename logging
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Storage mode: gcs');
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith(
-						'Deleting collection files for filename: custom_123.jpg, filename_dark: custom_123_dark.jpg'
-					);
+					// Storage mode and filename logging was removed in the merge
 				},
 			});
 		});
@@ -1012,9 +1001,9 @@ describe('/api/collections/delete', () => {
 						},
 					});
 
-					// Verify both deletion attempts were made and appropriate logging occurred
+					// Verify both deletion attempts were made
 					expect(mockDeleteFile).toHaveBeenCalledTimes(2);
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Successfully deleted light mode image');
+					// Success logging was removed in the merge
 				},
 			});
 		});

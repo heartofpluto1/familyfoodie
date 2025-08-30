@@ -268,8 +268,7 @@ describe('/api/collections/create', () => {
 							111,
 						]);
 
-						// Should log warning about fallback
-						expect(consoleWarnSpy).toHaveBeenCalledWith('Dark mode image upload failed, using light image as fallback');
+						// Warning log about fallback was removed in the merge
 					},
 				});
 			});
@@ -535,9 +534,7 @@ describe('/api/collections/create', () => {
 
 						expect(response.status).toBe(200);
 
-						// Should log storage mode and filename
-						expect(consoleSpy).toHaveBeenCalledWith('Storage mode: gcs');
-						expect(consoleSpy).toHaveBeenCalledWith('Creating collection with filename: secure_filename_123');
+						// Storage mode and filename logging was removed in the merge
 					},
 				});
 			});

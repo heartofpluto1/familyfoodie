@@ -3,7 +3,7 @@ import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
 import { requireAuth } from '@/lib/auth/helpers';
 import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
-import { uploadFile, getStorageMode } from '@/lib/storage';
+import { uploadFile } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -47,7 +47,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 			collectionId = result.insertId;
 			filename = generateCollectionSecureFilename(collectionId, title);
-
 
 			// Determine dark filename based on whether dark image is provided
 			let darkFilename: string;

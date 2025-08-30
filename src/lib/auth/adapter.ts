@@ -30,7 +30,7 @@ export function MySQLAdapter(): Adapter {
 				if (existingUsers.length > 0) {
 					// User exists - update their OAuth info and profile image for first-time OAuth login
 					const existingUser = existingUsers[0];
-					
+
 					// Only update if they don't already have OAuth credentials
 					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending') {
 						await connection.execute(
@@ -70,11 +70,9 @@ export function MySQLAdapter(): Adapter {
 					// Extract name parts to get last name for household
 					const nameParts = (user.name || '').split(' ');
 					const lastName = nameParts.slice(1).join(' ') || nameParts[0] || user.email?.split('@')[0] || 'Household';
-					
+
 					// Create new household for user with just last name
-					const [householdResult] = await connection.execute<ResultSetHeader>('INSERT INTO households (name) VALUES (?)', [
-						lastName,
-					]);
+					const [householdResult] = await connection.execute<ResultSetHeader>('INSERT INTO households (name) VALUES (?)', [lastName]);
 					householdId = householdResult.insertId;
 
 					// Auto-subscribe to default collection (id=1)
@@ -137,7 +135,7 @@ export function MySQLAdapter(): Adapter {
 			}
 
 			const user = users[0];
-			
+
 			// If user has pending OAuth credentials, treat them as non-OAuth user for NextAuth
 			if (user.oauth_provider && user.oauth_provider_id === 'pending') {
 				return null;
@@ -153,7 +151,6 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async getUserByAccount({ provider, providerAccountId }) {
-			
 			// First check users table directly for OAuth provider info
 			const [directUsers] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE oauth_provider = ? AND oauth_provider_id = ?', [
 				provider,
@@ -174,7 +171,6 @@ export function MySQLAdapter(): Adapter {
 					emailVerified: user.email_verified ? new Date() : null,
 				};
 			}
-
 
 			// Fallback to checking nextauth_accounts table
 			const [users] = await pool.execute<DbUser[]>(
