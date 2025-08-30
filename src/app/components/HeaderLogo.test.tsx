@@ -78,7 +78,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={null} />);
 			expect(screen.getByText('Family Foodie')).toBeInTheDocument();
 			expect(screen.getByText('What the fork is for dinner?')).toBeInTheDocument();
 		});
@@ -90,7 +90,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={mockAuthenticatedSession} />);
 			expect(screen.getByText('Family Foodie')).toBeInTheDocument();
 			expect(screen.getByText('What the fork is for dinner?')).toBeInTheDocument();
 		});
@@ -102,7 +102,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={null} />);
 
 			const title = screen.getByText('Family Foodie');
 			expect(title).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={null} />);
 
 			const header = screen.getByRole('banner');
 			expect(header).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={null} />);
 
 			// Navigation links should not be present
 			expect(screen.queryByTestId('link-/')).not.toBeInTheDocument();
@@ -144,29 +144,21 @@ describe('HeaderLogo Component', () => {
 		});
 
 		it('shows navigation when authenticated', () => {
-			mockUseSession.mockReturnValue({
-				data: mockAuthenticatedSession,
-				status: 'authenticated',
-				update: jest.fn(),
-			});
+			render(<HeaderLogo session={mockAuthenticatedSession} />);
 
-			render(<HeaderLogo />);
-
-			// Navigation links should be present (at least some of them)
-			expect(screen.getByTestId('link-/')).toBeInTheDocument();
+			// Navigation links should be present (check for multiple instances - desktop and mobile)
+			expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Desktop and mobile nav
+			expect(screen.getAllByTestId('link-/plan')).toHaveLength(2);
+			expect(screen.getAllByTestId('link-/shop')).toHaveLength(2);
+			expect(screen.getAllByTestId('link-/recipes')).toHaveLength(2);
 		});
 
 		it('shows admin navigation for admin users', () => {
-			mockUseSession.mockReturnValue({
-				data: mockAdminSession,
-				status: 'authenticated',
-				update: jest.fn(),
-			});
+			render(<HeaderLogo session={mockAdminSession} />);
 
-			render(<HeaderLogo />);
-
-			// Should show navigation for admin users
-			expect(screen.getByTestId('link-/')).toBeInTheDocument();
+			// Should show navigation for admin users including admin link
+			expect(screen.getAllByTestId('link-/')).toHaveLength(2); // Desktop and mobile nav
+			expect(screen.getAllByTestId('link-/admin')).toHaveLength(2); // Admin should be visible in both navs
 		});
 	});
 
@@ -178,7 +170,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={mockAuthenticatedSession} />);
 
 			// Look for logout functionality (may be in a dropdown or button)
 			// This depends on the actual implementation in the component
@@ -198,7 +190,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={mockAuthenticatedSession} />);
 
 			const header = screen.getByRole('banner');
 			expect(header).toHaveClass('bg-surface', 'border-b', 'border-custom');
@@ -213,7 +205,7 @@ describe('HeaderLogo Component', () => {
 				update: jest.fn(),
 			});
 
-			render(<HeaderLogo />);
+			render(<HeaderLogo session={null} />);
 
 			// Should still render the basic header structure
 			expect(screen.getByText('Family Foodie')).toBeInTheDocument();
