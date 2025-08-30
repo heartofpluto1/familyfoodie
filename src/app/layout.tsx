@@ -4,6 +4,8 @@ import { Source_Serif_4 } from 'next/font/google';
 import HeaderLogo from './components/HeaderLogo';
 import { ToastProvider } from './components/ToastProvider';
 import { Providers } from './providers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 
 const sourceSerif4 = Source_Serif_4({
 	subsets: ['latin'],
@@ -17,17 +19,19 @@ export const metadata: Metadata = {
 	description: 'Shift left on meal planning and shopping lists',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const session = await getServerSession(authOptions);
+	
 	return (
 		<html lang="en">
 			<body className={`${sourceSerif4.variable} antialiased`}>
 				<Providers>
 					<ToastProvider>
-						<HeaderLogo />
+						<HeaderLogo session={session} />
 						{children}
 					</ToastProvider>
 				</Providers>

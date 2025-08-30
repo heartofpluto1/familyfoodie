@@ -17,8 +17,6 @@ interface DbUser extends RowDataPacket {
 	is_active: boolean;
 }
 
-// Placeholder IDs that indicate account needs OAuth linking (for 2 existing users)
-const PLACEHOLDER_OAUTH_IDS = ['1', '2'];
 
 export function MySQLAdapter(): Adapter {
 	return {
@@ -37,7 +35,7 @@ export function MySQLAdapter(): Adapter {
 					console.log('👤 Found existing user:', { id: existingUser.id, oauth_provider: existingUser.oauth_provider, oauth_provider_id: existingUser.oauth_provider_id });
 					
 					// Only update if they don't already have OAuth credentials
-					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending' || PLACEHOLDER_OAUTH_IDS.includes(existingUser.oauth_provider_id)) {
+					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending') {
 						console.log('🔄 Updating existing user with OAuth info...');
 						await connection.execute(
 							'UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, profile_image_url = ?, email_verified = 1, updated_at = NOW() WHERE id = ?',
@@ -144,9 +142,9 @@ export function MySQLAdapter(): Adapter {
 			const user = users[0];
 			console.log('✅ Found user:', { id: user.id, email: user.email, oauth_provider: user.oauth_provider, oauth_provider_id: user.oauth_provider_id });
 			
-			// If user has placeholder OAuth credentials, treat them as non-OAuth user for NextAuth
-			if (user.oauth_provider && PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id)) {
-				console.log('🔄 User has placeholder OAuth, returning null to trigger account creation/linking flow');
+			// If user has pending OAuth credentials, treat them as non-OAuth user for NextAuth
+			if (user.oauth_provider && user.oauth_provider_id === 'pending') {
+				console.log('🔄 User has pending OAuth, returning null to trigger account creation/linking flow');
 				return null;
 			}
 			
@@ -170,9 +168,9 @@ export function MySQLAdapter(): Adapter {
 
 			if (directUsers.length > 0) {
 				const user = directUsers[0];
-				// Don't return users with placeholder IDs - let NextAuth link them properly
-				if (PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id) || user.oauth_provider_id === 'pending') {
-					console.log('🚫 Found user with placeholder ID, returning null to allow linking:', { id: user.id, oauth_provider_id: user.oauth_provider_id });
+				// Don't return users with pending OAuth IDs - let NextAuth link them properly
+				if (user.oauth_provider_id === 'pending') {
+					console.log('🚫 Found user with pending OAuth ID, returning null to allow linking:', { id: user.id, oauth_provider_id: user.oauth_provider_id });
 					return null;
 				}
 				console.log('✅ Found user by account:', { id: user.id, email: user.email });
@@ -254,8 +252,8 @@ export function MySQLAdapter(): Adapter {
 			if (users.length > 0) {
 				const user = users[0];
 
-				// Check if this is a placeholder account (IDs 1, 2, or 3) or pending OAuth setup
-				if (PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id) || user.oauth_provider_id === 'pending') {
+				// Check if this is pending OAuth setup
+				if (user.oauth_provider_id === 'pending') {
 					// This is an existing user's first OAuth login - update their OAuth details
 					await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, email_verified = 1 WHERE id = ?', [
 						account.provider,

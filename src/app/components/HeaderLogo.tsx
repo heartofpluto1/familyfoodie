@@ -1,13 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
+import Image from 'next/image';
+import { signOut } from 'next-auth/react';
 import { LogoutIcon, BurgerIcon } from './Icons';
 import { useRef, useEffect, useState } from 'react';
 import UserSettings from './UserSettings';
+import type { Session } from 'next-auth';
 
-const HeaderLogo = () => {
-	const { data: session } = useSession();
+interface HeaderLogoProps {
+	session: Session | null;
+}
+
+const HeaderLogo = ({ session }: HeaderLogoProps) => {
 	const detailsRef = useRef<HTMLDetailsElement>(null);
 	const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 	const isAuthenticated = !!session;
@@ -125,15 +130,28 @@ const HeaderLogo = () => {
 								<div className="flex items-center space-x-2 sm:space-x-3">
 									<button
 										onClick={() => setIsUserSettingsOpen(true)}
-										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
+										className="flex items-center justify-center cursor-pointer"
 										title="User settings"
 									>
-										{session?.user?.name}
+										{session?.user?.image ? (
+											<Image
+												src={session.user.image}
+												alt={session.user.name || 'User'}
+												width={36}
+												height={36}
+												className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-custom"
+												unoptimized
+											/>
+										) : (
+											<div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-accent text-background flex items-center justify-center text-sm font-medium">
+												{session?.user?.name?.charAt(0)?.toUpperCase() || 'U'}
+											</div>
+										)}
 									</button>
 									<button
-										onClick={() => signOut()}
+										onClick={() => signOut({ callbackUrl: '/' })}
 										className="btn-default p-1.5 sm:p-2 rounded-sm inline-block"
-										title="Logout"
+										title="Sign Out"
 									>
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
 									</button>

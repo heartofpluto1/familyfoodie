@@ -125,10 +125,10 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Migrate existing users to have placeholder OAuth values
--- Use their user ID as the oauth_provider_id (1, 2 for the two existing users)
+-- Set oauth_provider_id to 'pending' for users who haven't linked OAuth yet
 UPDATE users 
 SET oauth_provider = 'google',
-    oauth_provider_id = CAST(id AS CHAR),
+    oauth_provider_id = 'pending',
     email_verified = 1
 WHERE oauth_provider = 'google' AND oauth_provider_id = '0';
 
