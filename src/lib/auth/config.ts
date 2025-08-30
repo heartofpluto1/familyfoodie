@@ -77,7 +77,7 @@ export const authOptions: NextAuthOptions = {
           session.user.id = rows[0].id.toString()
           session.user.household_id = rows[0].household_id
           session.user.household_name = rows[0].household_name
-          session.user.is_admin = rows[0].is_admin
+          session.user.is_admin = Boolean(rows[0].is_admin)
         }
       }
       return session
