@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { cleanupRecipeFiles } from '@/lib/utils/secureFilename.server';
 import { canEditResource } from '@/lib/permissions';
 
@@ -45,7 +45,12 @@ function validateRecipeId(recipeId: unknown): { isValid: boolean; error?: { succ
 	return { isValid: true };
 }
 
-async function deleteHandler(request: AuthenticatedRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	let recipeId: unknown;
 	let collectionId: unknown;
 
@@ -69,7 +74,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 
 	try {
 		// Check if user can edit this recipe (household ownership)
-		const canEditRecipe = await canEditResource(request.household_id, 'recipes', numericRecipeId);
+		const canEditRecipe = await canEditResource(auth.household_id, 'recipes', numericRecipeId);
 
 		// If user doesn't own the recipe, check if they can remove it from their collection
 		if (!canEditRecipe) {
@@ -86,7 +91,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 			}
 
 			// Check if user owns the collection
-			const canEditCollection = await canEditResource(request.household_id, 'collections', numericCollectionId);
+			const canEditCollection = await canEditResource(auth.household_id, 'collections', numericCollectionId);
 
 			if (!canEditCollection) {
 				return NextResponse.json(
@@ -143,7 +148,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		// Check if the recipe is used in any planned weeks (household-scoped)
 		const [planRows] = await pool.execute<PlanRow[]>('SELECT COUNT(*) as count FROM plans WHERE recipe_id = ? AND household_id = ?', [
 			numericRecipeId,
-			request.household_id,
+			auth.household_id,
 		]);
 
 		if (planRows[0].count > 0) {
@@ -163,7 +168,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 			`SELECT COUNT(*) as count FROM shopping_lists sl 
 			 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
 			 WHERE ri.recipe_id = ? AND sl.household_id = ?`,
-			[numericRecipeId, request.household_id]
+			[numericRecipeId, auth.household_id]
 		);
 
 		const hasShoppingListHistory = shoppingListUsage[0].count > 0;
@@ -177,7 +182,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 				// Remove recipe from household's collections since it's being archived
 				await connection.execute(
 					'DELETE FROM collection_recipes WHERE recipe_id = ? AND collection_id IN (SELECT id FROM collections WHERE household_id = ?)',
-					[numericRecipeId, request.household_id]
+					[numericRecipeId, auth.household_id]
 				);
 
 				await connection.execute('UPDATE recipes SET archived = 1 WHERE id = ?', [numericRecipeId]);
@@ -250,28 +255,28 @@ async function deleteHandler(request: AuthenticatedRequest) {
 						`SELECT COUNT(*) as count FROM recipe_ingredients ri
 						 JOIN recipes r ON ri.recipe_id = r.id
 						 WHERE ri.ingredient_id = ? AND r.household_id = ?`,
-						[ingredientId, request.household_id]
+						[ingredientId, auth.household_id]
 					);
 
 					// Also check if it's used in shopping lists
 					const [shoppingCheck] = await connection.execute<RowDataPacket[]>(
 						`SELECT COUNT(*) as count FROM shopping_lists sl
 						 WHERE sl.ingredient_id = ? AND sl.household_id = ?`,
-						[ingredientId, request.household_id]
+						[ingredientId, auth.household_id]
 					);
 
 					if (usageCheck[0].count === 0 && shoppingCheck[0].count === 0) {
 						// Ingredient is orphaned - get its name before deleting
 						const [ingredientInfo] = await connection.execute<IngredientInfoRow[]>('SELECT name FROM ingredients WHERE id = ? AND household_id = ?', [
 							ingredientId,
-							request.household_id,
+							auth.household_id,
 						]);
 
 						if (ingredientInfo.length > 0) {
 							// Delete the orphaned ingredient
 							const [deleteIngResult] = await connection.execute<ResultSetHeader>('DELETE FROM ingredients WHERE id = ? AND household_id = ?', [
 								ingredientId,
-								request.household_id,
+								auth.household_id,
 							]);
 
 							if (deleteIngResult.affectedRows > 0) {
@@ -341,5 +346,3 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const DELETE = withAuth(deleteHandler);

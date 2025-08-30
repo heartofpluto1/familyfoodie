@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getNextWeekRecipes } from '@/lib/queries/menus';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
-async function getHandler(request: AuthenticatedRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const searchParams = request.nextUrl.searchParams;
 		const week = parseInt(searchParams.get('week') || '0');
@@ -15,7 +20,7 @@ async function getHandler(request: AuthenticatedRequest) {
 		// For now, we'll use the existing getNextWeekRecipes function
 		// In a real implementation, you might want to create a more specific function
 		// that can fetch recipes for any week/year combination
-		const recipes = await getNextWeekRecipes(request.household_id);
+		const recipes = await getNextWeekRecipes(auth.household_id);
 
 		return NextResponse.json({
 			success: true,
@@ -27,5 +32,3 @@ async function getHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to fetch week recipes' }, { status: 500 });
 	}
 }
-
-export const GET = withAuth(getHandler);

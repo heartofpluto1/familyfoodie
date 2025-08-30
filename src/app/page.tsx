@@ -1,8 +1,11 @@
 import { Metadata } from 'next';
-import { getRecipeWeeks } from '@/lib/queries/menus';
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 import HomeAuthenticated from './home/home-authenticated';
 import HomeUnauthenticated from './home/home-unauthenticated';
+import { getRecipeWeeks } from '@/lib/queries/menus';
+
+export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -12,29 +15,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-	// Check authentication status server-side
-	const session = await getSession();
-
-	if (!session) {
-		// User is not authenticated - show marketing/login page
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
 		return <HomeUnauthenticated />;
 	}
 
-	// Get household_id from session
-	const household_id = session.household_id;
-
-	if (!household_id) {
-		// Session exists but no household_id - show error or redirect to login
-		return <HomeUnauthenticated />;
-	}
-
-	// User is authenticated - fetch data and show dashboard
+	// Fetch data for authenticated users - using existing getRecipeWeeks function
+	const { household_id, household_name } = session.user;
 	const { data: plans, stats } = await getRecipeWeeks(household_id, 6);
 
-	return (
-		<HomeAuthenticated plans={plans || []} stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }} householdName={session.household_name} />
-	);
+	return <HomeAuthenticated plans={plans || []} stats={stats || { totalWeeks: 0, totalRecipes: 0, avgRecipesPerWeek: 0 }} householdName={household_name} />;
 }
-
-// Force dynamic rendering for authenticated/unauthenticated check
-export const dynamic = 'force-dynamic';

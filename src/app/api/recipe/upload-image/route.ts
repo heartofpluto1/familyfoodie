@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
@@ -32,7 +32,12 @@ function validateFileContent(buffer: Buffer, mimeType: string): boolean {
 	}
 }
 
-async function postHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const formData = await request.formData();
 		const file = formData.get('image') as File;
@@ -91,13 +96,13 @@ async function postHandler(request: AuthenticatedRequest) {
 		};
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, auth.household_id);
 		if (!isRecipeInCollection) {
 			return NextResponse.json({ success: false, error: 'Recipe not found' }, { status: 404 });
 		}
 
 		// Check if user can edit this recipe (household ownership)
-		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+		const canEdit = await canEditResource(auth.household_id, 'recipes', recipeIdNum);
 		if (!canEdit) {
 			return NextResponse.json({ success: false, error: 'Permission denied. You can only upload images to recipes you own.' }, { status: 403 });
 		}
@@ -175,5 +180,3 @@ async function postHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({ success: false, error: 'Failed to upload image' }, { status: 500 });
 	}
 }
-
-export const POST = withAuth(postHandler);

@@ -1,41 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { LogoutIcon, BurgerIcon } from './Icons';
-import type { Session } from '@/types/auth';
-import { useRef, useEffect, useState } from 'react';
-import UserSettings from './UserSettings';
+import { useSession, signOut } from 'next-auth/react';
 
-interface HeaderLogoProps {
-	session: Session | null;
-}
-
-const HeaderLogo = ({ session }: HeaderLogoProps) => {
-	const detailsRef = useRef<HTMLDetailsElement>(null);
-	const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
+const HeaderLogo = () => {
+	const { data: session } = useSession();
 	const isAuthenticated = !!session;
-
-	const closeMenu = () => {
-		if (detailsRef.current) {
-			detailsRef.current.open = false;
-		}
-	};
-
-	useEffect(() => {
-		const handleAnyClick = (event: MouseEvent) => {
-			if (detailsRef.current && detailsRef.current.open) {
-				// Close menu on any click, except on the summary button itself
-				if (!detailsRef.current.querySelector('summary')?.contains(event.target as Node)) {
-					closeMenu();
-				}
-			}
-		};
-
-		document.addEventListener('click', handleAnyClick);
-		return () => {
-			document.removeEventListener('click', handleAnyClick);
-		};
-	}, []);
 
 	return (
 		<header className="bg-surface border-b border-custom">
@@ -47,111 +17,52 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 						<p className="text-sm text-muted font-light italic">What the fork is for dinner?</p>
 					</div>
 
-					{/* Navigation and Auth */}
-					<div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6">
-						{/* Navigation - only show when authenticated */}
-						{isAuthenticated && (
-							<nav className="hidden sm:block">
-								<div className="flex space-x-3 md:space-x-6">
-									<Link
-										href="/"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
-									>
-										Home
-									</Link>
-									<Link
-										href="/plan"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
-									>
-										Plan
-									</Link>
-									<Link
-										href="/shop"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
-									>
-										Shop
-									</Link>
-									<Link
-										href="/recipes"
-										className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
-									>
-										Recipes
-									</Link>
-									{session?.user?.is_admin && (
-										<Link
-											href="/admin"
-											className="transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base hidden lg:inline"
-										>
-											Admin
-										</Link>
-									)}
-								</div>
-							</nav>
-						)}
-
-						{/* Mobile Navigation Menu - show only on small screens when authenticated */}
-						{isAuthenticated && (
-							<nav className="sm:hidden">
-								<details ref={detailsRef} className="relative">
-									<summary className="list-none cursor-pointer bg-surface border border-custom rounded-sm p-2 text-foreground hover:bg-accent/10 transition-colors flex items-center justify-center [&::-webkit-details-marker]:hidden">
-										<BurgerIcon className="w-4 h-4" />
-									</summary>
-									<div className="absolute right-0 top-full mt-1 bg-surface border border-custom rounded-sm shadow-lg min-w-24 z-50">
-										<Link href="/" className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors">
-											Home
-										</Link>
-										<Link href="/plan" className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors">
-											Plan
-										</Link>
-										<Link href="/shop" className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors">
-											Shop
-										</Link>
-										<Link
-											href="/recipes"
-											className="block px-3 py-2 text-sm text-secondary hover:text-foreground hover:bg-accent/10 transition-colors"
-										>
-											Recipes
-										</Link>
-										{session?.user?.is_admin && (
-											<Link href="/admin" className="block px-3 py-2 text-sm transition-colors">
-												Admin
-											</Link>
-										)}
-									</div>
-								</details>
-							</nav>
-						)}
-
-						{/* Auth Section */}
-						<div className={isAuthenticated ? 'border-l border-custom pl-2 sm:pl-4' : ''}>
-							{isAuthenticated ? (
-								<div className="flex items-center space-x-2 sm:space-x-3">
-									<button
-										onClick={() => setIsUserSettingsOpen(true)}
-										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
-										title="User settings"
-									>
-										{session?.user?.username}
-									</button>
-									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
-										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-									</Link>
-								</div>
-							) : (
+					{/* Navigation - only show when authenticated */}
+					{isAuthenticated && (
+						<nav className="hidden sm:block">
+							<div className="flex space-x-3 md:space-x-6">
 								<Link
-									href="/login"
-									className="bg-accent text-background px-3 py-1.5 sm:px-4 sm:py-2 rounded-sm text-xs sm:text-sm font-medium hover:bg-accent/90 transition-colors"
+									href="/"
+									className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
 								>
-									Login
+									Home
 								</Link>
-							)}
-						</div>
+								<Link
+									href="/dashboard"
+									className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
+								>
+									Dashboard
+								</Link>
+							</div>
+						</nav>
+					)}
+
+					{/* Auth Section */}
+					<div className={isAuthenticated ? 'border-l border-custom pl-2 sm:pl-4' : ''}>
+						{isAuthenticated ? (
+							<div className="flex items-center space-x-2 sm:space-x-3">
+								<div className="text-right">
+									<div className="text-xs sm:text-sm text-foreground">{session?.user?.name}</div>
+									{session?.user?.household_name && <div className="text-xs text-muted">{session.user.household_name}</div>}
+								</div>
+								<button
+									onClick={() => signOut()}
+									className="bg-red-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-sm text-xs sm:text-sm font-medium hover:bg-red-700 transition-colors"
+								>
+									Sign Out
+								</button>
+							</div>
+						) : (
+							<Link
+								href="/auth/signin"
+								className="bg-accent text-background px-3 py-1.5 sm:px-4 sm:py-2 rounded-sm text-xs sm:text-sm font-medium hover:bg-accent/90 transition-colors"
+							>
+								Sign In
+							</Link>
+						)}
 					</div>
 				</div>
 			</div>
-
-			{/* User Settings Panel */}
-			<UserSettings isOpen={isUserSettingsOpen} onClose={() => setIsUserSettingsOpen(false)} />
 		</header>
 	);
 };

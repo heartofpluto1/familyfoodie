@@ -1,11 +1,13 @@
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 import CollectionClient from './collection-client';
 import { getAllRecipesWithDetails } from '@/lib/queries/menus';
 import { getOwnedCollections, getCollectionByIdWithHousehold } from '@/lib/queries/collections';
 import { parseSlugPath } from '@/lib/utils/urlHelpers';
-import { getSession } from '@/lib/session';
-import withAuth from '@/app/components/withAuth';
+
+export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export async function generateMetadata({ params }: { params: Promise<{ 'collection-slug': string }> }): Promise<Metadata> {
 	const { 'collection-slug': slug } = await params;
@@ -18,16 +20,12 @@ export async function generateMetadata({ params }: { params: Promise<{ 'collecti
 		};
 	}
 
-	// Get session for household context
-	const session = await getSession();
-	if (!session || !session.household_id) {
-		return {
-			title: 'Collection Not Found',
-			description: 'The requested collection could not be found',
-		};
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
-
-	const collection = await getCollectionByIdWithHousehold(parsed.id, session.household_id);
+	const household_id = session.user.household_id;
+	const collection = await getCollectionByIdWithHousehold(parsed.id, household_id);
 	if (!collection) {
 		return {
 			title: 'Collection Not Found',
@@ -45,7 +43,7 @@ interface RecipesPageProps {
 	params: Promise<{ 'collection-slug': string }>;
 }
 
-async function RecipesPage({ params }: RecipesPageProps) {
+export default async function RecipesPage({ params }: RecipesPageProps) {
 	const { 'collection-slug': slug } = await params;
 	const parsed = parseSlugPath(slug);
 
@@ -54,16 +52,16 @@ async function RecipesPage({ params }: RecipesPageProps) {
 		redirect('/recipes');
 	}
 
-	// Get session for household context
-	const session = await getSession();
-	if (!session || !session.household_id) {
-		redirect('/login');
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
+	const household_id = session.user.household_id;
 
 	const [recipes, collections, selectedCollection] = await Promise.all([
 		getAllRecipesWithDetails(parsed.id),
-		getOwnedCollections(session.household_id),
-		getCollectionByIdWithHousehold(parsed.id, session.household_id),
+		getOwnedCollections(household_id),
+		getCollectionByIdWithHousehold(parsed.id, household_id),
 	]);
 
 	// If collection not found or user doesn't have access, show 404
@@ -82,7 +80,3 @@ async function RecipesPage({ params }: RecipesPageProps) {
 		</main>
 	);
 }
-
-// Force dynamic rendering for authenticated pages
-export const dynamic = 'force-dynamic';
-export default withAuth(RecipesPage);

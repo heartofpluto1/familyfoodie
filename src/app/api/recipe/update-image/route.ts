@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/helpers';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { getRecipeImageUrl, generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
@@ -52,7 +52,12 @@ function validateFileExtension(filename: string, mimeType: string): boolean {
 	return ext ? validExtensions.includes(ext) : false;
 }
 
-async function updateImageHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		// Validate storage configuration first
 		if (!getStorageMode()) {
@@ -125,7 +130,7 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 		};
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, auth.household_id);
 		if (!isRecipeInCollection) {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
 		}
@@ -164,11 +169,11 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 		let newCollectionSlug: string | undefined;
 
 		// Check if household can edit this recipe
-		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+		const canEdit = await canEditResource(auth.household_id, 'recipes', recipeIdNum);
 
 		if (!canEdit) {
 			// Recipe is not owned - trigger copy-on-write
-			const copyResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIdNum);
+			const copyResult = await cascadeCopyWithContext(auth.household_id, collectionIdNum, recipeIdNum);
 			targetRecipeId = copyResult.newRecipeId;
 			wasCopied = true;
 			newRecipeSlug = copyResult.newRecipeSlug;
@@ -255,5 +260,3 @@ async function updateImageHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: 'Failed to update recipe image' }, { status: 500 });
 	}
 }
-
-export const POST = withAuth(updateImageHandler);

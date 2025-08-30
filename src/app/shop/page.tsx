@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 
 function getWeekNumber(date: Date): number {
 	const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -11,9 +12,9 @@ function getWeekNumber(date: Date): number {
 
 export default async function ShopPage() {
 	// Check authentication
-	const session = await getSession();
-	if (!session) {
-		redirect('/login');
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
 
 	// Redirect to current week

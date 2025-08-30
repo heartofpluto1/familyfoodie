@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth-middleware';
-import { requireAdminUser } from '@/lib/auth-helpers';
+import { NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/auth/helpers';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs/promises';
@@ -12,18 +11,10 @@ interface MigrationRecord extends RowDataPacket {
 	execution_time_ms: number | null;
 }
 
-async function getHandler(request: NextRequest) {
-	// Verify admin access
-	try {
-		await requireAdminUser(request);
-	} catch {
-		return NextResponse.json(
-			{
-				error: 'Admin access required',
-				code: 'FORBIDDEN',
-			},
-			{ status: 403 }
-		);
+export async function GET(): Promise<NextResponse> {
+	const auth = await requireAdminAuth();
+	if (!auth.authorized) {
+		return auth.response;
 	}
 
 	try {
@@ -94,5 +85,3 @@ async function getHandler(request: NextRequest) {
 		);
 	}
 }
-
-export const GET = withAuth(getHandler);

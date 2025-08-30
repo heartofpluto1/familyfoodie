@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
-async function createCollectionHandler(request: AuthenticatedRequest) {
+export async function POST(request: Request): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const formData = await request.formData();
 
@@ -37,7 +42,7 @@ async function createCollectionHandler(request: AuthenticatedRequest) {
 			const [result] = await pool.execute<ResultSetHeader>(
 				`INSERT INTO collections (title, subtitle, household_id, public, created_at, updated_at) 
 				 VALUES (?, ?, ?, 0, NOW(), NOW())`,
-				[title, subtitle || null, request.household_id]
+				[title, subtitle || null, auth.household_id]
 			);
 
 			collectionId = result.insertId;
@@ -94,7 +99,7 @@ async function createCollectionHandler(request: AuthenticatedRequest) {
 			const [result] = await pool.execute<ResultSetHeader>(
 				`INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, public, created_at, updated_at) 
 				 VALUES (?, ?, ?, ?, ?, 0, NOW(), NOW())`,
-				[title, subtitle || null, filename, darkFilename, request.household_id]
+				[title, subtitle || null, filename, darkFilename, auth.household_id]
 			);
 
 			collectionId = result.insertId;
@@ -120,5 +125,3 @@ async function createCollectionHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: 'Failed to create collection' }, { status: 500 });
 	}
 }
-
-export const POST = withAuth(createCollectionHandler);

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth-middleware';
-import { requireAdminUser } from '@/lib/auth-helpers';
+import { requireAdminAuth } from '@/lib/auth/helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
 import pool from '@/lib/db.js';
 import fs from 'fs/promises';
@@ -27,26 +26,6 @@ function createErrorResponse(error: string, errorCode: string, nextSteps: string
 		},
 		{ status }
 	);
-}
-
-// Helper function to validate HTTP methods
-function validateHttpMethod(method: string, allowedMethods: string[]) {
-	if (!allowedMethods.includes(method)) {
-		const response = NextResponse.json(
-			{
-				error: 'Method not allowed',
-				errorCode: 'METHOD_NOT_ALLOWED',
-				allowedMethods,
-				timestamp: new Date().toISOString(),
-				nextSteps: 'Use GET to check status or POST to run migrations',
-			},
-			{ status: 405 }
-		);
-
-		response.headers.set('Allow', allowedMethods.join(', '));
-		return response;
-	}
-	return null;
 }
 
 // Migration lock management functions
@@ -120,7 +99,7 @@ async function getLastMigrationInfo() {
 	}
 }
 
-async function postHandler(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
 	try {
 		// 1. Content-Type validation for requests with body
 		const contentLength = request.headers.get('content-length');
@@ -141,23 +120,9 @@ async function postHandler(request: NextRequest) {
 		}
 
 		// 2. Admin authentication with enhanced error handling
-		let adminUser;
-		try {
-			adminUser = await requireAdminUser(request);
-		} catch (error) {
-			return createErrorResponse(
-				error instanceof Error ? error.message : 'Authentication failed',
-				'DATABASE_UNREACHABLE',
-				'Check database configuration and connectivity',
-				{
-					operationType: 'migration_execution',
-					userAttempt: 'admin authentication',
-				}
-			);
-		}
-
-		if (!adminUser) {
-			return createErrorResponse('Admin access required', 'ADMIN_ACCESS_REQUIRED', 'Login with an admin account to access migration endpoints', {}, 403);
+		const auth = await requireAdminAuth();
+		if (!auth.authorized) {
+			return auth.response;
 		}
 
 		// 3. Production token validation with format checks
@@ -315,26 +280,12 @@ async function postHandler(request: NextRequest) {
 	}
 }
 
-async function getHandler(request: NextRequest) {
+export async function GET(): Promise<NextResponse> {
 	try {
 		// 1. Admin authentication with enhanced error handling
-		let adminUser;
-		try {
-			adminUser = await requireAdminUser(request);
-		} catch (error) {
-			return createErrorResponse(
-				error instanceof Error ? error.message : 'Database connection failed',
-				'DATABASE_UNREACHABLE',
-				'Check database configuration and connectivity',
-				{
-					operationType: 'status_check',
-					userAttempt: 'admin@example.com',
-				}
-			);
-		}
-
-		if (!adminUser) {
-			return createErrorResponse('Admin access required', 'ADMIN_ACCESS_REQUIRED', 'Login with an admin account to access migration endpoints', {}, 403);
+		const auth = await requireAdminAuth();
+		if (!auth.authorized) {
+			return auth.response;
 		}
 
 		// 2. Gather comprehensive status information
@@ -382,20 +333,27 @@ async function getHandler(request: NextRequest) {
 	}
 }
 
-// Generic handler for all HTTP methods to handle method validation
-async function handleRequest(request: NextRequest) {
-	// 1. HTTP Method validation
-	const methodValidation = validateHttpMethod(request.method, ['GET', 'POST']);
-	if (methodValidation) return methodValidation;
+export async function PUT(): Promise<NextResponse> {
+	return createErrorResponse(
+		'Method not allowed',
+		'METHOD_NOT_ALLOWED',
+		'Use GET to check status or POST to run migrations',
+		{ allowedMethods: ['GET', 'POST'] },
+		405
+	);
+}
 
-	// 2. Route to appropriate handler
-	if (request.method === 'GET') {
-		return getHandler(request);
-	} else if (request.method === 'POST') {
-		return postHandler(request);
-	}
+export async function DELETE(): Promise<NextResponse> {
+	return createErrorResponse(
+		'Method not allowed',
+		'METHOD_NOT_ALLOWED',
+		'Use GET to check status or POST to run migrations',
+		{ allowedMethods: ['GET', 'POST'] },
+		405
+	);
+}
 
-	// This shouldn't happen due to validation above, but just in case
+export async function PATCH(): Promise<NextResponse> {
 	return createErrorResponse(
 		'Method not allowed',
 		'METHOD_NOT_ALLOWED',
@@ -418,9 +376,3 @@ globalThis.__setMigrationLockForTesting = function () {
 	migrationLock.currentMigration = 'test-migration.sql';
 	migrationLock.estimatedCompletion = new Date(Date.now() + 300000);
 };
-
-export const POST = withAuth(postHandler);
-export const GET = withAuth(getHandler);
-export const PUT = withAuth(handleRequest);
-export const DELETE = withAuth(handleRequest);
-export const PATCH = withAuth(handleRequest);

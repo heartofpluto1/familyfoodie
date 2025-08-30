@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import OpenAI from 'openai';
 import { generateVersionedFilename } from '@/lib/utils/secureFilename';
 import { uploadFile, getStorageMode } from '@/lib/storage';
@@ -142,7 +142,12 @@ Examples:
 	}
 };
 
-async function importHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const formData = await request.formData();
 		const pdfFile = formData.get('pdfFile') as File;
@@ -223,7 +228,7 @@ async function importHandler(request: AuthenticatedRequest) {
 			try {
 				const [collectionRows] = await tempConnection.execute<RowDataPacket[]>(
 					'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
-					[parseInt(collectionIdFromForm!), request.household_id]
+					[parseInt(collectionIdFromForm!), auth.household_id]
 				);
 
 				if (collectionRows.length === 0) {
@@ -324,7 +329,7 @@ async function importHandler(request: AuthenticatedRequest) {
 			try {
 				const [collectionRows] = await connection.execute<RowDataPacket[]>(
 					'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
-					[recipe.collectionId, request.household_id]
+					[recipe.collectionId, auth.household_id]
 				);
 
 				if (collectionRows.length === 0) {
@@ -378,7 +383,7 @@ async function importHandler(request: AuthenticatedRequest) {
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
 					placeholderSlug,
-					request.household_id,
+					auth.household_id,
 				]
 			);
 
@@ -415,7 +420,7 @@ async function importHandler(request: AuthenticatedRequest) {
 					// Check if ingredient already exists in user's household or is public
 					const [existingRows] = await connection.execute<IngredientRow[]>(
 						'SELECT id FROM ingredients WHERE LOWER(name) = LOWER(?) AND (household_id = ? OR public = 1)',
-						[ingredient.name, request.household_id]
+						[ingredient.name, auth.household_id]
 					);
 
 					if (existingRows.length > 0) {
@@ -430,7 +435,7 @@ async function importHandler(request: AuthenticatedRequest) {
 						const [insertResult] = await connection.execute<ResultSetHeader>(
 							`INSERT INTO ingredients (name, fresh, pantryCategory_id, supermarketCategory_id, household_id, public) 
 							 VALUES (?, ?, ?, ?, ?, ?)`,
-							[ingredient.name, fresh ? 1 : 0, pantryCategory_id, supermarketCategory_id, request.household_id, 0] // private by default
+							[ingredient.name, fresh ? 1 : 0, pantryCategory_id, supermarketCategory_id, auth.household_id, 0] // private by default
 						);
 
 						ingredientId = insertResult.insertId;
@@ -531,7 +536,7 @@ async function importHandler(request: AuthenticatedRequest) {
 				// If collectionId exists but we don't have info, query again (shouldn't happen but for safety)
 				const [collectionRows] = await connection.execute<RowDataPacket[]>(
 					'SELECT id, url_slug, title, household_id FROM collections WHERE id = ? AND household_id = ?',
-					[recipe.collectionId, request.household_id]
+					[recipe.collectionId, auth.household_id]
 				);
 				collectionInfo = collectionRows[0] as CollectionInfo;
 			}
@@ -593,5 +598,3 @@ async function importHandler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const POST = withAuth(importHandler);

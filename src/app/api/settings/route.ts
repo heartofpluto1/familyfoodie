@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { RowDataPacket } from 'mysql2';
 
 interface UserValidationRow extends RowDataPacket {
@@ -11,12 +11,17 @@ interface HouseholdMemberRow extends RowDataPacket {
 	username: string;
 }
 
-async function handler(request: AuthenticatedRequest) {
+export async function GET(): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		// Validate that the user belongs to the household they're requesting data for
 		const [userValidation] = await pool.execute<UserValidationRow[]>(`SELECT id FROM users WHERE id = ? AND household_id = ?`, [
-			request.user.id,
-			request.household_id,
+			auth.user_id,
+			auth.household_id,
 		]);
 
 		if (!userValidation || userValidation.length === 0) {
@@ -29,11 +34,11 @@ async function handler(request: AuthenticatedRequest) {
 			 FROM users 
 			 WHERE household_id = ? 
 			 ORDER BY username ASC`,
-			[request.household_id]
+			[auth.household_id]
 		);
 
 		return NextResponse.json({
-			household_name: request.user.household_name || null,
+			household_name: auth.session.user.household_name || null,
 			members: householdMembers.map(member => member.username),
 		});
 	} catch (error) {
@@ -41,5 +46,3 @@ async function handler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: 'Failed to fetch household members' }, { status: 500 });
 	}
 }
-
-export const GET = withAuth(handler);
