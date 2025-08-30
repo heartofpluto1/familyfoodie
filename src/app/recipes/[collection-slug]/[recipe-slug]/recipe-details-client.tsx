@@ -12,9 +12,10 @@ import { useToast } from '@/app/components/ToastProvider';
 interface RecipeDetailsClientProps {
 	recipe: RecipeDetail;
 	collections: Collection[];
+	isOwned: boolean;
 }
 
-const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) => {
+const RecipeDetailsClient = ({ recipe, collections, isOwned }: RecipeDetailsClientProps) => {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const [backLink, setBackLink] = useState<{ href: string; label: string } | null>(null);
@@ -150,18 +151,20 @@ const RecipeDetailsClient = ({ recipe, collections }: RecipeDetailsClientProps) 
 							<h2 className="text-2xl text-foreground">{recipe.name}</h2>
 							<p className="text-sm text-muted">{subtitle}</p>
 						</div>
-						<button
-							onClick={() => setShowDeleteConfirm(true)}
-							className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-600 hover:text-white transition-all"
-							title="Delete Recipe"
-						>
-							<TrashIcon className="w-4 h-4" />
-						</button>
+						{isOwned && (
+							<button
+								onClick={() => setShowDeleteConfirm(true)}
+								className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-600 hover:text-white transition-all"
+								title="Delete Recipe"
+							>
+								<TrashIcon className="w-4 h-4" />
+							</button>
+						)}
 					</div>
 				</div>
 
 				{/* Recipe Editor handles both view and edit modes internally */}
-				<RecipeEditor recipe={recipe} collections={collections} />
+				<RecipeEditor recipe={recipe} collections={collections} isOwned={isOwned} />
 			</main>
 
 			{/* Delete Confirmation Dialog */}
