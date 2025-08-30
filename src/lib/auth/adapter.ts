@@ -21,7 +21,6 @@ interface DbUser extends RowDataPacket {
 export function MySQLAdapter(): Adapter {
 	return {
 		async createUser(user: Omit<AdapterUser, 'id'>) {
-			console.log('🆕 createUser called with:', { email: user.email, name: user.name });
 			const connection = await pool.getConnection();
 			try {
 				await connection.beginTransaction();
@@ -32,11 +31,9 @@ export function MySQLAdapter(): Adapter {
 				if (existingUsers.length > 0) {
 					// User exists - update their OAuth info and profile image for first-time OAuth login
 					const existingUser = existingUsers[0];
-					console.log('👤 Found existing user:', { id: existingUser.id, oauth_provider: existingUser.oauth_provider, oauth_provider_id: existingUser.oauth_provider_id });
 					
 					// Only update if they don't already have OAuth credentials
 					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending') {
-						console.log('🔄 Updating existing user with OAuth info...');
 						await connection.execute(
 							'UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, profile_image_url = ?, email_verified = 1, updated_at = NOW() WHERE id = ?',
 							['google', 'pending', user.image, existingUser.id]
@@ -51,7 +48,6 @@ export function MySQLAdapter(): Adapter {
 						image: user.image || existingUser.profile_image_url,
 						emailVerified: existingUser.email_verified ? new Date() : null,
 					};
-					console.log('✅ Returning existing user:', result);
 					return result;
 				}
 
@@ -131,20 +127,16 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async getUserByEmail(email) {
-			console.log('🔍 getUserByEmail called with:', email);
 			const [users] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE email = ?', [email]);
 
 			if (users.length === 0) {
-				console.log('❌ No user found with email:', email);
 				return null;
 			}
 
 			const user = users[0];
-			console.log('✅ Found user:', { id: user.id, email: user.email, oauth_provider: user.oauth_provider, oauth_provider_id: user.oauth_provider_id });
 			
 			// If user has pending OAuth credentials, treat them as non-OAuth user for NextAuth
 			if (user.oauth_provider && user.oauth_provider_id === 'pending') {
-				console.log('🔄 User has pending OAuth, returning null to trigger account creation/linking flow');
 				return null;
 			}
 			
@@ -158,7 +150,6 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async getUserByAccount({ provider, providerAccountId }) {
-			console.log('🔎 getUserByAccount called with:', { provider, providerAccountId });
 			
 			// First check users table directly for OAuth provider info
 			const [directUsers] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE oauth_provider = ? AND oauth_provider_id = ?', [
@@ -170,10 +161,8 @@ export function MySQLAdapter(): Adapter {
 				const user = directUsers[0];
 				// Don't return users with pending OAuth IDs - let NextAuth link them properly
 				if (user.oauth_provider_id === 'pending') {
-					console.log('🚫 Found user with pending OAuth ID, returning null to allow linking:', { id: user.id, oauth_provider_id: user.oauth_provider_id });
 					return null;
 				}
-				console.log('✅ Found user by account:', { id: user.id, email: user.email });
 				return {
 					id: user.id.toString(),
 					email: user.email,
@@ -183,7 +172,6 @@ export function MySQLAdapter(): Adapter {
 				};
 			}
 
-			console.log('❌ No user found by account, checking nextauth_accounts table...');
 
 			// Fallback to checking nextauth_accounts table
 			const [users] = await pool.execute<DbUser[]>(
@@ -245,7 +233,6 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async linkAccount(account: Account) {
-			console.log('🔗 linkAccount called with:', { userId: account.userId, provider: account.provider, providerAccountId: account.providerAccountId });
 			// Check if this is a placeholder account that needs linking
 			const [users] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE id = ?', [account.userId]);
 

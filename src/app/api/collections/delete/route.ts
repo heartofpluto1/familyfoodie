@@ -265,18 +265,14 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 		let filesSkipped: { reason: string; darkModeFile?: string } | null = null;
 
 		if (!isDefaultCollection) {
-			console.log(`Storage mode: ${storageMode}`);
-			console.log(`Deleting collection files for filename: ${filename}, filename_dark: ${filename_dark}`);
 
 			// Helper function to safely delete file using storage module
 			const safeDeleteStorageFile = async (filename: string, extension: string, description: string): Promise<boolean> => {
 				try {
 					const deleted = await deleteFile(filename, extension, 'collections');
 					if (deleted) {
-						console.log(`Successfully deleted ${description}`);
 						return true;
 					} else {
-						console.log(`${description} not found, skipping deletion`);
 						return false;
 					}
 				} catch (error) {
@@ -305,8 +301,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 				};
 			}
 		} else {
-			console.log('Skipping file deletion for default collection images');
-			filesSkipped = {
+				filesSkipped = {
 				reason: 'Default collection images are preserved',
 			};
 		}
