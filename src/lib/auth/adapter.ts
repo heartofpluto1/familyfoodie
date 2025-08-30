@@ -32,10 +32,10 @@ export function MySQLAdapter(): Adapter {
 					const existingUser = existingUsers[0];
 
 					// Only update if they don't already have OAuth credentials
-					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending') {
+					if (!existingUser.oauth_provider) {
 						await connection.execute(
 							'UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, profile_image_url = ?, email_verified = 1, updated_at = NOW() WHERE id = ?',
-							['google', 'pending', user.image, existingUser.id]
+							['google', null, user.image, existingUser.id]
 						);
 					}
 
@@ -91,7 +91,7 @@ export function MySQLAdapter(): Adapter {
             household_id, email_verified, profile_image_url,
             oauth_provider, oauth_provider_id,
             is_admin, is_active, date_joined
-          ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', 0, 1, NOW())`,
+          ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 1, NOW())`,
 					[user.email, firstName, lastName, householdId, user.emailVerified ? 1 : 0, user.image]
 				);
 
@@ -136,8 +136,8 @@ export function MySQLAdapter(): Adapter {
 
 			const user = users[0];
 
-			// If user has pending OAuth credentials, treat them as non-OAuth user for NextAuth
-			if (user.oauth_provider && user.oauth_provider_id === 'pending') {
+			// If user has no OAuth credentials, treat them as non-OAuth user for NextAuth
+			if (!user.oauth_provider || !user.oauth_provider_id) {
 				return null;
 			}
 
@@ -159,8 +159,8 @@ export function MySQLAdapter(): Adapter {
 
 			if (directUsers.length > 0) {
 				const user = directUsers[0];
-				// Don't return users with pending OAuth IDs - let NextAuth link them properly
-				if (user.oauth_provider_id === 'pending') {
+				// Don't return users with NULL OAuth IDs - let NextAuth link them properly
+				if (!user.oauth_provider_id) {
 					return null;
 				}
 				return {
@@ -238,17 +238,10 @@ export function MySQLAdapter(): Adapter {
 			if (users.length > 0) {
 				const user = users[0];
 
-				// Check if this is pending OAuth setup
-				if (user.oauth_provider_id === 'pending') {
-					// This is an existing user's first OAuth login - update their OAuth details
+				// Check if this is pending OAuth setup (NULL values)
+				if (!user.oauth_provider_id || !user.oauth_provider) {
+					// This is a user without OAuth details - update them
 					await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, email_verified = 1 WHERE id = ?', [
-						account.provider,
-						account.providerAccountId,
-						account.userId,
-					]);
-				} else if (user.oauth_provider === 'pending') {
-					// This is a new user created via createUser - update their OAuth details
-					await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ? WHERE id = ?', [
 						account.provider,
 						account.providerAccountId,
 						account.userId,
