@@ -164,16 +164,50 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- First, check if oauth_provider allows NULL
+SET @oauth_provider_nullable = (
+    SELECT IS_NULLABLE = 'YES'
+    FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'users' 
+    AND COLUMN_NAME = 'oauth_provider'
+);
+
+-- Modify oauth_provider to allow NULL if it doesn't already
+SET @sql = IF(@oauth_provider_nullable = 0,
+    'ALTER TABLE users MODIFY COLUMN oauth_provider VARCHAR(50) NULL',
+    'SELECT "oauth_provider already allows NULL" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Check if oauth_provider_id allows NULL
+SET @oauth_provider_id_nullable = (
+    SELECT IS_NULLABLE = 'YES'
+    FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'users' 
+    AND COLUMN_NAME = 'oauth_provider_id'
+);
+
+-- Modify oauth_provider_id to allow NULL if it doesn't already
+SET @sql = IF(@oauth_provider_id_nullable = 0,
+    'ALTER TABLE users MODIFY COLUMN oauth_provider_id VARCHAR(255) NULL',
+    'SELECT "oauth_provider_id already allows NULL" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Clean up duplicate 'pending' entries before adding constraint
--- Update 'pending' oauth_provider_id values to NULL (NULLs don't violate unique constraints)
 UPDATE users 
 SET oauth_provider_id = NULL 
 WHERE oauth_provider_id = 'pending';
 
--- Also update oauth_provider to NULL for consistency when oauth_provider_id is NULL
 UPDATE users 
 SET oauth_provider = NULL 
-WHERE oauth_provider_id IS NULL AND oauth_provider = 'pending';
+WHERE oauth_provider IS NOT NULL AND oauth_provider_id IS NULL;
 
 -- Add unique constraints (only if they don't exist)
 SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND CONSTRAINT_NAME = 'unique_oauth_user');
