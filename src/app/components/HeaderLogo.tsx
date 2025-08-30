@@ -27,12 +27,6 @@ const HeaderLogo = () => {
 								>
 									Home
 								</Link>
-								<Link
-									href="/dashboard"
-									className="text-secondary hover:text-foreground transition-colors font-medium underline-offset-4 hover:underline text-sm md:text-base"
-								>
-									Dashboard
-								</Link>
 							</div>
 						</nav>
 					)}

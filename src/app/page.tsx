@@ -9,8 +9,8 @@ export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
-		title: 'Family Foodie - Meal Planning Dashboard',
-		description: 'Your personalized meal planning dashboard with weekly stats and meal history',
+		title: 'Family Foodie - Meal Planning Hub',
+		description: 'Your personalized meal planning hub with weekly stats and meal history',
 	};
 }
 

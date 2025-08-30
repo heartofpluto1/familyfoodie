@@ -16,7 +16,7 @@ export default function SignIn() {
 
 					<div className="space-y-3">
 						<button
-							onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+							onClick={() => signIn('google', { callbackUrl: '/' })}
 							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-custom rounded-md bg-surface text-foreground hover:bg-muted transition-colors"
 						>
 							<FcGoogle size={20} />
@@ -25,7 +25,7 @@ export default function SignIn() {
 
 						{/* Facebook login hidden for now - credentials pending
 						<button
-							onClick={() => signIn('facebook', { callbackUrl: '/dashboard' })}
+							onClick={() => signIn('facebook', { callbackUrl: '/' })}
 							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-custom rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
 						>
 							<SiFacebook size={20} />

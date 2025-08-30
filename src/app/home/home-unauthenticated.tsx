@@ -10,7 +10,7 @@ export default function HomeUnauthenticated() {
 					<div className="bg-surface border border-custom rounded-sm p-8 mb-8">
 						<h2 className="text-xl text-foreground mb-4">Login to view your meal plans</h2>
 						<p className="text-secondary mb-6">
-							Access your personalized meal planning dashboard, view your recipe collection, and track your weekly meal stats.
+							Access your personalized meal planning hub, view your recipe collection, and track your weekly meal stats.
 						</p>
 					</div>
 
