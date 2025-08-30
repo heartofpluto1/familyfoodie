@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/helpers';
 import { subscribeToCollection, unsubscribeFromCollection, isSubscribed } from '@/lib/queries/subscriptions';
 
 type RouteContext = {
@@ -10,7 +10,12 @@ type RouteContext = {
  * Toggle subscription to a collection (subscribe if not subscribed, unsubscribe if subscribed)
  * POST /api/collections/[id]/toggle-subscription
  */
-async function toggleSubscriptionHandler(request: AuthenticatedRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		// Handle missing context or params gracefully
 		if (!context || !context.params) {
@@ -48,7 +53,7 @@ async function toggleSubscriptionHandler(request: AuthenticatedRequest, context:
 			);
 		}
 
-		const householdId = request.household_id;
+		const householdId = auth.household_id;
 
 		// Check current subscription status
 		const currentlySubscribed = await isSubscribed(householdId, collectionId);
@@ -97,5 +102,3 @@ async function toggleSubscriptionHandler(request: AuthenticatedRequest, context:
 		);
 	}
 }
-
-export const POST = withAuth(toggleSubscriptionHandler);

@@ -1,16 +1,22 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, MockConnection, setupConsoleMocks } from '@/lib/test-utils';
+import { MockConnection, setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 
 // Mock the database
 jest.mock('@/lib/db.js', () => ({
 	execute: jest.fn(),
 	getConnection: jest.fn(),
 }));
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock the permission and copy-on-write functions
 jest.mock('@/lib/permissions', () => ({
@@ -58,6 +64,14 @@ describe('/api/recipe/update-ingredients', () => {
 		};
 
 		mockGetConnection.mockResolvedValue(mockConnection);
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -141,7 +155,6 @@ describe('/api/recipe/update-ingredients', () => {
 						1,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -222,7 +235,6 @@ describe('/api/recipe/update-ingredients', () => {
 						0,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -272,7 +284,6 @@ describe('/api/recipe/update-ingredients', () => {
 					// Verify delete call
 					expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM recipe_ingredients WHERE recipe_id = ? AND id IN (?,?)', [3, 15, 16]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -355,7 +366,6 @@ describe('/api/recipe/update-ingredients', () => {
 						0,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -384,7 +394,6 @@ describe('/api/recipe/update-ingredients', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Recipe ID and collection ID are required');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 
 			// Connection is acquired but no transaction operations occur
@@ -418,7 +427,6 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(data.error).toBe('Recipe ID and collection ID are required');
 					expect(data.code).toBe('VALIDATION_ERROR');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 
 			// Connection is acquired but no transaction operations occur
@@ -479,7 +487,6 @@ describe('/api/recipe/update-ingredients', () => {
 					// Verify cascade copy was called
 					expect(mockCascadeCopyWithContext).toHaveBeenCalledWith(1, 1, 1);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -527,7 +534,6 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(mockConnection.commit).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -569,7 +575,6 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(mockConnection.rollback).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -603,11 +608,16 @@ describe('/api/recipe/update-ingredients', () => {
 					const text = await response.text();
 					expect(text).toContain('Internal Server Error');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('should return 401 for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -631,7 +641,6 @@ describe('/api/recipe/update-ingredients', () => {
 
 					expect(response.status).toBe(401);
 				},
-				requestPatcher: mockNonAuthenticatedUser,
 			});
 		});
 
@@ -651,7 +660,6 @@ describe('/api/recipe/update-ingredients', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Invalid JSON payload');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -704,7 +712,6 @@ describe('/api/recipe/update-ingredients', () => {
 					const expectedQuery = `DELETE FROM recipe_ingredients WHERE recipe_id = ? AND id IN (${manyDeletedIds.map(() => '?').join(',')})`;
 					expect(mockConnection.execute).toHaveBeenCalledWith(expectedQuery, [9, ...manyDeletedIds]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -768,7 +775,6 @@ describe('/api/recipe/update-ingredients', () => {
 						0,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -830,7 +836,6 @@ describe('/api/recipe/update-ingredients', () => {
 						0,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -887,7 +892,6 @@ describe('/api/recipe/update-ingredients', () => {
 					// Verify zero and negative values are passed through (0 measureId becomes null due to || null logic)
 					expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipe_ingredients'), [25, '0', '0ml', null, -1, 50, 12]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -952,7 +956,6 @@ describe('/api/recipe/update-ingredients', () => {
 						0,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -1017,7 +1020,6 @@ describe('/api/recipe/update-ingredients', () => {
 						0,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -1058,7 +1060,6 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(mockConnection.rollback).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -1088,7 +1089,6 @@ describe('/api/recipe/update-ingredients', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Ingredient ID is required for all ingredients');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -1118,7 +1118,6 @@ describe('/api/recipe/update-ingredients', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Invalid ingredient data format');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -1161,7 +1160,6 @@ describe('/api/recipe/update-ingredients', () => {
 					expect(mockConnection.rollback).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

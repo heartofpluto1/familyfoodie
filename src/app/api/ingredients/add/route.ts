@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { RowDataPacket } from 'mysql2';
 
 interface AddIngredientRequest {
@@ -180,7 +180,12 @@ function validateIngredientData(data: unknown): ValidationError[] {
 	return errors;
 }
 
-async function addIngredientHandler(request: AuthenticatedRequest): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response as NextResponse<ApiErrorResponse>;
+	}
+
 	try {
 		// Parse request body
 		let body: unknown;
@@ -215,7 +220,7 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 		// Check if ingredient already exists in household
 		const [existingRows] = await pool.execute<RowDataPacket[]>('SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
 			trimmedName,
-			request.household_id,
+			auth.household_id,
 		]);
 
 		if (existingRows.length > 0) {
@@ -237,7 +242,7 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 			`INSERT INTO ingredients 
 			 (name, fresh, cost, stockcode, supermarketCategory_id, pantryCategory_id, public, household_id) 
 			 VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
-			[trimmedName, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId, request.household_id]
+			[trimmedName, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId, auth.household_id]
 		);
 
 		const insertResult = result as { insertId: number };
@@ -291,5 +296,3 @@ async function addIngredientHandler(request: AuthenticatedRequest): Promise<Next
 		return NextResponse.json(errorResponse, { status: 500 });
 	}
 }
-
-export const POST = withAuth(addIngredientHandler);

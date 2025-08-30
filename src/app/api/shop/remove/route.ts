@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
-async function handler(request: AuthenticatedRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		let body;
 		try {
@@ -37,7 +42,7 @@ async function handler(request: AuthenticatedRequest) {
 			await connection.beginTransaction();
 
 			// Delete the shopping list item (household-scoped for security)
-			const [result] = await connection.execute('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [id, request.household_id]);
+			const [result] = await connection.execute('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [id, auth.household_id]);
 
 			const deleteResult = result as { affectedRows: number };
 
@@ -88,5 +93,3 @@ async function handler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const DELETE = withAuth(handler);

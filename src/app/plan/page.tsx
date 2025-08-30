@@ -1,12 +1,15 @@
 import { Metadata } from 'next';
-import { getCurrentAndPlannedWeeks, getAllRecipesWithDetails, getCurrentWeek, getRecipesForRandomization } from '@/lib/queries/menus';
-import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
-import withAuth from '@/app/components/withAuth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
+import { getCurrentAndPlannedWeeks, getAllRecipesWithDetails, getCurrentWeek, getRecipesForRandomization } from '@/lib/queries/menus';
 import MultiWeekPlanClient from './plan-client-multiweek';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { WeekPlan } from '@/types/plan';
 import { Recipe } from '@/types/menus';
+
+export const dynamic = 'force-dynamic'; // Important for authenticated pages
+export const revalidate = 0;
 
 // Randomization logic with ingredient constraints (same as API)
 function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Recipe[] {
@@ -53,15 +56,15 @@ export async function generateMetadata(): Promise<Metadata> {
 	};
 }
 
-async function PlanPage() {
-	// Get session with household context
-	const session = await getSession();
-	if (!session || !session.household_id) {
-		redirect('/login');
+export default async function PlanPage() {
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
+	const household_id = session.user.household_id;
 
-	const plannedWeeks = await getCurrentAndPlannedWeeks(session.household_id);
-	const allRecipes = await getAllRecipesWithDetails(session.household_id);
+	const plannedWeeks = await getCurrentAndPlannedWeeks(household_id);
+	const allRecipes = await getAllRecipesWithDetails(household_id);
 	const { week: currentWeek, year: currentYear } = getCurrentWeek();
 
 	// Convert database results to WeekPlan format
@@ -72,7 +75,7 @@ async function PlanPage() {
 
 			// If this is the current week and it has no recipes, get randomized recipes and set to edit mode
 			if (isCurrentWeek && hasNoRecipes) {
-				const availableRecipes = await getRecipesForRandomization(session.household_id);
+				const availableRecipes = await getRecipesForRandomization(household_id);
 				const randomizedRecipes = selectRandomRecipes(availableRecipes, 3);
 
 				return {
@@ -97,8 +100,3 @@ async function PlanPage() {
 
 	return <MultiWeekPlanClient initialWeeks={weekPlans} allRecipes={allRecipes} />;
 }
-
-// Force dynamic rendering for authenticated pages
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export default withAuth(PlanPage);

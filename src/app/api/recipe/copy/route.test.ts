@@ -1,10 +1,11 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
 import pool from '@/lib/db.js';
-import { clearAllMocks, setupConsoleMocks, mockRegularUser } from '@/lib/test-utils';
-import type { SessionUser } from '@/types/auth';
+import { clearAllMocks, setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 
 // Mock the database BEFORE other imports
 jest.mock('@/lib/db.js', () => ({
@@ -15,29 +16,14 @@ jest.mock('@/lib/db.js', () => ({
 	},
 }));
 
-// Mock the auth middleware using test utils
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
-
-// Helper to mock authenticated requests
-interface AuthenticatedRequest extends Request {
-	user?: SessionUser;
-	household_id?: number;
-}
-
-const mockAuthenticatedUser = (request: AuthenticatedRequest, options: Partial<SessionUser> = {}) => {
-	request.user = { ...mockRegularUser, ...options };
-	request.household_id = request.user.household_id;
-};
-
-// Helper to mock non-authenticated requests
-// Note: This is defined for consistency with other test files but not used in this test
-// const mockNonAuthenticatedUser = (request: any) => {
-// 	delete request.user;
-// 	delete request.household_id;
-// };
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 const mockExecute = pool.execute as jest.Mock;
 const mockGetConnection = pool.getConnection as jest.Mock;
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock connection interface
 interface MockConnection {
@@ -59,6 +45,15 @@ describe('POST /api/recipe/copy', () => {
 		// Reset all mocks to clean state
 		mockExecute.mockReset();
 		mockGetConnection.mockReset();
+		mockRequireAuth.mockReset();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterEach(() => {
@@ -109,7 +104,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(mockConnection.commit).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -149,7 +143,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.copiedRecipeIds).toEqual([2, 3]);
 					expect(json.skippedRecipeIds).toEqual([1]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -181,7 +174,6 @@ describe('POST /api/recipe/copy', () => {
 					// Should NOT call getConnection since no copying needed
 					expect(mockGetConnection).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -204,7 +196,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('INVALID_RECIPE_IDS');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -225,7 +216,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('MISSING_COLLECTION_ID');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -247,7 +237,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('EMPTY_RECIPE_IDS');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -269,7 +258,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('INVALID_RECIPE_ID');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -292,7 +280,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.code).toBe('INVALID_RECIPE_ID');
 					expect(json.error).toContain('positive integers');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -314,7 +301,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('INVALID_COLLECTION_ID');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -333,7 +319,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('INVALID_JSON');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -356,7 +341,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.code).toBe('INVALID_COLLECTION_ID');
 					expect(json.error).toContain('positive integer');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -379,7 +363,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.code).toBe('INVALID_RECIPE_IDS');
 					expect(json.error).toContain('array');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 			// Ensure no database calls were made
 			expect(mockExecute).not.toHaveBeenCalled();
@@ -404,7 +387,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.code).toBe('INVALID_RECIPE_ID');
 					expect(json.error).toContain('positive integers');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 			// Ensure no database calls were made
 			expect(mockExecute).not.toHaveBeenCalled();
@@ -413,6 +395,12 @@ describe('POST /api/recipe/copy', () => {
 
 	describe('Authentication', () => {
 		it('should return 401 for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -428,8 +416,7 @@ describe('POST /api/recipe/copy', () => {
 					const json = await response.json();
 
 					expect(response.status).toBe(401);
-					expect(json.success).toBe(false);
-					expect(json.code).toBe('UNAUTHORIZED');
+					expect(json.error).toBe('Unauthorized');
 				},
 			});
 		});
@@ -457,7 +444,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.success).toBe(false);
 					expect(json.code).toBe('COLLECTION_NOT_FOUND');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -485,7 +471,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.code).toBe('RECIPES_NOT_FOUND');
 					expect(json.missingIds).toEqual([3]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -513,7 +498,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(json.code).toBe('DATABASE_ERROR');
 					expect(json.error).toContain('Connection refused');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -553,7 +537,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(mockConnection.commit).not.toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -593,7 +576,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(mockConnection.rollback).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -633,7 +615,6 @@ describe('POST /api/recipe/copy', () => {
 					expect(mockConnection.rollback).toHaveBeenCalled();
 					expect(mockConnection.release).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

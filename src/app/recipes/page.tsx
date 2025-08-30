@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 import CollectionsPageClient from './collections-client';
 import { getMyCollections, getPublicCollections } from '@/lib/queries/collections';
-import { getSession } from '@/lib/session';
-import withAuth from '@/app/components/withAuth';
+
+export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -12,17 +14,18 @@ export async function generateMetadata(): Promise<Metadata> {
 	};
 }
 
-async function RecipesPage() {
-	// Get user session for household context
-	const session = await getSession();
-	if (!session || !session.household_id) {
-		redirect('/login');
+export default async function RecipesPage() {
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
+
+	const household_id = session.user.household_id;
 
 	// Server-side data fetching - runs in parallel
 	const [myCollections, publicCollections] = await Promise.all([
-		getMyCollections(session.household_id), // Household's owned and subscribed collections
-		getPublicCollections(session.household_id), // Browsable public collections
+		getMyCollections(household_id), // Household's owned and subscribed collections
+		getPublicCollections(household_id), // Browsable public collections
 	]);
 
 	return (
@@ -31,7 +34,3 @@ async function RecipesPage() {
 		</main>
 	);
 }
-
-// Force dynamic rendering for authenticated pages
-export const dynamic = 'force-dynamic';
-export default withAuth(RecipesPage);

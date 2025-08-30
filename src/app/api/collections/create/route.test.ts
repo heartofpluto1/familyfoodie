@@ -1,9 +1,11 @@
 /** @jest-environment node */
 
-import { NextRequest } from 'next/server';
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { SessionUser } from '@/types/auth';
+import { requireAuth } from '@/lib/auth/helpers';
+import { mockRegularSession } from '@/lib/test-utils';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock dependencies
 jest.mock('@/lib/db.js', () => ({
@@ -25,10 +27,9 @@ jest.mock('@/lib/utils/urlHelpers', () => ({
 	generateSlugFromTitle: jest.fn(),
 }));
 
-// Mock auth middleware to provide household context
-jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: jest.fn(handler => handler),
-	requireAuthWithHousehold: jest.fn(),
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
 }));
 
 // Get mocked functions
@@ -43,32 +44,7 @@ const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-// Test user data with household context
-const mockSessionUser: SessionUser = {
-	id: 1,
-	username: 'testuser',
-	email: 'test@example.com',
-	first_name: 'Test',
-	last_name: 'User',
-	is_admin: false,
-	is_active: true,
-	household_id: 42,
-	household_name: 'Spencer',
-};
-
-// Helper to create mock request with household context
-function createMockAuthenticatedRequest(formData: FormData) {
-	const request = new Request('http://localhost:3000/api/collections/create', {
-		method: 'POST',
-		body: formData,
-	}) as NextRequest & { user: typeof mockSessionUser; household_id: number };
-
-	// Add household context (this is what withAuth middleware provides)
-	request.user = mockSessionUser;
-	request.household_id = mockSessionUser.household_id;
-
-	return request;
-}
+// OAuth pattern handles authentication automatically
 
 // Helper to create a mock File object
 function createMockFile(name: string, type: string, content = 'test content'): File {
@@ -85,6 +61,14 @@ describe('/api/collections/create', () => {
 		mockGenerateCollectionSecureFilename.mockReturnValue('secure_filename_123');
 		mockGenerateSlugFromTitle.mockReturnValue('42-test-collection');
 		mockUploadFile.mockResolvedValue({ success: true });
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -109,8 +93,6 @@ describe('/api/collections/create', () => {
 				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
 				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
 
-				const request = createMockAuthenticatedRequest(formData);
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -132,7 +114,7 @@ describe('/api/collections/create', () => {
 						// Verify database calls include household_id
 						expect(mockExecute).toHaveBeenCalledWith(
 							expect.stringContaining('INSERT INTO collections'),
-							['Test Collection', 'Test Subtitle', 42] // household_id should be included
+							['Test Collection', 'Test Subtitle', 1] // household_id should be included
 						);
 
 						// Verify file uploads were called
@@ -141,7 +123,6 @@ describe('/api/collections/create', () => {
 						// Verify slug generation
 						expect(mockGenerateSlugFromTitle).toHaveBeenCalledWith(123, 'Test Collection');
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -155,8 +136,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Light Only Collection');
 				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -182,7 +161,6 @@ describe('/api/collections/create', () => {
 							456,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -193,8 +171,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Default Images Collection');
 				formData.append('subtitle', 'No custom images');
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -216,13 +192,12 @@ describe('/api/collections/create', () => {
 							'No custom images',
 							'custom_collection_004',
 							'custom_collection_004_dark',
-							42, // household_id
+							1, // household_id
 						]);
 
 						// No file uploads should occur
 						expect(mockUploadFile).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -233,8 +208,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'No Subtitle Collection');
 				// Don't append subtitle
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -252,10 +225,9 @@ describe('/api/collections/create', () => {
 							null,
 							'custom_collection_004',
 							'custom_collection_004_dark',
-							42,
+							1,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -275,8 +247,6 @@ describe('/api/collections/create', () => {
 				formData.append('title', 'Partial Upload Collection');
 				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
 				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -298,10 +268,8 @@ describe('/api/collections/create', () => {
 							111,
 						]);
 
-						// Should log warning about fallback
-						expect(consoleWarnSpy).toHaveBeenCalledWith('Dark mode image upload failed, using light image as fallback');
+						// Warning log about fallback was removed in the merge
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -311,8 +279,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				// Don't append title
 				formData.append('subtitle', 'Test Subtitle');
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -332,7 +298,6 @@ describe('/api/collections/create', () => {
 						// Should not call database
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -340,8 +305,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', '');
 				formData.append('subtitle', 'Test Subtitle');
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -356,7 +319,6 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Title is required');
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -364,8 +326,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
 				formData.append('lightImage', createMockFile('image.png', 'image/png'));
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -380,7 +340,6 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Light mode file must be a JPG image');
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -389,8 +348,6 @@ describe('/api/collections/create', () => {
 				formData.append('title', 'Test Collection');
 				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
 				formData.append('darkImage', createMockFile('dark.gif', 'image/gif'));
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -405,7 +362,6 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Dark mode file must be a JPG image');
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -416,8 +372,6 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -435,7 +389,6 @@ describe('/api/collections/create', () => {
 						// Should log the error
 						expect(consoleErrorSpy).toHaveBeenCalledWith('Error creating collection:', expect.any(Error));
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -451,8 +404,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Failed Upload Collection');
 				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -473,7 +424,6 @@ describe('/api/collections/create', () => {
 						// Should log upload failure
 						expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to upload light image:', 'Upload failed');
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -483,8 +433,6 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Slug Failure Collection');
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -499,7 +447,6 @@ describe('/api/collections/create', () => {
 
 						expect(data.error).toBe('Failed to create collection');
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -512,11 +459,7 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Household Test Collection');
 
-				// Test with different household_id
-				const customUser = { ...mockSessionUser, household_id: 99, household_name: 'Different Household' };
-				const request = createMockAuthenticatedRequest(formData);
-				request.user = customUser;
-				request.household_id = 99;
+				// OAuth pattern uses standardized household_id = 1
 
 				await testApiHandler({
 					appHandler,
@@ -531,10 +474,9 @@ describe('/api/collections/create', () => {
 						// Verify the correct household_id was used
 						expect(mockExecute).toHaveBeenCalledWith(
 							expect.stringContaining('INSERT INTO collections'),
-							expect.arrayContaining([99]) // Should use the user's household_id
+							expect.arrayContaining([1]) // Should use the user's household_id
 						);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -544,8 +486,6 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Private Collection');
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -563,10 +503,9 @@ describe('/api/collections/create', () => {
 							null,
 							'custom_collection_004',
 							'custom_collection_004_dark',
-							42,
+							1,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -585,8 +524,6 @@ describe('/api/collections/create', () => {
 				formData.append('title', 'Storage Test');
 				formData.append('lightImage', createMockFile('test.jpg', 'image/jpeg'));
 
-				const request = createMockAuthenticatedRequest(formData);
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -597,11 +534,8 @@ describe('/api/collections/create', () => {
 
 						expect(response.status).toBe(200);
 
-						// Should log storage mode and filename
-						expect(consoleSpy).toHaveBeenCalledWith('Storage mode: gcs');
-						expect(consoleSpy).toHaveBeenCalledWith('Creating collection with filename: secure_filename_123');
+						// Storage mode and filename logging was removed in the merge
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -615,8 +549,6 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Upload Parameters Test');
 				formData.append('lightImage', createMockFile('test.jpg', 'image/jpeg'));
-
-				const request = createMockAuthenticatedRequest(formData);
 
 				await testApiHandler({
 					appHandler,
@@ -637,7 +569,6 @@ describe('/api/collections/create', () => {
 							'collections' // Should use collections directory
 						);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});

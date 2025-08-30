@@ -1,8 +1,12 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, MockConnection } from '@/lib/test-utils';
+import { MockConnection, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Setup standard mocks
 jest.mock('@/lib/db.js', () => ({
@@ -11,7 +15,9 @@ jest.mock('@/lib/db.js', () => ({
 	end: jest.fn(),
 }));
 
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 jest.mock('@/lib/utils/secureFilename.server', () => ({
 	cleanupRecipeFiles: jest.fn(),
@@ -49,6 +55,14 @@ describe('/api/recipe/delete', () => {
 		// Reset mocks - each test will set its own expectations
 		mockCanEditResource.mockReset();
 		mockCleanupRecipeFiles.mockReset();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	describe('DELETE /api/recipe/delete', () => {
@@ -80,7 +94,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -124,7 +137,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -167,7 +179,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -215,7 +226,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -262,7 +272,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -292,7 +301,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -324,7 +332,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -352,7 +359,6 @@ describe('/api/recipe/delete', () => {
 		it('should return 400 if recipe ID is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -385,7 +391,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -418,7 +423,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -460,7 +464,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -510,7 +513,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -563,7 +565,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -607,7 +608,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -668,7 +668,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -716,7 +715,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -762,7 +760,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -785,9 +782,14 @@ describe('/api/recipe/delete', () => {
 		});
 
 		it('should return 401 for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -825,7 +827,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -853,7 +854,6 @@ describe('/api/recipe/delete', () => {
 		it('should handle invalid JSON payload', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -903,7 +903,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -940,7 +939,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -967,7 +965,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -997,7 +994,6 @@ describe('/api/recipe/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -1025,7 +1021,6 @@ describe('/api/recipe/delete', () => {
 		it('should handle string recipeId that is not a number', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -1052,7 +1047,6 @@ describe('/api/recipe/delete', () => {
 		it('should handle float recipeId', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',

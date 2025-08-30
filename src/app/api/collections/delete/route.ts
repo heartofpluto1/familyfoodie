@@ -1,11 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { canEditResource } from '@/lib/permissions';
 import { deleteFile, getStorageMode } from '@/lib/storage';
 
-async function deleteHandler(request: AuthenticatedRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const { collectionId } = await request.json();
 
@@ -78,7 +83,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		// Check if user can delete this collection (household ownership)
 		let canEdit;
 		try {
-			canEdit = await canEditResource(request.household_id, 'collections', parsedCollectionId);
+			canEdit = await canEditResource(auth.household_id, 'collections', parsedCollectionId);
 		} catch (error) {
 			console.error('Error checking permissions:', error);
 			return NextResponse.json(
@@ -115,7 +120,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		try {
 			[rows] = await pool.execute('SELECT filename, filename_dark FROM collections WHERE id = ? AND household_id = ?', [
 				parsedCollectionId,
-				request.household_id,
+				auth.household_id,
 			]);
 		} catch (error) {
 			console.error('Error retrieving collection:', error);
@@ -205,10 +210,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		// Delete the collection from database (household-scoped)
 		let result;
 		try {
-			[result] = await pool.execute<ResultSetHeader>('DELETE FROM collections WHERE id = ? AND household_id = ?', [
-				parsedCollectionId,
-				request.household_id,
-			]);
+			[result] = await pool.execute<ResultSetHeader>('DELETE FROM collections WHERE id = ? AND household_id = ?', [parsedCollectionId, auth.household_id]);
 		} catch (error) {
 			console.error('Error deleting collection from database:', error);
 			return NextResponse.json(
@@ -263,18 +265,13 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		let filesSkipped: { reason: string; darkModeFile?: string } | null = null;
 
 		if (!isDefaultCollection) {
-			console.log(`Storage mode: ${storageMode}`);
-			console.log(`Deleting collection files for filename: ${filename}, filename_dark: ${filename_dark}`);
-
 			// Helper function to safely delete file using storage module
 			const safeDeleteStorageFile = async (filename: string, extension: string, description: string): Promise<boolean> => {
 				try {
 					const deleted = await deleteFile(filename, extension, 'collections');
 					if (deleted) {
-						console.log(`Successfully deleted ${description}`);
 						return true;
 					} else {
-						console.log(`${description} not found, skipping deletion`);
 						return false;
 					}
 				} catch (error) {
@@ -303,7 +300,6 @@ async function deleteHandler(request: AuthenticatedRequest) {
 				};
 			}
 		} else {
-			console.log('Skipping file deletion for default collection images');
 			filesSkipped = {
 				reason: 'Default collection images are preserved',
 			};
@@ -325,7 +321,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		} = {
 			collection: {
 				id: parsedCollectionId,
-				household: request.household_id?.toString() || 'unknown',
+				household: auth.household_id?.toString() || 'unknown',
 			},
 			filesDeleted,
 			storageMode,
@@ -382,5 +378,3 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const DELETE = withAuth(deleteHandler);

@@ -1,10 +1,11 @@
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 import { getIngredients, getShoppingList } from '@/lib/queries/shop';
 import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import ShoppingListClient from '../../shop-client';
-import withAuth from '@/app/components/withAuth';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
-import { getSession } from '@/lib/session';
 
 interface PageProps {
 	params: Promise<{ year: string; week: string }>;
@@ -20,19 +21,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 async function getShoppingData(
 	week: string,
-	year: string
+	year: string,
+	household_id: number
 ): Promise<{
 	shoppingData: ShoppingListData;
 	allIngredients: Ingredient[];
 }> {
 	try {
-		const session = await getSession();
-		const household_id = session?.household_id;
-
-		if (!household_id) {
-			throw new Error('No household_id found in session');
-		}
-
 		const shoppingData = await getShoppingList(week, year, household_id);
 		const allIngredients = await getIngredients(household_id);
 		return { shoppingData, allIngredients };
@@ -44,16 +39,19 @@ async function getShoppingData(
 	}
 }
 
-async function ShopPage({ params }: PageProps) {
+export default async function ShopPage({ params }: PageProps) {
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
+	}
+
+	const household_id = session.user.household_id;
 	const { week, year } = await params;
-
-	const { shoppingData, allIngredients } = await getShoppingData(week, year);
-
+	const { shoppingData, allIngredients } = await getShoppingData(week, year, household_id);
 	const datestamp: DateStamp = {
 		week: parseInt(week),
 		year: parseInt(year),
 	};
-
 	const weekDateRange = formatWeekDateRange(parseInt(week), parseInt(year));
 
 	return (
@@ -62,5 +60,3 @@ async function ShopPage({ params }: PageProps) {
 		</>
 	);
 }
-
-export default withAuth(ShopPage);

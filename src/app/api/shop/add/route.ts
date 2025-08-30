@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
-async function handler(request: AuthenticatedRequest) {
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		let body;
 		try {
@@ -59,6 +64,30 @@ async function handler(request: AuthenticatedRequest) {
 			);
 		}
 
+		// Validate week range
+		if (typeof week !== 'number' || week < 1 || week > 53) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Week must be between 1 and 53',
+					code: 'INVALID_WEEK',
+				},
+				{ status: 400 }
+			);
+		}
+
+		// Validate year range
+		if (typeof year !== 'number' || year < 2000 || year > 2100) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Year must be between 2000 and 2100',
+					code: 'INVALID_YEAR',
+				},
+				{ status: 400 }
+			);
+		}
+
 		const connection = await pool.getConnection();
 
 		try {
@@ -98,7 +127,7 @@ async function handler(request: AuthenticatedRequest) {
 				FROM shopping_lists 
 				WHERE week = ? AND year = ? AND household_id = ?
 			`,
-				[week, year, request.household_id]
+				[week, year, auth.household_id]
 			);
 
 			const maxSort = (sortRows as { max_sort: number }[])[0].max_sort;
@@ -114,7 +143,7 @@ async function handler(request: AuthenticatedRequest) {
 					(week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
 					VALUES (?, ?, ?, 1, ?, ?, ?, NULL, 0, ?)
 				`,
-					[week, year, request.household_id, name, newSort, knownIngredient.cost, knownIngredient.stockcode]
+					[week, year, auth.household_id, name, newSort, knownIngredient.cost, knownIngredient.stockcode]
 				);
 			} else {
 				// Add unknown ingredient as text with null values
@@ -124,7 +153,7 @@ async function handler(request: AuthenticatedRequest) {
 					(week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) 
 					VALUES (?, ?, ?, 1, ?, ?, NULL, NULL, 0, NULL)
 				`,
-					[week, year, request.household_id, name, newSort]
+					[week, year, auth.household_id, name, newSort]
 				);
 			}
 
@@ -180,5 +209,3 @@ async function handler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const PUT = withAuth(handler);

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { cascadeCopyWithContext, cascadeCopyIngredientWithContext, copyIngredientForEdit } from '@/lib/copy-on-write';
 import { validateRecipeInCollection } from '@/lib/permissions';
 
@@ -68,7 +68,12 @@ interface AddIngredientRequest {
 	collectionId: number; // Required: needed for cascade copy context
 }
 
-async function putHandler(request: AuthenticatedRequest) {
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const body: UpdateIngredientRequest = await request.json();
 		const { id, quantity, quantity4, measureId, collectionId } = body;
@@ -98,13 +103,13 @@ async function putHandler(request: AuthenticatedRequest) {
 		}
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeIngredientInfo.recipeId, collectionId, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIngredientInfo.recipeId, collectionId, auth.household_id);
 		if (!isRecipeInCollection) {
 			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe
-		const canEdit = await canEditRecipe(recipeIngredientInfo.recipeId, request.household_id);
+		const canEdit = await canEditRecipe(recipeIngredientInfo.recipeId, auth.household_id);
 
 		let targetRecipeIngredientId = id;
 		let newRecipeId: number | undefined;
@@ -115,7 +120,7 @@ async function putHandler(request: AuthenticatedRequest) {
 		if (!canEdit) {
 			// Use the full cascade copy with collection context
 			const cascadeResult = await cascadeCopyIngredientWithContext(
-				request.household_id,
+				auth.household_id,
 				collectionId,
 				recipeIngredientInfo.recipeId,
 				recipeIngredientInfo.ingredientId
@@ -170,7 +175,12 @@ async function putHandler(request: AuthenticatedRequest) {
 	}
 }
 
-async function postHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const body: AddIngredientRequest = await request.json();
 		const { recipeId, ingredientId, quantity, quantity4, measureId, preparationId, collectionId } = body;
@@ -191,13 +201,13 @@ async function postHandler(request: AuthenticatedRequest) {
 		}
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, auth.household_id);
 		if (!isRecipeInCollection) {
 			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe
-		const canEdit = await canEditRecipe(recipeId, request.household_id);
+		const canEdit = await canEditRecipe(recipeId, auth.household_id);
 
 		let targetRecipeId = recipeId;
 		let targetIngredientId = ingredientId;
@@ -206,16 +216,16 @@ async function postHandler(request: AuthenticatedRequest) {
 		// If user doesn't own the recipe, use cascade copy with context
 		if (!canEdit) {
 			// Use full cascade copy with collection context
-			const cascadeResult = await cascadeCopyIngredientWithContext(request.household_id, collectionId, recipeId, ingredientId);
+			const cascadeResult = await cascadeCopyIngredientWithContext(auth.household_id, collectionId, recipeId, ingredientId);
 
 			targetRecipeId = cascadeResult.newRecipeId;
 			targetIngredientId = cascadeResult.newIngredientId;
 			actionsTaken = cascadeResult.actionsTaken;
 		} else {
 			// User owns the recipe, but check if ingredient needs copying
-			const canEditIngredientFlag = await canEditIngredient(ingredientId, request.household_id);
+			const canEditIngredientFlag = await canEditIngredient(ingredientId, auth.household_id);
 			if (!canEditIngredientFlag) {
-				const ingredientCopyResult = await copyIngredientForEdit(ingredientId, request.household_id);
+				const ingredientCopyResult = await copyIngredientForEdit(ingredientId, auth.household_id);
 				targetIngredientId = ingredientCopyResult.newId;
 				if (ingredientCopyResult.copied) {
 					actionsTaken.push('ingredient_copied');
@@ -270,7 +280,12 @@ async function postHandler(request: AuthenticatedRequest) {
 	}
 }
 
-async function deleteHandler(request: AuthenticatedRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get('id');
@@ -298,13 +313,13 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		}
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeIngredientInfo.recipeId, collectionIdNum, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIngredientInfo.recipeId, collectionIdNum, auth.household_id);
 		if (!isRecipeInCollection) {
 			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe
-		const canEdit = await canEditRecipe(recipeIngredientInfo.recipeId, request.household_id);
+		const canEdit = await canEditRecipe(recipeIngredientInfo.recipeId, auth.household_id);
 
 		let targetRecipeIngredientId = recipeIngredientId;
 		let newRecipeId: number | undefined;
@@ -313,7 +328,7 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		// Handle copy-on-write if user doesn't own the recipe
 		if (!canEdit) {
 			// Use cascade copy with collection context
-			const cascadeResult = await cascadeCopyWithContext(request.household_id, collectionIdNum, recipeIngredientInfo.recipeId);
+			const cascadeResult = await cascadeCopyWithContext(auth.household_id, collectionIdNum, recipeIngredientInfo.recipeId);
 
 			newRecipeId = cascadeResult.newRecipeId;
 			actionsTaken = cascadeResult.actionsTaken;
@@ -356,7 +371,3 @@ async function deleteHandler(request: AuthenticatedRequest) {
 		return createErrorResponse('Failed to remove recipe ingredient', 'SERVER_ERROR', 500);
 	}
 }
-
-export const PUT = withAuth(putHandler);
-export const POST = withAuth(postHandler);
-export const DELETE = withAuth(deleteHandler);

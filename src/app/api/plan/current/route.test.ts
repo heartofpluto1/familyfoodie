@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser, mockRegularUser } from '@/lib/test-utils';
+import { setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 import { getCurrentWeekRecipes, getCurrentWeek } from '@/lib/queries/menus';
 import type { Recipe } from '@/types/menus';
 
@@ -12,8 +14,12 @@ jest.mock('@/lib/queries/menus', () => ({
 	getCurrentWeek: jest.fn(),
 }));
 
-// Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 const mockGetCurrentWeekRecipes = jest.mocked(getCurrentWeekRecipes);
 const mockGetCurrentWeek = jest.mocked(getCurrentWeek);
@@ -73,6 +79,13 @@ describe('/api/plan/current', () => {
 		// Default mock implementations
 		mockGetCurrentWeek.mockReturnValue(mockCurrentWeek);
 		mockGetCurrentWeekRecipes.mockResolvedValue(mockRecipes);
+		// Default OAuth mock for authenticated tests
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -82,21 +95,19 @@ describe('/api/plan/current', () => {
 	describe('GET /api/plan/current', () => {
 		// Authentication Tests
 		it('should return 401 when user is not authenticated', async () => {
+			mockRequireAuth.mockResolvedValue({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
 					});
 
 					expect(response.status).toBe(401);
-					const data = await response.json();
-					expect(data).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
-					});
 					expect(mockGetCurrentWeek).not.toHaveBeenCalled();
 					expect(mockGetCurrentWeekRecipes).not.toHaveBeenCalled();
 				},
@@ -104,16 +115,22 @@ describe('/api/plan/current', () => {
 		});
 
 		it('should pass household_id from authenticated user to database query', async () => {
+			mockRequireAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockRegularSession,
+				household_id: mockRegularSession.user.household_id,
+				user_id: mockRegularSession.user.id,
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockGetCurrentWeekRecipes).toHaveBeenCalledWith(mockRegularUser.household_id);
+					expect(mockGetCurrentWeekRecipes).toHaveBeenCalledWith(mockRegularSession.user.household_id);
 				},
 			});
 		});
@@ -122,7 +139,6 @@ describe('/api/plan/current', () => {
 		it('should successfully return current week recipes', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -138,7 +154,7 @@ describe('/api/plan/current', () => {
 
 					expect(mockGetCurrentWeek).toHaveBeenCalledTimes(1);
 					expect(mockGetCurrentWeekRecipes).toHaveBeenCalledTimes(1);
-					expect(mockGetCurrentWeekRecipes).toHaveBeenCalledWith(mockRegularUser.household_id);
+					expect(mockGetCurrentWeekRecipes).toHaveBeenCalledWith(mockRegularSession.user.household_id);
 				},
 			});
 		});
@@ -148,7 +164,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -170,7 +185,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -189,7 +203,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -208,7 +221,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -228,7 +240,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -256,7 +267,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -287,7 +297,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -324,7 +333,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -344,7 +352,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -362,7 +369,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -380,7 +386,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -400,7 +405,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -420,7 +424,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -442,7 +445,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -472,7 +474,6 @@ describe('/api/plan/current', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'GET',
@@ -513,7 +514,6 @@ describe('/api/plan/current', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -530,7 +530,6 @@ describe('/api/plan/current', () => {
 		it('should always return week, year, and recipes fields', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'GET',
@@ -554,7 +553,6 @@ describe('/api/plan/current', () => {
 				let responseData: { week: number; year: number; recipes: Recipe[] } | undefined;
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'GET',

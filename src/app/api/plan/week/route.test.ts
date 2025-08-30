@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser, mockRegularUser } from '@/lib/test-utils';
+import { setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 import { getNextWeekRecipes } from '@/lib/queries/menus';
 
 // Mock database queries
@@ -10,8 +12,12 @@ jest.mock('@/lib/queries/menus', () => ({
 	getNextWeekRecipes: jest.fn(),
 }));
 
-// Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 const mockGetNextWeekRecipes = jest.mocked(getNextWeekRecipes);
 
@@ -21,6 +27,13 @@ describe('/api/plan/week', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		// Default OAuth mock for authenticated tests
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -30,9 +43,13 @@ describe('/api/plan/week', () => {
 	describe('GET /api/plan/week', () => {
 		// Authentication Tests
 		it('should return 401 when user is not authenticated', async () => {
+			mockRequireAuth.mockResolvedValue({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockNonAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -40,12 +57,6 @@ describe('/api/plan/week', () => {
 					});
 
 					expect(response.status).toBe(401);
-					const data = await response.json();
-					expect(data).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
-					});
 				},
 			});
 		});
@@ -55,7 +66,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -63,7 +73,7 @@ describe('/api/plan/week', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockGetNextWeekRecipes).toHaveBeenCalledWith(mockRegularUser.household_id);
+					expect(mockGetNextWeekRecipes).toHaveBeenCalledWith(mockRegularSession.user.household_id);
 				},
 			});
 		});
@@ -72,7 +82,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when week parameter is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -89,7 +98,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when year parameter is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -106,7 +114,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when both week and year are missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -123,7 +130,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when week is 0', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=0&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -140,7 +146,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when year is 0', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=0',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -157,7 +162,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when week is not a number (NaN)', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=abc&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -174,7 +178,6 @@ describe('/api/plan/week', () => {
 		it('should return 400 when year is not a number (NaN)', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=xyz',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -193,7 +196,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=-1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -214,7 +216,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=-2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -235,7 +236,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=53&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -256,7 +256,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=3000',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -296,7 +295,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -320,7 +318,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -344,7 +341,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=15&year=2025',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -364,7 +360,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -383,7 +378,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=52&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -402,7 +396,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=53&year=2024', // 2024 is a leap year
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -422,7 +415,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -441,7 +433,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -459,7 +450,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -479,7 +469,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1.5&year=2024',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -499,7 +488,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=1&year=2024.5',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -519,7 +507,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=999999&year=999999',
 				test: async ({ fetch }) => {
 					const response = await fetch({
@@ -540,7 +527,6 @@ describe('/api/plan/week', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				url: '/api/plan/week?week=abc&year=xyz',
 				test: async ({ fetch }) => {
 					const response = await fetch({

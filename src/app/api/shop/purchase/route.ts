@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
-async function handler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		let body;
 		try {
@@ -68,7 +73,7 @@ async function handler(request: AuthenticatedRequest) {
 			const [result] = await connection.execute('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [
 				purchased ? 1 : 0,
 				id,
-				request.household_id,
+				auth.household_id,
 			]);
 
 			const updateResult = result as { affectedRows: number };
@@ -123,5 +128,3 @@ async function handler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const POST = withAuth(handler);

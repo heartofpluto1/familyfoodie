@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
+import { signOut } from 'next-auth/react';
 import { LogoutIcon, BurgerIcon } from './Icons';
-import type { Session } from '@/types/auth';
 import { useRef, useEffect, useState } from 'react';
 import UserSettings from './UserSettings';
+import type { Session } from 'next-auth';
 
 interface HeaderLogoProps {
 	session: Session | null;
@@ -128,21 +130,34 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 								<div className="flex items-center space-x-2 sm:space-x-3">
 									<button
 										onClick={() => setIsUserSettingsOpen(true)}
-										className="text-xs sm:text-sm text-foreground cursor-pointer underline"
+										className="flex items-center justify-center cursor-pointer"
 										title="User settings"
 									>
-										{session?.user?.username}
+										{session?.user?.image ? (
+											<Image
+												src={session.user.image}
+												alt={session.user.name || 'User'}
+												width={36}
+												height={36}
+												className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-custom"
+												unoptimized
+											/>
+										) : (
+											<div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-accent text-background flex items-center justify-center text-sm font-medium">
+												{session?.user?.name?.charAt(0)?.toUpperCase() || 'U'}
+											</div>
+										)}
 									</button>
-									<Link href="/logout" prefetch={false} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Logout">
+									<button onClick={() => signOut({ callbackUrl: '/' })} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Sign Out">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-									</Link>
+									</button>
 								</div>
 							) : (
 								<Link
-									href="/login"
+									href="/auth/signin"
 									className="bg-accent text-background px-3 py-1.5 sm:px-4 sm:py-2 rounded-sm text-xs sm:text-sm font-medium hover:bg-accent/90 transition-colors"
 								>
-									Login
+									Sign In
 								</Link>
 							)}
 						</div>
