@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/auth-middleware';
 import { getAllUsers, getUserStats } from '@/lib/queries/admin/users';
-import { requireAdminUser } from '@/lib/auth-helpers';
+import { requireAdminAuth } from '@/lib/auth/helpers';
 import type { User } from '@/types/user';
 
-async function handler(request: NextRequest) {
-	try {
-		// Require admin permissions
-		const adminUser = await requireAdminUser(request);
-		if (!adminUser) {
-			return NextResponse.json(
-				{
-					error: 'Admin access required',
-					code: 'ADMIN_ACCESS_REQUIRED',
-				},
-				{ status: 403 }
-			);
-		}
+export async function GET(request: NextRequest): Promise<NextResponse> {
+	// Require admin permissions
+	const auth = await requireAdminAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
 
+	try {
 		// Parse URL correctly for query parameters
 		const { searchParams } = new URL(request.url);
 		const includeStats = searchParams.get('includeStats') === 'true';
@@ -69,5 +62,3 @@ async function handler(request: NextRequest) {
 		);
 	}
 }
-
-export const GET = withAuth(handler);

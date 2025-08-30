@@ -7,8 +7,9 @@ import {
 	getRecipePairingSuggestions,
 	getPlannedWeeksCount,
 } from '@/lib/queries/insights';
-import { getSession } from '@/lib/session';
-import withAuth from '@/app/components/withAuth';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
 import { formatPrice } from '@/lib/utils/formatting';
 import Link from 'next/link';
@@ -16,13 +17,14 @@ import Image from 'next/image';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 
-async function InsightsPage() {
-	// Get session for household context
-	const session = await getSession();
-	if (!session || !session.household_id) {
-		throw new Error('No household context available');
+export const dynamic = 'force-dynamic'; // Important for authenticated pages
+
+export default async function InsightsPage() {
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
-	const householdId = session.household_id;
+	const householdId = session.user.household_id;
 
 	// Check if household has enough planning data
 	const plannedWeeksCount = await getPlannedWeeksCount(householdId);
@@ -390,7 +392,3 @@ async function InsightsPage() {
 		</div>
 	);
 }
-
-// Force dynamic rendering for authenticated pages
-export const dynamic = 'force-dynamic';
-export default withAuth(InsightsPage);

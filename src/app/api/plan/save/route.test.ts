@@ -1,19 +1,23 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser } from '@/lib/test-utils';
+import { setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 import { saveWeekRecipes } from '@/lib/queries/menus';
-import type { NextRequest } from 'next/server';
-import type { SessionUser } from '@/types/auth';
 
 // Mock database queries
 jest.mock('@/lib/queries/menus', () => ({
 	saveWeekRecipes: jest.fn(),
 }));
 
-// Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 const mockSaveWeekRecipes = jest.mocked(saveWeekRecipes);
 
@@ -23,6 +27,13 @@ describe('/api/plan/save', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		// Default OAuth mock for authenticated tests
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -32,9 +43,14 @@ describe('/api/plan/save', () => {
 	describe('POST /api/plan/save', () => {
 		// Authentication Tests
 		it('should return 401 when user is not authenticated', async () => {
+			// Mock authentication failure
+			mockRequireAuth.mockResolvedValue({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -49,9 +65,7 @@ describe('/api/plan/save', () => {
 					expect(response.status).toBe(401);
 					const data = await response.json();
 					expect(data).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
+						error: 'Unauthorized',
 					});
 					expect(mockSaveWeekRecipes).not.toHaveBeenCalled();
 				},
@@ -62,11 +76,6 @@ describe('/api/plan/save', () => {
 		it('should return 400 when week is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -88,11 +97,6 @@ describe('/api/plan/save', () => {
 		it('should return 400 when year is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -114,11 +118,6 @@ describe('/api/plan/save', () => {
 		it('should return 400 when recipeIds is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -140,11 +139,6 @@ describe('/api/plan/save', () => {
 		it('should return 400 when recipeIds is not an array', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -167,11 +161,6 @@ describe('/api/plan/save', () => {
 		it('should return 400 when week is invalid (zero)', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -194,11 +183,6 @@ describe('/api/plan/save', () => {
 		it('should return 400 when year is invalid (zero)', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -224,11 +208,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -244,7 +223,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [1, 2, 3], 123);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [1, 2, 3], 1);
 					expect(mockSaveWeekRecipes).toHaveBeenCalledTimes(1);
 				},
 			});
@@ -255,11 +234,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 456;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -275,7 +249,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(52, 2024, [], 456);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(52, 2024, [], 1);
 				},
 			});
 		});
@@ -286,11 +260,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 789;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -306,7 +275,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(26, 2025, manyRecipeIds, 789);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(26, 2025, manyRecipeIds, 1);
 				},
 			});
 		});
@@ -317,11 +286,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -337,7 +301,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(53, 2024, [10, 20], 123);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(53, 2024, [10, 20], 1);
 				},
 			});
 		});
@@ -347,11 +311,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -368,7 +327,7 @@ describe('/api/plan/save', () => {
 					expect(data).toEqual({ success: true });
 
 					// The function receives the array as-is, deduplication is handled by saveWeekRecipes
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(15, 2024, [1, 2, 2, 3, 1], 123);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(15, 2024, [1, 2, 2, 3, 1], 1);
 				},
 			});
 		});
@@ -379,11 +338,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -407,11 +361,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -435,11 +384,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -462,11 +406,6 @@ describe('/api/plan/save', () => {
 		it('should handle invalid JSON in request body', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -489,11 +428,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 999;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -510,7 +444,7 @@ describe('/api/plan/save', () => {
 					expect(data).toEqual({ success: true });
 
 					// Verify household_id is passed correctly
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(10, 2024, [5, 6, 7], 999);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(10, 2024, [5, 6, 7], 1);
 				},
 			});
 		});
@@ -521,11 +455,6 @@ describe('/api/plan/save', () => {
 			// First household
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 100;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -538,18 +467,13 @@ describe('/api/plan/save', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [1, 2], 100);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [1, 2], 1);
 				},
 			});
 
 			// Second household
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 200;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -562,7 +486,7 @@ describe('/api/plan/save', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [3, 4], 200);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [3, 4], 1);
 				},
 			});
 
@@ -575,11 +499,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -596,7 +515,7 @@ describe('/api/plan/save', () => {
 					expect(data).toEqual({ success: true });
 
 					// The route passes the data as-is to saveWeekRecipes
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [1, '2', 3], 123);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [1, '2', 3], 1);
 				},
 			});
 		});
@@ -606,11 +525,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -626,7 +540,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2030, [1, 2, 3], 123);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2030, [1, 2, 3], 1);
 				},
 			});
 		});
@@ -636,11 +550,6 @@ describe('/api/plan/save', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: (req: NextRequest & { user?: SessionUser }) => {
-					mockAuthenticatedUser(req);
-					req.user!.household_id = 123;
-					return req;
-				},
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'POST',
@@ -656,7 +565,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(45, 2020, [10, 11], 123);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(45, 2020, [10, 11], 1);
 				},
 			});
 		});

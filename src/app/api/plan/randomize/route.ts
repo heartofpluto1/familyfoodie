@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getRecipesForRandomization } from '@/lib/queries/menus';
 import { Recipe } from '@/types/menus';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
 // Randomization logic with ingredient constraints
 function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Recipe[] {
@@ -41,14 +41,19 @@ function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Rec
 	return selected;
 }
 
-async function handler(request: AuthenticatedRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		// Get the count from query params
 		const url = new URL(request.url);
 		const countParam = url.searchParams.get('count');
 		const count = countParam ? parseInt(countParam) : 3; // Default to 3 if not specified
 
-		const availableRecipes = await getRecipesForRandomization(request.household_id);
+		const availableRecipes = await getRecipesForRandomization(auth.household_id);
 
 		// Handle null/undefined from database
 		if (!availableRecipes) {
@@ -65,5 +70,3 @@ async function handler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to randomize recipes' }, { status: 500 });
 	}
 }
-
-export const GET = withAuth(handler);

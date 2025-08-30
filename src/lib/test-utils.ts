@@ -1,26 +1,52 @@
 import type { NextRequest } from 'next/server';
-import type { SessionUser } from '@/types/auth';
+import type { Session } from 'next-auth';
+import { createMockNextResponse } from './test-utils/mockNextResponse';
 
-// Standard mock admin user data
-export const mockAdminUser: SessionUser = {
+// Standard mock session for admin user
+export const mockAdminSession: Session = {
+	user: {
+		id: '1',
+		email: 'admin@example.com',
+		household_id: 1,
+		household_name: 'Test Household',
+		is_admin: true,
+	},
+	expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+};
+
+// Standard mock session for regular user
+export const mockRegularSession: Session = {
+	user: {
+		id: '2',
+		email: 'user@example.com',
+		household_id: 1,
+		household_name: 'Test Household',
+		is_admin: false,
+	},
+	expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+};
+
+// Legacy user objects for backwards compatibility in tests
+export const mockAdminUser = {
 	id: 1,
-	username: 'admin',
+	email: 'admin@example.com',
 	first_name: 'Admin',
 	last_name: 'User',
-	email: 'admin@example.com',
+	oauth_provider: 'google',
+	oauth_provider_id: '123456',
 	is_admin: true,
 	is_active: true,
 	household_id: 1,
 	household_name: 'Test Household',
 };
 
-// Standard mock regular user data
-export const mockRegularUser: SessionUser = {
+export const mockRegularUser = {
 	id: 2,
-	username: 'user',
+	email: 'user@example.com',
 	first_name: 'Regular',
 	last_name: 'User',
-	email: 'user@example.com',
+	oauth_provider: 'google',
+	oauth_provider_id: '789012',
 	is_admin: false,
 	is_active: true,
 	household_id: 1,
@@ -35,36 +61,77 @@ export const clearAllMocks = () => {
 };
 
 /**
- * Standard auth middleware mock configuration
- * Use this directly in jest.mock() calls via require
+ * Mock for requireAuth function from @/lib/auth/helpers
  */
-export const authMiddlewareMock = {
-	withAuth: (handler: (request: NextRequest & { user?: SessionUser; household_id?: number }, context?: unknown) => Promise<Response>) => {
-		return async (request: NextRequest & { user?: SessionUser; household_id?: number }, context?: unknown) => {
-			// Check if user is set by requestPatcher
-			if (!request.user) {
-				return new Response(
-					JSON.stringify({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
-					}),
-					{ status: 401, headers: { 'Content-Type': 'application/json' } }
-				);
-			}
-			// Set household_id from user as the real middleware does
-			request.household_id = request.user.household_id || 1; // Default to household_id 1 for testing
-			return handler(request, context);
-		};
-	},
+export const mockRequireAuth = jest.fn();
+
+/**
+ * Mock for requireAdminAuth function from @/lib/auth/helpers
+ */
+export const mockRequireAdminAuth = jest.fn();
+
+/**
+ * Mock for getServerSession from next-auth
+ */
+export const mockGetServerSession = jest.fn();
+
+/**
+ * Standard auth helpers mock configuration
+ * Use this directly in jest.mock() calls
+ */
+export const authHelpersMock = {
+	requireAuth: mockRequireAuth,
+	requireAdminAuth: mockRequireAdminAuth,
 };
 
 /**
- * Passthrough auth middleware mock configuration
- * Used for admin routes that handle auth differently
+ * Mock next-auth module
  */
-export const passthroughAuthMock = {
-	withAuth: (handler: (...args: unknown[]) => unknown) => handler,
+export const nextAuthMock = {
+	getServerSession: mockGetServerSession,
+};
+
+/**
+ * Setup authenticated user mock - call in beforeEach for authenticated tests
+ */
+export const setupAuthenticatedUser = (isAdmin = false) => {
+	const session = isAdmin ? mockAdminSession : mockRegularSession;
+	mockGetServerSession.mockResolvedValue(session);
+	mockRequireAuth.mockResolvedValue({
+		authorized: true,
+		session,
+		household_id: session.user.household_id,
+		user_id: session.user.id,
+	});
+	if (isAdmin) {
+		mockRequireAdminAuth.mockResolvedValue({
+			authorized: true,
+			session,
+			household_id: session.user.household_id,
+			user_id: session.user.id,
+			is_admin: true,
+		});
+	} else {
+		mockRequireAdminAuth.mockResolvedValue({
+			authorized: false,
+			response: createMockNextResponse({ error: 'Admin access required' }, { status: 403 }),
+		});
+	}
+};
+
+/**
+ * Setup non-authenticated user mock - call in beforeEach for non-authenticated tests
+ */
+export const setupNonAuthenticatedUser = () => {
+	mockGetServerSession.mockResolvedValue(null);
+	mockRequireAuth.mockResolvedValue({
+		authorized: false,
+		response: createMockNextResponse({ error: 'Unauthorized' }, { status: 401 }),
+	});
+	mockRequireAdminAuth.mockResolvedValue({
+		authorized: false,
+		response: createMockNextResponse({ error: 'Unauthorized' }, { status: 401 }),
+	});
 };
 
 /**
@@ -157,16 +224,15 @@ export const standardErrorScenarios = {
  * Request patcher for authenticated user requests
  * Use this with testApiHandler to simulate authenticated requests
  */
-export const mockAuthenticatedUser = (req: NextRequest & { user?: SessionUser }) => {
-	req.user = mockRegularUser;
+export const mockAuthenticatedUser = (req: NextRequest) => {
+	// OAuth doesn't attach user to request directly
 	return req;
 };
 
 /**
  * Request patcher for non-authenticated requests
  */
-export const mockNonAuthenticatedUser = (req: NextRequest & { user?: SessionUser }) => {
-	req.user = undefined;
+export const mockNonAuthenticatedUser = (req: NextRequest) => {
 	return req;
 };
 

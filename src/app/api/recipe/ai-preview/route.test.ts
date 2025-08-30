@@ -1,8 +1,12 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser, createMockFile } from '@/lib/test-utils';
+import { setupConsoleMocks, createMockFile, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 import { RowDataPacket } from 'mysql2';
 
 // Mock OpenAI
@@ -23,7 +27,9 @@ jest.mock('@/lib/db.js', () => ({
 }));
 
 // Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 // Get mocked functions
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
@@ -62,6 +68,14 @@ describe('/api/recipe/ai-preview', () => {
 		mockExecute.mockReset(); // Reset mock implementation and return values
 
 		consoleMocks = setupConsoleMocks();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterEach(() => {
@@ -147,9 +161,21 @@ describe('/api/recipe/ai-preview', () => {
 
 	describe('Authentication Tests', () => {
 		it('should return 401 for unauthenticated requests', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json(
+					{
+						success: false,
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
+					},
+					{ status: 401 }
+				),
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -177,7 +203,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -206,7 +231,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -227,7 +251,6 @@ describe('/api/recipe/ai-preview', () => {
 			process.env.OPENAI_API_KEY = 'test-key';
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 
@@ -247,7 +270,6 @@ describe('/api/recipe/ai-preview', () => {
 			process.env.OPENAI_API_KEY = 'test-key';
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('text', 'some text data');
@@ -270,7 +292,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test1.jpg', 'image/jpeg'));
@@ -319,7 +340,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -344,7 +364,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -375,7 +394,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -406,7 +424,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -452,7 +469,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -491,7 +507,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -543,7 +558,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -579,7 +593,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -604,7 +617,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -654,7 +666,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -681,7 +692,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -729,7 +739,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -793,7 +802,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -847,7 +855,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -917,7 +924,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -970,7 +976,6 @@ describe('/api/recipe/ai-preview', () => {
 		it('should return correct response structure', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -1004,7 +1009,6 @@ describe('/api/recipe/ai-preview', () => {
 		it('should preserve all OpenAI extracted data', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -1061,7 +1065,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -1123,7 +1126,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));
@@ -1148,7 +1150,6 @@ describe('/api/recipe/ai-preview', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const formData = new FormData();
 					formData.append('image0', createMockFile('test.jpg', 'image/jpeg'));

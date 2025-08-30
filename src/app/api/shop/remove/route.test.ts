@@ -1,10 +1,9 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import type { NextRequest } from 'next/server';
-import type { SessionUser } from '@/types/auth';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, MockConnection } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, MockConnection, mockRegularSession } from '@/lib/test-utils';
 
 // Mock the database pool
 const mockConnection: MockConnection = {
@@ -19,8 +18,15 @@ jest.mock('@/lib/db.js', () => ({
 	getConnection: jest.fn(() => Promise.resolve(mockConnection)),
 }));
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
+}));
+
+// Import auth helpers for mocking
+import { requireAuth } from '@/lib/auth/helpers';
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 describe('/api/shop/remove', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -34,6 +40,14 @@ describe('/api/shop/remove', () => {
 		mockConnection.rollback.mockReset().mockResolvedValue();
 		mockConnection.release.mockReset().mockImplementation(() => {});
 		mockConnection.execute.mockReset();
+
+		// Setup successful auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -43,6 +57,12 @@ describe('/api/shop/remove', () => {
 	describe('DELETE /api/shop/remove', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock authentication failure
+				mockRequireAuth.mockResolvedValue({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -57,12 +77,9 @@ describe('/api/shop/remove', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 
@@ -85,7 +102,6 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true });
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -110,7 +126,6 @@ describe('/api/shop/remove', () => {
 							code: 'INVALID_REQUEST_FORMAT',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -134,7 +149,6 @@ describe('/api/shop/remove', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -158,7 +172,6 @@ describe('/api/shop/remove', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -182,7 +195,6 @@ describe('/api/shop/remove', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -206,7 +218,6 @@ describe('/api/shop/remove', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -235,7 +246,6 @@ describe('/api/shop/remove', () => {
 							['123', 1] // household_id from mockAuthenticatedUser
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -264,7 +274,6 @@ describe('/api/shop/remove', () => {
 							[456, 1] // household_id from mockAuthenticatedUser
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -296,7 +305,6 @@ describe('/api/shop/remove', () => {
 						expect(mockConnection.rollback).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -330,7 +338,6 @@ describe('/api/shop/remove', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -357,23 +364,27 @@ describe('/api/shop/remove', () => {
 						expect(mockConnection.commit).toHaveBeenCalledTimes(1);
 						expect(mockConnection.rollback).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
 			it('should ensure household scoping in database query', async () => {
+				// Mock auth with different household_id
+				const customSession = {
+					...mockRegularSession,
+					user: {
+						...mockRegularSession.user,
+						household_id: 42,
+					},
+				};
+				mockRequireAuth.mockResolvedValue({
+					authorized: true as const,
+					session: customSession,
+					household_id: 42,
+					user_id: customSession.user.id,
+				});
+
 				// Mock successful deletion
 				mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
-
-				// Use custom user with different household_id
-				const customUserPatcher = (req: NextRequest & { user?: SessionUser; household_id?: number }) => {
-					mockAuthenticatedUser(req);
-					req.user = {
-						...req.user!,
-						household_id: 42,
-					};
-					return req;
-				};
 
 				await testApiHandler({
 					appHandler,
@@ -391,7 +402,6 @@ describe('/api/shop/remove', () => {
 						// Verify household_id 42 is used in the query
 						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [1, 42]);
 					},
-					requestPatcher: customUserPatcher,
 				});
 			});
 		});
@@ -426,7 +436,6 @@ describe('/api/shop/remove', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -458,7 +467,6 @@ describe('/api/shop/remove', () => {
 						// Verify connection is still released
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -490,7 +498,6 @@ describe('/api/shop/remove', () => {
 						// Verify connection is still released
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -525,7 +532,6 @@ describe('/api/shop/remove', () => {
 						expect(mockConnection.execute).not.toHaveBeenCalled();
 						expect(mockConnection.release).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Reset the mock for other tests
@@ -555,7 +561,6 @@ describe('/api/shop/remove', () => {
 						// Connection should not be acquired for invalid JSON
 						expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -586,7 +591,6 @@ describe('/api/shop/remove', () => {
 						expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -613,7 +617,6 @@ describe('/api/shop/remove', () => {
 							code: 'INTERNAL_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -642,7 +645,6 @@ describe('/api/shop/remove', () => {
 						});
 						expect(Object.keys(data)).toEqual(['success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -669,7 +671,6 @@ describe('/api/shop/remove', () => {
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -698,7 +699,6 @@ describe('/api/shop/remove', () => {
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -727,7 +727,6 @@ describe('/api/shop/remove', () => {
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -754,7 +753,6 @@ describe('/api/shop/remove', () => {
 
 						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [largeId, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -782,7 +780,6 @@ describe('/api/shop/remove', () => {
 
 						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [-1, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -810,7 +807,6 @@ describe('/api/shop/remove', () => {
 
 						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [0, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -839,7 +835,6 @@ describe('/api/shop/remove', () => {
 						// Should still work with just the id
 						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [1, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

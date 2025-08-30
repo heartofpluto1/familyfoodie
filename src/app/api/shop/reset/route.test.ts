@@ -1,19 +1,27 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser, mockRegularUser, standardErrorScenarios } from '@/lib/test-utils';
+import { setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
 
 // Mock the resetShoppingListFromRecipes function
 jest.mock('@/lib/queries/menus', () => ({
 	resetShoppingListFromRecipes: jest.fn(),
 }));
 
-// Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
+}));
 
 // Get mocked functions
 const mockResetShoppingListFromRecipes = jest.mocked(jest.requireMock('@/lib/queries/menus').resetShoppingListFromRecipes);
+
+// Import auth helpers for mocking
+import { requireAuth } from '@/lib/auth/helpers';
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 describe('/api/shop/reset', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -22,6 +30,14 @@ describe('/api/shop/reset', () => {
 		jest.clearAllMocks();
 		mockResetShoppingListFromRecipes.mockResolvedValue(undefined);
 		consoleMocks = setupConsoleMocks();
+
+		// Setup successful auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -30,6 +46,12 @@ describe('/api/shop/reset', () => {
 
 	describe('Authentication Tests', () => {
 		it('should return 401 for unauthenticated requests', async () => {
+			// Mock authentication failure
+			mockRequireAuth.mockResolvedValue({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -47,12 +69,9 @@ describe('/api/shop/reset', () => {
 					expect(response.status).toBe(401);
 					const data = await response.json();
 					expect(data).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
+						error: 'Unauthorized',
 					});
 				},
-				requestPatcher: mockNonAuthenticatedUser,
 			});
 		});
 
@@ -75,7 +94,6 @@ describe('/api/shop/reset', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -107,7 +125,6 @@ describe('/api/shop/reset', () => {
 						},
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -137,7 +154,6 @@ describe('/api/shop/reset', () => {
 						},
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -162,7 +178,6 @@ describe('/api/shop/reset', () => {
 						details: 'All fields (week, year) are required',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -184,9 +199,8 @@ describe('/api/shop/reset', () => {
 					expect(response.status).toBe(200);
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, mockRegularSession.user.household_id);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -208,9 +222,8 @@ describe('/api/shop/reset', () => {
 					expect(response.status).toBe(200);
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, mockRegularSession.user.household_id);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -240,7 +253,6 @@ describe('/api/shop/reset', () => {
 						details: 'Week must be a number between 1 and 53',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -268,7 +280,6 @@ describe('/api/shop/reset', () => {
 						details: 'Year must be between 2015 and 2050',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -296,7 +307,6 @@ describe('/api/shop/reset', () => {
 						details: 'All fields (week, year) are required',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -324,7 +334,6 @@ describe('/api/shop/reset', () => {
 						details: 'All fields (week, year) are required',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -348,10 +357,9 @@ describe('/api/shop/reset', () => {
 					expect(response.status).toBe(200);
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, mockRegularSession.user.household_id);
 					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledTimes(1);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -372,9 +380,8 @@ describe('/api/shop/reset', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(1, 2024, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(1, 2024, mockRegularSession.user.household_id);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 
 			// Test week 53
@@ -393,9 +400,8 @@ describe('/api/shop/reset', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(53, 2024, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(53, 2024, mockRegularSession.user.household_id);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -416,9 +422,8 @@ describe('/api/shop/reset', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2015, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2015, mockRegularSession.user.household_id);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 
 			// Test year 2050 (maximum)
@@ -437,9 +442,8 @@ describe('/api/shop/reset', () => {
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2050, mockRegularUser.household_id);
+					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2050, mockRegularSession.user.household_id);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -464,7 +468,6 @@ describe('/api/shop/reset', () => {
 					// Verify household_id from mockRegularUser (household_id: 1) is passed
 					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, 1);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -488,7 +491,6 @@ describe('/api/shop/reset', () => {
 					// Should use household_id from auth middleware (1), not from body (999)
 					expect(mockResetShoppingListFromRecipes).toHaveBeenCalledWith(45, 2024, 1);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -520,7 +522,6 @@ describe('/api/shop/reset', () => {
 						details: 'Database connection failed',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -550,7 +551,6 @@ describe('/api/shop/reset', () => {
 						details: 'An unexpected error occurred',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -575,7 +575,6 @@ describe('/api/shop/reset', () => {
 						details: 'Request body must be valid JSON',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});
@@ -605,7 +604,6 @@ describe('/api/shop/reset', () => {
 						details: 'Week must be a number between 1 and 53',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -633,7 +631,6 @@ describe('/api/shop/reset', () => {
 						details: 'Week must be a number between 1 and 53',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -661,7 +658,6 @@ describe('/api/shop/reset', () => {
 						details: 'Year must be between 2015 and 2050',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -689,7 +685,6 @@ describe('/api/shop/reset', () => {
 						details: 'Year must be between 2015 and 2050',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -717,7 +712,6 @@ describe('/api/shop/reset', () => {
 						details: 'Week must be a number between 1 and 53',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -745,7 +739,6 @@ describe('/api/shop/reset', () => {
 						details: 'Year must be between 2015 and 2050',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -773,7 +766,6 @@ describe('/api/shop/reset', () => {
 						details: 'Week must be a number between 1 and 53',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -801,7 +793,6 @@ describe('/api/shop/reset', () => {
 						details: 'Week must be a number between 1 and 53',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

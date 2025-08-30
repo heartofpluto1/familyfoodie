@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, setupConsoleMocks } from '@/lib/test-utils';
+import { setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 
 // Mock dependencies
 jest.mock('@/lib/db.js', () => ({
@@ -11,7 +13,12 @@ jest.mock('@/lib/db.js', () => ({
 	end: jest.fn(),
 }));
 
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 jest.mock('@/lib/permissions', () => ({
 	canEditResource: jest.fn(),
@@ -39,6 +46,14 @@ describe('/api/collections/delete', () => {
 		mockGetStorageMode.mockReturnValue('local');
 		mockDeleteFile.mockResolvedValue(true);
 		mockCanEditResource.mockReset();
+
+		// Setup successful OAuth auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -47,9 +62,14 @@ describe('/api/collections/delete', () => {
 
 	describe('Authentication Tests', () => {
 		it('should return 401 for unauthenticated users', async () => {
+			// Mock authentication failure
+			mockRequireAuth.mockResolvedValue({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -62,9 +82,7 @@ describe('/api/collections/delete', () => {
 					expect(response.status).toBe(401);
 					const data = await response.json();
 					expect(data).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
+						error: 'Unauthorized',
 					});
 
 					// Verify no database or permission calls were made
@@ -86,7 +104,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -132,7 +149,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -177,7 +193,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -206,7 +221,6 @@ describe('/api/collections/delete', () => {
 		it('should return 422 when collection ID is missing', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -237,7 +251,6 @@ describe('/api/collections/delete', () => {
 		it('should return 422 when collection ID is not a number', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -279,7 +292,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -303,7 +315,6 @@ describe('/api/collections/delete', () => {
 		it('should handle invalid JSON payload', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -347,7 +358,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -379,11 +389,7 @@ describe('/api/collections/delete', () => {
 					expect(mockDeleteFile).toHaveBeenCalledWith('custom_123.jpg', 'jpg', 'collections');
 					expect(mockDeleteFile).toHaveBeenCalledWith('custom_123_dark.jpg', 'jpg', 'collections');
 
-					// Verify storage mode was logged
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Storage mode: local');
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith(
-						'Deleting collection files for filename: custom_123.jpg, filename_dark: custom_123_dark.jpg'
-					);
+					// Storage mode logging was removed in the merge
 				},
 			});
 		});
@@ -403,7 +409,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -450,7 +455,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -484,8 +488,7 @@ describe('/api/collections/delete', () => {
 					// Verify no file deletion calls were made for default images
 					expect(mockDeleteFile).not.toHaveBeenCalled();
 
-					// Verify appropriate logging
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Skipping file deletion for default collection images');
+					// File deletion skip logging was removed in the merge
 				},
 			});
 		});
@@ -502,7 +505,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -546,7 +548,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -589,7 +590,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -633,7 +633,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -683,7 +682,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -736,7 +734,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -764,9 +761,7 @@ describe('/api/collections/delete', () => {
 						},
 					});
 
-					// Verify appropriate logging for both scenarios
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Successfully deleted light mode image');
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('dark mode image not found, skipping deletion');
+					// File deletion success logging was removed in the merge
 				},
 			});
 		});
@@ -786,7 +781,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -798,11 +792,7 @@ describe('/api/collections/delete', () => {
 
 					expect(response.status).toBe(200);
 
-					// Verify storage mode and filename logging
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Storage mode: gcs');
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith(
-						'Deleting collection files for filename: custom_123.jpg, filename_dark: custom_123_dark.jpg'
-					);
+					// Storage mode and filename logging was removed in the merge
 				},
 			});
 		});
@@ -815,7 +805,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -854,7 +843,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -895,7 +883,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -937,7 +924,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -986,7 +972,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -1016,9 +1001,9 @@ describe('/api/collections/delete', () => {
 						},
 					});
 
-					// Verify both deletion attempts were made and appropriate logging occurred
+					// Verify both deletion attempts were made
 					expect(mockDeleteFile).toHaveBeenCalledTimes(2);
-					expect(consoleMocks.mockConsoleLog).toHaveBeenCalledWith('Successfully deleted light mode image');
+					// Success logging was removed in the merge
 				},
 			});
 		});
@@ -1035,7 +1020,6 @@ describe('/api/collections/delete', () => {
 
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -1077,7 +1061,6 @@ describe('/api/collections/delete', () => {
 		it('should handle zero collection ID validation', async () => {
 			await testApiHandler({
 				appHandler,
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',

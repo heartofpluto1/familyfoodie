@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CloseIcon } from './Icons';
+import InvitationModal from './InvitationModal';
 
 interface HouseholdData {
 	household_name: string;
@@ -17,6 +18,7 @@ export default function UserSettings({ isOpen, onClose }: UserSettingsProps) {
 	const [householdData, setHouseholdData] = useState<HouseholdData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [showInviteModal, setShowInviteModal] = useState(false);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -85,18 +87,37 @@ export default function UserSettings({ isOpen, onClose }: UserSettingsProps) {
 							{/* Household Members */}
 							<div>
 								<h3 className="text-sm font-medium text-foreground mb-2">Members ({householdData.members.length})</h3>
-								<div className="space-y-1">
+								<div className="space-y-1 mb-3">
 									{householdData.members.map((member, index) => (
-										<p key={index} className="text-secondary text-sm">
+										<p key={index} className={`text-sm ${member.includes('(pending)') ? 'text-muted italic' : 'text-secondary'}`}>
 											{member}
 										</p>
 									))}
 								</div>
+
+								{/* Invite Button */}
+								<button
+									onClick={() => setShowInviteModal(true)}
+									className="w-full px-3 py-2 bg-accent text-background rounded-sm hover:bg-accent/90 transition-colors text-sm font-medium"
+								>
+									Invite Another Member
+								</button>
 							</div>
 						</>
 					) : null}
 				</div>
 			</div>
+
+			{/* Invitation Modal */}
+			<InvitationModal
+				isOpen={showInviteModal}
+				onClose={() => setShowInviteModal(false)}
+				householdName={householdData?.household_name || 'your household'}
+				onInvitationSent={() => {
+					// Refresh the household data to show the new pending invitation
+					fetchHouseholdData();
+				}}
+			/>
 		</>
 	);
 }

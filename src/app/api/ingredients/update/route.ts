@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { triggerCascadeCopyIfNeededForIngredient } from '@/lib/copy-on-write';
 
 interface UpdateIngredientRequest {
@@ -13,7 +13,12 @@ interface UpdateIngredientRequest {
 	pantryCategoryId: number | null;
 }
 
-async function updateIngredientHandler(request: AuthenticatedRequest) {
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const body: UpdateIngredientRequest = await request.json();
 		const { id, name, fresh, price, stockcode, supermarketCategoryId, pantryCategoryId } = body;
@@ -24,7 +29,7 @@ async function updateIngredientHandler(request: AuthenticatedRequest) {
 		}
 
 		// Trigger cascade copy if needed (copy-on-write for non-owned ingredients)
-		const actualIngredientId = await triggerCascadeCopyIfNeededForIngredient(request.household_id, id);
+		const actualIngredientId = await triggerCascadeCopyIfNeededForIngredient(auth.household_id, id);
 
 		// Update the ingredient (using the potentially new ingredient ID after copy-on-write)
 		await pool.execute(
@@ -44,5 +49,3 @@ async function updateIngredientHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update ingredient' }, { status: 500 });
 	}
 }
-
-export const PUT = withAuth(updateIngredientHandler);

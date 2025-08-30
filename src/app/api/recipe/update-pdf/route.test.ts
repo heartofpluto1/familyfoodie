@@ -1,11 +1,17 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
+import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -116,6 +122,14 @@ describe('/api/recipe/update-pdf', () => {
 			newRecipeId: 100,
 			actionsTaken: ['recipe_copied'],
 		}); // Default cascade copy response
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -169,7 +183,6 @@ describe('/api/recipe/update-pdf', () => {
 					// Verify no cleanup details in response
 					expect(json.cleanup).toBeUndefined();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -241,7 +254,6 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'pdf', 'application/pdf');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -272,7 +284,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(json.cleanup).toBeUndefined();
 					expect(mockConsoleWarn).toHaveBeenCalledWith('File cleanup failed but continuing with upload:', expect.any(Error));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -295,7 +306,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -318,7 +328,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -342,7 +351,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -366,7 +374,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -392,7 +399,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -418,7 +424,6 @@ describe('/api/recipe/update-pdf', () => {
 						message: 'Please upload a PDF document or JPEG image.',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -452,7 +457,6 @@ describe('/api/recipe/update-pdf', () => {
 							message: 'Please upload a PDF document or JPEG image.',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			}
 		});
@@ -480,7 +484,6 @@ describe('/api/recipe/update-pdf', () => {
 						suggestion: 'Try reducing image quality or splitting large documents into smaller files.',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -491,6 +494,12 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -499,13 +508,10 @@ describe('/api/recipe/update-pdf', () => {
 
 					expect(response.status).toBe(401);
 					expect(json).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
+						error: 'Unauthorized',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				// No requestPatcher - simulates unauthenticated user
 			});
 		});
 
@@ -533,7 +539,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -567,7 +572,6 @@ describe('/api/recipe/update-pdf', () => {
 					// Internal error should be logged but not exposed
 					expect(mockConsoleError).toHaveBeenCalledWith('Upload failed:', 'Storage unavailable');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -604,7 +608,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(mockDeleteFile).toHaveBeenCalledWith('recipe_abc_v2', 'pdf');
 					expect(mockConsoleLog).toHaveBeenCalledWith('Rolled back uploaded file: recipe_abc_v2.pdf');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -636,7 +639,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(mockConsoleLog).toHaveBeenCalledWith('Updated database pdf_filename to recipe_original_v2.pdf for recipe 1');
 					expect(json.upload.storageMode).toBe('cloud');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -659,7 +661,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(json).toEqual({ error: 'Failed to update recipe PDF' });
 					expect(mockConsoleError).toHaveBeenCalledWith('Error updating recipe PDF:', expect.any(Error));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -681,7 +682,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(response.status).toBe(500);
 					expect(json).toEqual({ error: 'Failed to update recipe PDF' });
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -723,7 +723,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(response.status).toBe(200);
 					expect(json.success).toBe(true);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -753,7 +752,6 @@ describe('/api/recipe/update-pdf', () => {
 					expect(json.cleanup).toBeUndefined();
 					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -788,7 +786,6 @@ describe('/api/recipe/update-pdf', () => {
 						recipeId: '1',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -826,7 +823,6 @@ describe('/api/recipe/update-pdf', () => {
 					// But cleanup should still be logged for debugging
 					expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Cleaned up'));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -866,7 +862,6 @@ describe('/api/recipe/update-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

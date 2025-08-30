@@ -31,9 +31,6 @@ const CollectionsPageClient = ({ myCollections, publicCollections }: Collections
 				return;
 			}
 
-			const result = await response.json();
-			console.log(`Successfully ${result.action}`);
-
 			// Refresh the page to update the collections
 			window.location.reload();
 		} catch (error) {

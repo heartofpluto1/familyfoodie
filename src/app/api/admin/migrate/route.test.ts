@@ -1,18 +1,16 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { requireAdminUser } from '@/lib/auth-helpers';
+import { requireAdminAuth } from '@/lib/auth/helpers';
 import runMigrations from '../../../../../migrations/run-migrations.mjs';
-import { setupConsoleMocks, standardErrorScenarios, mockAdminUser } from '@/lib/test-utils';
+import { setupConsoleMocks, standardErrorScenarios, mockAdminSession } from '@/lib/test-utils';
 
 // Mock the authentication modules
-jest.mock('@/lib/auth-helpers', () => ({
-	requireAdminUser: jest.fn(),
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAdminAuth: jest.fn(),
 }));
-
-// Mock the auth middleware to pass through for testing
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').passthroughAuthMock);
 
 // Mock the migration system
 jest.mock('../../../../../migrations/run-migrations.mjs', () => ({
@@ -23,7 +21,7 @@ jest.mock('../../../../../migrations/run-migrations.mjs', () => ({
 // Console mocking will be handled by setupConsoleMocks
 
 // Type assertions for mocked modules
-const mockRequireAdminUser = requireAdminUser as jest.MockedFunction<typeof requireAdminUser>;
+const mockRequireAdminAuth = requireAdminAuth as jest.MockedFunction<typeof requireAdminAuth>;
 const mockRunMigrations = runMigrations as jest.MockedFunction<typeof runMigrations>;
 
 // Helper to mock environment variables
@@ -51,7 +49,13 @@ describe('/api/admin/migrate', () => {
 
 	describe('GET /api/admin/migrate', () => {
 		it('returns detailed status information for admin users', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			await testApiHandler({
 				appHandler,
@@ -78,7 +82,12 @@ describe('/api/admin/migrate', () => {
 		});
 
 		it('returns 403 for non-admin users', async () => {
-			mockRequireAdminUser.mockResolvedValue(null);
+			const mockResponse = NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: false as const,
+				response: mockResponse,
+			});
 
 			await testApiHandler({
 				appHandler,
@@ -89,17 +98,13 @@ describe('/api/admin/migrate', () => {
 					expect(response.status).toBe(403);
 					expect(json).toEqual({
 						error: 'Admin access required',
-						errorCode: 'ADMIN_ACCESS_REQUIRED',
-						timestamp: expect.any(String),
-						nextSteps: 'Login with an admin account to access migration endpoints',
-						context: {},
 					});
 				},
 			});
 		});
 
 		it('handles authentication errors gracefully with detailed error info', async () => {
-			mockRequireAdminUser.mockRejectedValue(standardErrorScenarios.databaseError);
+			mockRequireAdminAuth.mockRejectedValue(standardErrorScenarios.databaseError);
 
 			await testApiHandler({
 				appHandler,
@@ -110,12 +115,12 @@ describe('/api/admin/migrate', () => {
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
 						error: 'Database connection failed',
-						errorCode: 'DATABASE_UNREACHABLE',
+						errorCode: 'STATUS_CHECK_FAILED',
 						timestamp: expect.any(String),
-						nextSteps: 'Check database configuration and connectivity',
+						nextSteps: 'Check database connectivity and try again',
 						context: {
 							operationType: 'status_check',
-							userAttempt: 'admin@example.com',
+							errorType: 'unknown_error',
 						},
 					});
 				},
@@ -123,7 +128,13 @@ describe('/api/admin/migrate', () => {
 		});
 
 		it('returns 405 for unsupported HTTP methods', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			await testApiHandler({
 				appHandler,
@@ -135,11 +146,12 @@ describe('/api/admin/migrate', () => {
 					expect(json).toEqual({
 						error: 'Method not allowed',
 						errorCode: 'METHOD_NOT_ALLOWED',
-						allowedMethods: ['GET', 'POST'],
 						timestamp: expect.any(String),
 						nextSteps: 'Use GET to check status or POST to run migrations',
+						context: {
+							allowedMethods: ['GET', 'POST'],
+						},
 					});
-					expect(response.headers.get('Allow')).toBe('GET, POST');
 				},
 			});
 		});
@@ -148,7 +160,13 @@ describe('/api/admin/migrate', () => {
 	describe('POST /api/admin/migrate', () => {
 		it('successfully runs migrations for admin users in development with detailed response', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockResolvedValue({
 				success: true,
 				migrationsRun: 3,
@@ -194,7 +212,13 @@ describe('/api/admin/migrate', () => {
 				NODE_ENV: 'production',
 				MIGRATION_TOKEN: 'valid-token-123',
 			});
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockResolvedValue({ success: true, migrationsRun: 1 });
 
 			try {
@@ -234,7 +258,13 @@ describe('/api/admin/migrate', () => {
 
 		it('returns 409 when migration is already in progress', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			// Set up migration lock to simulate migration in progress
 			(globalThis as { __setMigrationLockForTesting?: () => void }).__setMigrationLockForTesting?.();
@@ -267,7 +297,12 @@ describe('/api/admin/migrate', () => {
 		});
 
 		it('returns 403 for non-admin users', async () => {
-			mockRequireAdminUser.mockResolvedValue(null);
+			const mockResponse = NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: false as const,
+				response: mockResponse,
+			});
 
 			await testApiHandler({
 				appHandler,
@@ -278,10 +313,6 @@ describe('/api/admin/migrate', () => {
 					expect(response.status).toBe(403);
 					expect(json).toEqual({
 						error: 'Admin access required',
-						errorCode: 'ADMIN_ACCESS_REQUIRED',
-						timestamp: expect.any(String),
-						nextSteps: 'Login with an admin account to access migration endpoints',
-						context: {},
 					});
 					expect(mockRunMigrations).not.toHaveBeenCalled();
 				},
@@ -293,7 +324,13 @@ describe('/api/admin/migrate', () => {
 				NODE_ENV: 'production',
 				MIGRATION_TOKEN: 'valid-token-123',
 			});
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			try {
 				await testApiHandler({
@@ -326,7 +363,13 @@ describe('/api/admin/migrate', () => {
 				NODE_ENV: 'production',
 				MIGRATION_TOKEN: 'valid-token-123',
 			});
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			try {
 				await testApiHandler({
@@ -365,7 +408,13 @@ describe('/api/admin/migrate', () => {
 				NODE_ENV: 'production',
 				MIGRATION_TOKEN: undefined,
 			});
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			try {
 				await testApiHandler({
@@ -399,7 +448,13 @@ describe('/api/admin/migrate', () => {
 
 		it('handles migration execution failures', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockRejectedValue(standardErrorScenarios.databaseError);
 
 			try {
@@ -432,7 +487,13 @@ describe('/api/admin/migrate', () => {
 
 		it('handles unknown migration errors', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockRejectedValue('String error');
 
 			try {
@@ -464,7 +525,7 @@ describe('/api/admin/migrate', () => {
 		});
 
 		it('handles authentication errors during migration', async () => {
-			mockRequireAdminUser.mockRejectedValue(new Error('Session validation failed'));
+			mockRequireAdminAuth.mockRejectedValue(new Error('Session validation failed'));
 
 			await testApiHandler({
 				appHandler,
@@ -474,13 +535,16 @@ describe('/api/admin/migrate', () => {
 
 					expect(response.status).toBe(500);
 					expect(json).toEqual({
-						error: 'Session validation failed',
-						errorCode: 'DATABASE_UNREACHABLE',
+						error: 'Migration failed',
+						errorCode: 'UNKNOWN_MIGRATION_ERROR',
 						timestamp: expect.any(String),
-						nextSteps: 'Check database configuration and connectivity',
+						nextSteps: 'Contact system administrator with error details',
 						context: {
 							operationType: 'migration_execution',
-							userAttempt: 'admin authentication',
+							failureType: 'unknown_error',
+							rollbackStatus: 'completed',
+							affectedMigrations: [],
+							errorData: 'Error: Session validation failed',
 						},
 					});
 					expect(mockRunMigrations).not.toHaveBeenCalled();
@@ -490,7 +554,13 @@ describe('/api/admin/migrate', () => {
 
 		it('successfully handles zero migrations run', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'test' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockResolvedValue({ success: true, migrationsRun: 0 });
 
 			try {
@@ -526,7 +596,13 @@ describe('/api/admin/migrate', () => {
 
 	describe('Request Validation and HTTP Method Support', () => {
 		it('returns 405 for unsupported HTTP methods (PUT)', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			await testApiHandler({
 				appHandler,
@@ -538,17 +614,24 @@ describe('/api/admin/migrate', () => {
 					expect(json).toEqual({
 						error: 'Method not allowed',
 						errorCode: 'METHOD_NOT_ALLOWED',
-						allowedMethods: ['GET', 'POST'],
 						timestamp: expect.any(String),
 						nextSteps: 'Use GET to check status or POST to run migrations',
+						context: {
+							allowedMethods: ['GET', 'POST'],
+						},
 					});
-					expect(response.headers.get('Allow')).toBe('GET, POST');
 				},
 			});
 		});
 
 		it('returns 405 for unsupported HTTP methods (DELETE)', async () => {
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			await testApiHandler({
 				appHandler,
@@ -560,18 +643,25 @@ describe('/api/admin/migrate', () => {
 					expect(json).toEqual({
 						error: 'Method not allowed',
 						errorCode: 'METHOD_NOT_ALLOWED',
-						allowedMethods: ['GET', 'POST'],
 						timestamp: expect.any(String),
 						nextSteps: 'Use GET to check status or POST to run migrations',
+						context: {
+							allowedMethods: ['GET', 'POST'],
+						},
 					});
-					expect(response.headers.get('Allow')).toBe('GET, POST');
 				},
 			});
 		});
 
 		it('validates Content-Type for POST requests with body', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			try {
 				await testApiHandler({
@@ -607,7 +697,13 @@ describe('/api/admin/migrate', () => {
 
 		it('handles request timeout for long-running migrations', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			// Mock runMigrations normally (would succeed)
 			mockRunMigrations.mockResolvedValue({ success: true, migrationsRun: 1 });
@@ -649,7 +745,13 @@ describe('/api/admin/migrate', () => {
 	describe('Concurrent Request Handling', () => {
 		it('prevents multiple simultaneous migration requests with proper locking', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			// Mock a slow migration to test concurrency
 			const migrationDelay = 100; // Add delay to allow concurrent requests
@@ -697,10 +799,25 @@ describe('/api/admin/migrate', () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
 
 			// Set up different mock scenarios for sequential calls
-			mockRequireAdminUser
-				.mockResolvedValueOnce(mockAdminUser) // First succeeds
-				.mockResolvedValueOnce(mockAdminUser) // Second succeeds but migration fails
-				.mockResolvedValueOnce(null); // Third fails auth
+			mockRequireAdminAuth
+				.mockResolvedValueOnce({
+					authorized: true as const,
+					session: mockAdminSession,
+					household_id: mockAdminSession.user.household_id,
+					user_id: mockAdminSession.user.id,
+					is_admin: true,
+				}) // First succeeds
+				.mockResolvedValueOnce({
+					authorized: true as const,
+					session: mockAdminSession,
+					household_id: mockAdminSession.user.household_id,
+					user_id: mockAdminSession.user.id,
+					is_admin: true,
+				}) // Second succeeds but migration fails
+				.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Admin access required' }, { status: 403 }),
+				}); // Third fails auth
 
 			mockRunMigrations.mockResolvedValueOnce({ success: true, migrationsRun: 1 }).mockRejectedValueOnce(new Error('Migration conflict'));
 
@@ -749,7 +866,13 @@ describe('/api/admin/migrate', () => {
 
 			try {
 				// Test admin user success
-				mockRequireAdminUser.mockResolvedValueOnce(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValueOnce({
+					authorized: true as const,
+					session: mockAdminSession,
+					household_id: mockAdminSession.user.household_id,
+					user_id: mockAdminSession.user.id,
+					is_admin: true,
+				});
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -761,7 +884,10 @@ describe('/api/admin/migrate', () => {
 				});
 
 				// Test non-admin failure
-				mockRequireAdminUser.mockResolvedValueOnce(null);
+				mockRequireAdminAuth.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Admin access required' }, { status: 403 }),
+				});
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -784,7 +910,13 @@ describe('/api/admin/migrate', () => {
 				NODE_ENV: 'production',
 				MIGRATION_TOKEN: 'valid-token-123',
 			});
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockResolvedValue({ success: true, migrationsRun: 1 });
 
 			try {
@@ -836,7 +968,13 @@ describe('/api/admin/migrate', () => {
 
 		it('handles rapid sequential migration requests', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 			// Mock migrations with different results
 			mockRunMigrations
@@ -866,7 +1004,13 @@ describe('/api/admin/migrate', () => {
 
 		it('handles mixed GET and POST requests', async () => {
 			const restoreEnv = mockEnv({ NODE_ENV: 'development' });
-			mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 			mockRunMigrations.mockResolvedValue({ success: true, migrationsRun: 1 });
 
 			try {

@@ -13,7 +13,6 @@ interface UserStats {
 
 interface CurrentUser {
 	id: number;
-	username: string;
 	email: string;
 	is_admin: boolean;
 }
@@ -28,7 +27,7 @@ export default function UsersClient() {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-	const [userToDelete, setUserToDelete] = useState<{ id: number; username: string } | null>(null);
+	const [userToDelete, setUserToDelete] = useState<{ id: number; email: string } | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 
 	const fetchCurrentUser = async () => {
@@ -108,8 +107,8 @@ export default function UsersClient() {
 		}
 	};
 
-	const handleDeleteClick = (userId: number, username: string) => {
-		setUserToDelete({ id: userId, username });
+	const handleDeleteClick = (userId: number, email: string) => {
+		setUserToDelete({ id: userId, email });
 		setShowDeleteConfirm(true);
 	};
 
@@ -146,7 +145,6 @@ export default function UsersClient() {
 
 	const filteredUsers = users.filter(
 		user =>
-			user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			user.last_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -184,7 +182,7 @@ export default function UsersClient() {
 			<div className="mb-6">
 				<input
 					type="text"
-					placeholder="Search users by name, username, or email..."
+					placeholder="Search users by name or email..."
 					value={searchTerm}
 					onChange={e => setSearchTerm(e.target.value)}
 					className="w-full px-4 py-2 border border-custom dark:border-gray-700 rounded-sm bg-surface dark:bg-gray-800 text-foreground dark:text-gray-100 placeholder-muted dark:placeholder-gray-400"
@@ -230,10 +228,10 @@ export default function UsersClient() {
 														/>
 													</div>
 												) : (
-													`${user.first_name} ${user.last_name}`.trim() || user.username
+													`${user.first_name} ${user.last_name}`.trim() || user.email
 												)}
 											</div>
-											<div className="text-sm text-muted dark:text-gray-400">@{user.username}</div>
+											<div className="text-sm text-muted dark:text-gray-400">{user.email}</div>
 										</div>
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap">
@@ -301,7 +299,7 @@ export default function UsersClient() {
 										{new Date(user.date_joined).toLocaleDateString()}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-sm text-muted dark:text-gray-400">
-										{user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+										{user.last_session ? new Date(user.last_session).toLocaleString() : 'Never'}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-sm">
 										{editingUser === user.id ? (
@@ -329,7 +327,7 @@ export default function UsersClient() {
 												</button>
 												{user.id !== currentUser?.id && (
 													<button
-														onClick={() => handleDeleteClick(user.id, user.username)}
+														onClick={() => handleDeleteClick(user.id, user.email)}
 														className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
 													>
 														Delete
@@ -349,7 +347,7 @@ export default function UsersClient() {
 			<ConfirmDialog
 				isOpen={showDeleteConfirm}
 				title="Delete User"
-				message={`Are you sure you want to delete user "${userToDelete?.username}"? This action cannot be undone.`}
+				message={`Are you sure you want to delete user "${userToDelete?.email}"? This action cannot be undone.`}
 				confirmText="Delete User"
 				cancelText="Cancel"
 				onConfirm={handleDeleteConfirm}

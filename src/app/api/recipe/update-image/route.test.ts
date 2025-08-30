@@ -2,10 +2,15 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
+import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -73,6 +78,14 @@ describe('/api/recipe/update-image', () => {
 		mockGetStorageMode.mockReturnValue('local');
 		mockCanEditResource.mockResolvedValue(true); // Default: can edit
 		mockValidateRecipeInCollection.mockResolvedValue(true); // Default: recipe is in collection
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -136,7 +149,6 @@ describe('/api/recipe/update-image', () => {
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('recipe_abc123.jpg', 'jpg');
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.jpg, recipe_abc123_v2.jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -179,7 +191,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.cleanup).toBe('No old files to clean up');
 					expect(mockConsoleLog).not.toHaveBeenCalledWith(expect.stringContaining('Cleaned up'));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -223,7 +234,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.cleanup).toBe('No old files to clean up');
 					expect(mockConsoleWarn).toHaveBeenCalledWith('File cleanup failed but continuing with upload:', expect.any(Error));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -266,7 +276,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.success).toBe(true);
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('recipe_jkl012.png', 'png');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -309,7 +318,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.success).toBe(true);
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('recipe_mno345.webp', 'webp');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -352,7 +360,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.success).toBe(true);
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('recipe_pqr678.jpg', 'jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -376,7 +383,6 @@ describe('/api/recipe/update-image', () => {
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -401,7 +407,6 @@ describe('/api/recipe/update-image', () => {
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -428,7 +433,6 @@ describe('/api/recipe/update-image', () => {
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -455,7 +459,6 @@ describe('/api/recipe/update-image', () => {
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -483,7 +486,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -522,7 +524,6 @@ describe('/api/recipe/update-image', () => {
 						error: 'Storage service unavailable',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -566,7 +567,6 @@ describe('/api/recipe/update-image', () => {
 					expect(mockDeleteFile).toHaveBeenCalledWith('recipe_abc_v2', 'jpg'); // Should attempt cleanup
 					expect(mockConsoleWarn).toHaveBeenCalledWith('Database update failed, cleaning up uploaded file: recipe_abc_v2.jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -607,7 +607,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.cleanup).toBe('No old files to clean up');
 					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -655,7 +654,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.uploadUrl).toBe('/uploads/recipe_original_v2.jpg');
 					expect(json.displayUrl).toBe('/static/recipes/recipe_original_v2.jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -683,7 +681,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockConsoleError).toHaveBeenCalledWith('Error updating recipe image:', expect.any(Error));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -710,7 +707,6 @@ describe('/api/recipe/update-image', () => {
 						error: 'Failed to update recipe image',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -736,7 +732,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -762,7 +757,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -806,7 +800,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.displayUrl).toMatch(/^\/static\/recipes\/recipe_.*_v1\.jpg$/);
 					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled(); // No cleanup needed for new images
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -833,7 +826,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -860,7 +852,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -914,7 +905,6 @@ describe('/api/recipe/update-image', () => {
 					expect(json.displayUrl).toBe('/static/recipes/recipe_abc123_v3.jpg');
 					expect(mockUploadFile).toHaveBeenCalledTimes(2); // Retry on conflict
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -942,7 +932,6 @@ describe('/api/recipe/update-image', () => {
 					});
 					expect(mockDatabase.execute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

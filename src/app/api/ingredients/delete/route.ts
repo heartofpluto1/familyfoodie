@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { canEditResource } from '@/lib/permissions';
 
@@ -8,7 +8,12 @@ interface DeleteIngredientRequest {
 	id: number;
 }
 
-async function deleteIngredientHandler(request: AuthenticatedRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const body: DeleteIngredientRequest = await request.json();
 		const { id } = body;
@@ -26,7 +31,7 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 		}
 
 		// Check if user can delete this ingredient (household ownership)
-		const canEdit = await canEditResource(request.household_id, 'ingredients', id);
+		const canEdit = await canEditResource(auth.household_id, 'ingredients', id);
 		if (!canEdit) {
 			return NextResponse.json(
 				{
@@ -44,7 +49,7 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 			 FROM recipe_ingredients ri
 			 JOIN recipes r ON ri.recipe_id = r.id
 			 WHERE ri.ingredient_id = ? AND r.household_id = ?`,
-			[id, request.household_id]
+			[id, auth.household_id]
 		);
 
 		if (recipeUsage[0].count > 0) {
@@ -60,7 +65,7 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 		}
 
 		// Delete the ingredient (only if owned by household)
-		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM ingredients WHERE id = ? AND household_id = ?`, [id, request.household_id]);
+		const [result] = await pool.execute<ResultSetHeader>(`DELETE FROM ingredients WHERE id = ? AND household_id = ?`, [id, auth.household_id]);
 
 		// Check if deletion was successful
 		if (result.affectedRows === 0) {
@@ -136,5 +141,3 @@ async function deleteIngredientHandler(request: AuthenticatedRequest) {
 		}
 	}
 }
-
-export const DELETE = withAuth(deleteIngredientHandler);

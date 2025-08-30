@@ -1,7 +1,11 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, createMockFile, MockConnection } from '@/lib/test-utils';
+import { NextResponse } from 'next/server';
+import { clearAllMocks, setupConsoleMocks, createMockFile, MockConnection, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Set OpenAI API key before importing the route handler
 process.env.OPENAI_API_KEY = 'test-api-key-12345';
@@ -10,7 +14,9 @@ process.env.OPENAI_API_KEY = 'test-api-key-12345';
 import * as appHandler from './route';
 
 // Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 // Mock the database pool
 const mockConnection: MockConnection = {
@@ -92,6 +98,14 @@ describe('/api/recipe/ai-import', () => {
 		clearAllMocks();
 		consoleMocks = setupConsoleMocks();
 		setupFreshMocks();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterEach(() => {
@@ -169,6 +183,12 @@ describe('/api/recipe/ai-import', () => {
 	describe('POST /api/recipe/ai-import', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock auth failure
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -180,15 +200,12 @@ describe('/api/recipe/ai-import', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 
 						// Verify no database operations were attempted
 						expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 
@@ -243,7 +260,6 @@ describe('/api/recipe/ai-import', () => {
 						const recipeInsertCall = mockConnection.execute.mock.calls[1];
 						expect(recipeInsertCall[1]).toContain(1); // user's household_id from mockRegularUser
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -274,7 +290,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
 						expect(mockOpenAICreate).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -303,7 +318,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
 						expect(mockOpenAICreate).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -334,7 +348,6 @@ describe('/api/recipe/ai-import', () => {
 							details: 'Unable to process the PDF file. Please ensure the PDF contains a clear recipe and try again.',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -362,7 +375,6 @@ describe('/api/recipe/ai-import', () => {
 							details: 'The AI service returned no recipe data. The PDF may not contain a recognizable recipe format.',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -396,7 +408,6 @@ describe('/api/recipe/ai-import', () => {
 							details: 'The AI service returned malformed data. Please try again or contact support if the problem persists.',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -464,7 +475,6 @@ describe('/api/recipe/ai-import', () => {
 							max_tokens: 2000,
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -502,7 +512,6 @@ describe('/api/recipe/ai-import', () => {
 						// Verify OpenAI was NOT called (structured data was used)
 						expect(mockOpenAICreate).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -562,7 +571,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.rollback).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -612,7 +620,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(data.newIngredients).toBe(0); // No new ingredients created
 						expect(data.existingIngredients).toBe(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -656,7 +663,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -686,7 +692,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(recipeInsertCall[0]).toContain('household_id');
 						expect(recipeInsertCall[1]).toContain(1); // mockRegularUser.household_id
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -742,7 +747,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'test-filename-abc123', 'pdf', 'application/pdf');
 						expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'test-filename-abc123', 'jpg', 'image/jpeg');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -784,7 +788,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(data.recipeId).toBe(123);
 						expect(data.fileErrors).toEqual(['Failed to save PDF: Storage error']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -827,7 +830,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(data.message).toContain('Warning: Some file uploads failed.');
 						expect(data.fileErrors).toEqual(['Failed to save hero image: Image processing error']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -874,7 +876,6 @@ describe('/api/recipe/ai-import', () => {
 						// Only PDF should be uploaded
 						expect(mockUploadFile).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -920,7 +921,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.execute).not.toHaveBeenCalled();
 						expect(mockOpenAICreate).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -966,7 +966,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.execute).toHaveBeenCalledTimes(1); // Only collection validation
 						expect(mockOpenAICreate).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1005,7 +1004,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(mockConnection.execute).toHaveBeenCalledTimes(1); // Only collection validation
 						expect(mockOpenAICreate).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -1083,7 +1081,6 @@ describe('/api/recipe/ai-import', () => {
 							0, // primaryIngredient
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1152,7 +1149,6 @@ describe('/api/recipe/ai-import', () => {
 							0, // primaryIngredient
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1205,7 +1201,6 @@ describe('/api/recipe/ai-import', () => {
 						expect(ingredientLookupCall[1]).toContain('salt');
 						expect(ingredientLookupCall[1]).toContain(1); // user's household_id
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -1273,7 +1268,6 @@ describe('/api/recipe/ai-import', () => {
 
 						expect(data.fileErrors).toBeUndefined();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

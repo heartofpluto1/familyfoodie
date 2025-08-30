@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { uploadFile, getStorageMode } from '@/lib/storage';
 import { getRecipePdfUrl, generateVersionedFilename } from '@/lib/utils/secureFilename';
 import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
@@ -12,7 +12,11 @@ interface RecipeRow extends RowDataPacket {
 	pdf_filename: string;
 }
 
-async function postHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
 	try {
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
@@ -206,7 +210,7 @@ async function postHandler(request: AuthenticatedRequest) {
 		}
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeIdNum, collectionIdNum, auth.household_id);
 		if (!isRecipeInCollection) {
 			return NextResponse.json(
 				{
@@ -237,7 +241,7 @@ async function postHandler(request: AuthenticatedRequest) {
 		const currentPdfFilename = recipeRows[0].pdf_filename;
 
 		// Check if household can edit this recipe (must own it to upload initial PDF)
-		const canEdit = await canEditResource(request.household_id, 'recipes', recipeIdNum);
+		const canEdit = await canEditResource(auth.household_id, 'recipes', recipeIdNum);
 		if (!canEdit) {
 			return NextResponse.json(
 				{
@@ -347,5 +351,3 @@ async function postHandler(request: AuthenticatedRequest) {
 		return NextResponse.json({ error: 'Failed to upload PDF' }, { status: 500 });
 	}
 }
-
-export const POST = withAuth(postHandler);

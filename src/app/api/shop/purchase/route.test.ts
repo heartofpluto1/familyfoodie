@@ -1,10 +1,9 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import type { NextRequest } from 'next/server';
-import type { SessionUser } from '@/types/auth';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, MockConnection } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, MockConnection, mockRegularSession } from '@/lib/test-utils';
 import pool from '@/lib/db.js';
 import type { PoolConnection } from 'mysql2/promise';
 
@@ -26,8 +25,15 @@ const mockConnection: MockConnection = {
 	execute: jest.fn(),
 };
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
+}));
+
+// Import auth helpers for mocking
+import { requireAuth } from '@/lib/auth/helpers';
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 describe('/api/shop/purchase', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -46,6 +52,14 @@ describe('/api/shop/purchase', () => {
 
 		// Setup default connection mock for transaction-based tests
 		mockPoolGetConnection.mockResolvedValue(mockConnection as unknown as PoolConnection);
+
+		// Setup successful auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -55,6 +69,12 @@ describe('/api/shop/purchase', () => {
 	describe('POST /api/shop/purchase', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock authentication failure
+				mockRequireAuth.mockResolvedValue({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -69,12 +89,9 @@ describe('/api/shop/purchase', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 
@@ -97,7 +114,6 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true });
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -122,7 +138,6 @@ describe('/api/shop/purchase', () => {
 							code: 'INVALID_REQUEST_FORMAT',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -146,7 +161,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -170,7 +184,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -194,7 +207,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -218,7 +230,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -242,7 +253,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -266,7 +276,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -294,7 +303,6 @@ describe('/api/shop/purchase', () => {
 							code: 'RESOURCE_NOT_FOUND',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -329,7 +337,6 @@ describe('/api/shop/purchase', () => {
 						expect(mockConnection.commit).toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -356,7 +363,6 @@ describe('/api/shop/purchase', () => {
 							[0, 456, 1] // 0 for false
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -386,7 +392,6 @@ describe('/api/shop/purchase', () => {
 						expect(mockConnection.rollback).toHaveBeenCalled();
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -409,7 +414,6 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true });
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -439,22 +443,26 @@ describe('/api/shop/purchase', () => {
 							code: 'RESOURCE_NOT_FOUND',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
 			it('should properly scope UPDATE query with household_id', async () => {
-				mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
-
-				// Custom user with different household_id
-				const customUserPatcher = (req: NextRequest & { user?: SessionUser; household_id?: number }) => {
-					mockAuthenticatedUser(req);
-					req.user = {
-						...req.user!,
+				// Mock auth with different household_id
+				const customSession = {
+					...mockRegularSession,
+					user: {
+						...mockRegularSession.user,
 						household_id: 42,
-					};
-					return req;
+					},
 				};
+				mockRequireAuth.mockResolvedValue({
+					authorized: true as const,
+					session: customSession,
+					household_id: 42,
+					user_id: customSession.user.id,
+				});
+
+				mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
 				await testApiHandler({
 					appHandler,
@@ -472,7 +480,6 @@ describe('/api/shop/purchase', () => {
 						// Verify household_id 42 is used in the query
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [0, 1, 42]);
 					},
-					requestPatcher: customUserPatcher,
 				});
 			});
 
@@ -503,7 +510,6 @@ describe('/api/shop/purchase', () => {
 						expect(data.error).not.toContain('permission');
 						expect(data.error).not.toContain('unauthorized');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -530,7 +536,6 @@ describe('/api/shop/purchase', () => {
 						});
 						response1Data = (await response.json()) as ErrorResponse;
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Test 2: Item exists but in different household
@@ -549,7 +554,6 @@ describe('/api/shop/purchase', () => {
 						});
 						response2Data = (await response.json()) as ErrorResponse;
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Both should return identical responses to prevent information leakage
@@ -562,23 +566,24 @@ describe('/api/shop/purchase', () => {
 			});
 
 			it('should allow multiple users in same household to update same item', async () => {
-				mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
-
-				// Create another user in the same household
-				const sameHouseholdUserPatcher = (req: NextRequest & { user?: SessionUser; household_id?: number }) => {
-					req.user = {
-						id: 99,
-						username: 'anotheruser',
-						first_name: 'Another',
-						last_name: 'User',
+				// Mock auth with another user in the same household
+				const anotherUserSession = {
+					...mockRegularSession,
+					user: {
+						...mockRegularSession.user,
+						id: '99',
 						email: 'another@example.com',
-						is_admin: false,
-						is_active: true,
-						household_id: 1, // Same household as mockAuthenticatedUser
-						household_name: 'Test Household',
-					} as SessionUser;
-					return req;
+						household_id: 1, // Same household
+					},
 				};
+				mockRequireAuth.mockResolvedValue({
+					authorized: true as const,
+					session: anotherUserSession,
+					household_id: 1,
+					user_id: '99',
+				});
+
+				mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
 				await testApiHandler({
 					appHandler,
@@ -598,7 +603,6 @@ describe('/api/shop/purchase', () => {
 						// Verify same household_id is used
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [1, 1, 1]);
 					},
-					requestPatcher: sameHouseholdUserPatcher,
 				});
 			});
 		});
@@ -628,7 +632,6 @@ describe('/api/shop/purchase', () => {
 						expect(mockConnection.rollback).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -661,7 +664,6 @@ describe('/api/shop/purchase', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -686,7 +688,6 @@ describe('/api/shop/purchase', () => {
 						// Verify connection is still released
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -711,7 +712,6 @@ describe('/api/shop/purchase', () => {
 						// Verify connection is still released
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -739,7 +739,6 @@ describe('/api/shop/purchase', () => {
 							code: 'DATABASE_CONNECTION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -763,7 +762,6 @@ describe('/api/shop/purchase', () => {
 							code: 'INVALID_REQUEST_FORMAT',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -789,7 +787,6 @@ describe('/api/shop/purchase', () => {
 							code: 'INTERNAL_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -819,7 +816,6 @@ describe('/api/shop/purchase', () => {
 						expect(JSON.stringify(data)).not.toContain('SELECT');
 						expect(JSON.stringify(data)).not.toContain('password');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -848,7 +844,6 @@ describe('/api/shop/purchase', () => {
 						});
 						expect(Object.keys(data)).toEqual(['success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -875,7 +870,6 @@ describe('/api/shop/purchase', () => {
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -904,7 +898,6 @@ describe('/api/shop/purchase', () => {
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -933,7 +926,6 @@ describe('/api/shop/purchase', () => {
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -964,7 +956,6 @@ describe('/api/shop/purchase', () => {
 							1,
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -990,7 +981,6 @@ describe('/api/shop/purchase', () => {
 							code: 'RESOURCE_NOT_FOUND',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1020,7 +1010,6 @@ describe('/api/shop/purchase', () => {
 						// Should still work with just id and purchased
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [0, 1, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1044,7 +1033,6 @@ describe('/api/shop/purchase', () => {
 							code: 'VALIDATION_ERROR',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1073,7 +1061,6 @@ describe('/api/shop/purchase', () => {
 							1,
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

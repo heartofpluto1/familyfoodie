@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/helpers';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
 import OpenAI from 'openai';
@@ -69,7 +69,12 @@ interface ExtractedRecipe {
 	difficulty?: string;
 }
 
-async function previewHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		// Initialize OpenAI client at runtime to allow for testing
 		if (!process.env.OPENAI_API_KEY) {
@@ -360,15 +365,7 @@ If the images don't contain a clear recipe, create the best recipe you can based
 				)
 			)
 		`,
-			[
-				request.household_id,
-				request.household_id,
-				request.household_id,
-				request.household_id,
-				request.household_id,
-				request.household_id,
-				request.household_id,
-			]
+			[auth.household_id, auth.household_id, auth.household_id, auth.household_id, auth.household_id, auth.household_id, auth.household_id]
 		);
 
 		// Get categories for new ingredients
@@ -545,5 +542,3 @@ Rules:
 		}
 	}
 }
-
-export const POST = withAuth(previewHandler);

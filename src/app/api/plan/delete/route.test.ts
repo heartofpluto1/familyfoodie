@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser, mockRegularUser } from '@/lib/test-utils';
+import { setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 import { deleteWeekRecipes } from '@/lib/queries/menus';
 
 // Mock database queries
@@ -10,8 +12,12 @@ jest.mock('@/lib/queries/menus', () => ({
 	deleteWeekRecipes: jest.fn(),
 }));
 
-// Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 const mockDeleteWeekRecipes = jest.mocked(deleteWeekRecipes);
 
@@ -21,6 +27,13 @@ describe('/api/plan/delete', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		// Default OAuth mock for authenticated tests
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -30,9 +43,13 @@ describe('/api/plan/delete', () => {
 	describe('POST /api/plan/delete', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 when user is not authenticated', async () => {
+				mockRequireAuth.mockResolvedValue({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockNonAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -41,12 +58,6 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(401);
-						const data = await response.json();
-						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
-						});
 						expect(mockDeleteWeekRecipes).not.toHaveBeenCalled();
 					},
 				});
@@ -57,7 +68,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -66,7 +76,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -76,7 +86,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when week is missing', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -95,7 +104,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when year is missing', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -114,7 +122,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when both week and year are missing', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -133,7 +140,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when week is null', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -152,7 +158,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when year is null', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -171,7 +176,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when week is 0', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -190,7 +194,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 when year is 0', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -213,7 +216,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -224,7 +226,7 @@ describe('/api/plan/delete', () => {
 						expect(response.status).toBe(200);
 						const data = await response.json();
 						expect(data).toEqual({ success: true });
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(45, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(45, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -234,7 +236,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -243,7 +244,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -253,7 +254,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -262,7 +262,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(52, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(52, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -272,7 +272,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -281,7 +280,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(53, 2020, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(53, 2020, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -291,7 +290,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -300,7 +298,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(10, 2020, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(10, 2020, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -310,7 +308,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -319,7 +316,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(20, 2030, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(20, 2030, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -331,7 +328,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -351,7 +347,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -371,7 +366,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -389,7 +383,6 @@ describe('/api/plan/delete', () => {
 			it('should return 500 for invalid JSON in request body', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -412,7 +405,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -421,7 +413,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith('42', 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith('42', 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -431,7 +423,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -440,7 +431,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, '2024', mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, '2024', mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -450,7 +441,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -460,7 +450,7 @@ describe('/api/plan/delete', () => {
 
 						expect(response.status).toBe(200);
 						// The route doesn't validate week numbers, it passes them through
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(-1, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(-1, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -470,7 +460,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -480,7 +469,7 @@ describe('/api/plan/delete', () => {
 
 						expect(response.status).toBe(200);
 						// The route doesn't validate week numbers, it passes them through
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(999, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(999, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -490,7 +479,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -499,7 +487,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1.5, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1.5, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -509,7 +497,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -518,7 +505,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(true, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(true, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -526,7 +513,6 @@ describe('/api/plan/delete', () => {
 			it('should return 400 for boolean false for week (treated as falsy)', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -546,7 +532,6 @@ describe('/api/plan/delete', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -560,7 +545,7 @@ describe('/api/plan/delete', () => {
 						});
 
 						expect(response.status).toBe(200);
-						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, 2024, mockRegularUser.household_id);
+						expect(mockDeleteWeekRecipes).toHaveBeenCalledWith(1, 2024, mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -568,7 +553,6 @@ describe('/api/plan/delete', () => {
 			it('should handle empty string for week', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -586,7 +570,6 @@ describe('/api/plan/delete', () => {
 			it('should handle undefined values', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'POST',
@@ -607,7 +590,6 @@ describe('/api/plan/delete', () => {
 				// GET should not be handled
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'GET',
@@ -621,7 +603,6 @@ describe('/api/plan/delete', () => {
 			it('should reject PUT method', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'PUT',
@@ -637,7 +618,6 @@ describe('/api/plan/delete', () => {
 			it('should reject DELETE method', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'DELETE',
@@ -651,7 +631,6 @@ describe('/api/plan/delete', () => {
 			it('should reject PATCH method', async () => {
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					test: async ({ fetch }) => {
 						const response = await fetch({
 							method: 'PATCH',

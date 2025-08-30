@@ -1,11 +1,15 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
+import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
+}));
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -67,6 +71,10 @@ import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
+// Import auth helpers for mocking
+import { requireAuth } from '@/lib/auth/helpers';
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
+
 // Type assertions for mocked modules
 const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockGetStorageMode = getStorageMode as jest.MockedFunction<typeof getStorageMode>;
@@ -88,6 +96,14 @@ describe('/api/recipe/upload-pdf', () => {
 		mockGetStorageMode.mockReturnValue('local');
 		mockCanEditResource.mockResolvedValue(true); // Default: can edit
 		mockValidateRecipeInCollection.mockResolvedValue(true); // Default: recipe is in collection
+
+		// Setup successful auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -147,7 +163,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).toHaveBeenCalledTimes(2);
 					expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Set database pdf_filename'));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -190,7 +205,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockConsoleLog).toHaveBeenCalledWith('Updating PDF from existing.pdf to existing_v2.pdf');
 					expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Updated database pdf_filename'));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -244,7 +258,6 @@ describe('/api/recipe/upload-pdf', () => {
 					// Should upload as PDF even though input was JPG
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'pdf', 'application/pdf');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -278,7 +291,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(json.success).toBe(true);
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'pdf', 'application/pdf');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -305,7 +317,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -332,7 +343,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -360,7 +370,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -388,7 +397,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -419,7 +427,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -456,7 +463,6 @@ describe('/api/recipe/upload-pdf', () => {
 							message: 'Please upload a PDF document or JPEG image.',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			}
 		});
@@ -489,7 +495,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -520,7 +525,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -558,7 +562,6 @@ describe('/api/recipe/upload-pdf', () => {
 					// Internal error should be logged but not exposed
 					expect(mockConsoleError).toHaveBeenCalledWith('Upload failed:', 'Storage service unavailable');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -591,7 +594,6 @@ describe('/api/recipe/upload-pdf', () => {
 						error: 'Failed to update recipe PDF filename',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -627,7 +629,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Uploading PDF with filename:'));
 					expect(json.upload.storageMode).toBe('cloud');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -655,7 +656,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockConsoleError).toHaveBeenCalledWith('Error uploading PDF:', expect.any(Error));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -682,7 +682,6 @@ describe('/api/recipe/upload-pdf', () => {
 						error: 'Failed to upload PDF',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -711,7 +710,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -760,7 +758,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(json.success).toBe(true);
 					// jsPDF should be called with landscape orientation due to aspect ratio
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -809,11 +806,16 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(json.success).toBe(true);
 					// jsPDF should be called with portrait orientation due to aspect ratio
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('returns 401 when user is not authenticated', async () => {
+			// Mock authentication failure
+			mockRequireAuth.mockResolvedValue({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			const mockFile = createMockFile('test.pdf', 'application/pdf', 1024);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -831,13 +833,10 @@ describe('/api/recipe/upload-pdf', () => {
 
 					expect(response.status).toBe(401);
 					expect(json).toEqual({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
+						error: 'Unauthorized',
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				// No requestPatcher - simulates unauthenticated user
 			});
 		});
 
@@ -880,7 +879,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -908,7 +906,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -937,7 +934,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -966,7 +962,6 @@ describe('/api/recipe/upload-pdf', () => {
 					});
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -998,7 +993,6 @@ describe('/api/recipe/upload-pdf', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

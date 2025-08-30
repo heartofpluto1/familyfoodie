@@ -1,8 +1,12 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -13,8 +17,10 @@ jest.mock('@/lib/db.js', () => ({
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 // Mock the copy-on-write module
 jest.mock('@/lib/copy-on-write', () => ({
@@ -41,6 +47,14 @@ describe('/api/recipe/update-details', () => {
 		mockCascadeCopyWithContext.mockReset();
 		mockValidateRecipeInCollection.mockReset();
 		mockCanEditResource.mockReset();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -105,7 +119,6 @@ describe('/api/recipe/update-details', () => {
 						1,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -158,7 +171,6 @@ describe('/api/recipe/update-details', () => {
 						1,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -233,7 +245,6 @@ describe('/api/recipe/update-details', () => {
 						copiedRecipeId, // NEW ID after copy
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -288,7 +299,6 @@ describe('/api/recipe/update-details', () => {
 						1,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -311,7 +321,6 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Recipe ID, current collection ID, and new collection ID are required');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 
 			// Ensure no database calls were made
@@ -337,7 +346,6 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Recipe ID, current collection ID, and new collection ID are required');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -363,7 +371,6 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Recipe name is required');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -396,7 +403,6 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Recipe not found in current collection');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -429,11 +435,16 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Failed to update recipe details');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('should return 401 for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -453,7 +464,6 @@ describe('/api/recipe/update-details', () => {
 
 					expect(response.status).toBe(401);
 				},
-				requestPatcher: mockNonAuthenticatedUser,
 			});
 		});
 
@@ -473,7 +483,6 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Invalid JSON payload');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -514,7 +523,6 @@ describe('/api/recipe/update-details', () => {
 						1,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -545,7 +553,6 @@ describe('/api/recipe/update-details', () => {
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -576,7 +583,6 @@ describe('/api/recipe/update-details', () => {
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -608,7 +614,6 @@ describe('/api/recipe/update-details', () => {
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -650,7 +655,6 @@ describe('/api/recipe/update-details', () => {
 						123, // ID should be parsed to integer
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -679,7 +683,6 @@ describe('/api/recipe/update-details', () => {
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -711,7 +714,6 @@ describe('/api/recipe/update-details', () => {
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -747,7 +749,6 @@ describe('/api/recipe/update-details', () => {
 					// Verify long description is accepted (longtext field)
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([validName, longDescription]));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -783,7 +784,6 @@ describe('/api/recipe/update-details', () => {
 					// Verify special characters are preserved
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipes'), expect.arrayContaining([specialName, specialDescription]));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -830,7 +830,6 @@ describe('/api/recipe/update-details', () => {
 						1,
 					]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -859,7 +858,6 @@ describe('/api/recipe/update-details', () => {
 					// Ensure no database calls were made
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -899,7 +897,6 @@ describe('/api/recipe/update-details', () => {
 					const data = await response.json();
 					expect(data.error).toBe('Referenced season, type, or collection does not exist');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -942,7 +939,6 @@ describe('/api/recipe/update-details', () => {
 					// Verify UPDATE was never called since copy failed
 					expect(mockExecute).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -982,7 +978,6 @@ describe('/api/recipe/update-details', () => {
 						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1033,7 +1028,6 @@ describe('/api/recipe/update-details', () => {
 							[10, 1] // newCollectionId, recipeId (display_order is hardcoded as 0)
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1103,7 +1097,6 @@ describe('/api/recipe/update-details', () => {
 							[10, 100] // newCollectionId, COPIED recipeId (display_order is hardcoded as 0)
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1155,7 +1148,6 @@ describe('/api/recipe/update-details', () => {
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1216,7 +1208,6 @@ describe('/api/recipe/update-details', () => {
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1287,7 +1278,6 @@ describe('/api/recipe/update-details', () => {
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

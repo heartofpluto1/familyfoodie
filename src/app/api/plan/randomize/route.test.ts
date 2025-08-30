@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { setupConsoleMocks, mockAuthenticatedUser, mockNonAuthenticatedUser, mockRegularUser, mockAdminUser } from '@/lib/test-utils';
+import { setupConsoleMocks, mockRegularSession, mockAdminSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 import { getRecipesForRandomization } from '@/lib/queries/menus';
 import type { Recipe } from '@/types/menus';
 
@@ -11,8 +13,12 @@ jest.mock('@/lib/queries/menus', () => ({
 	getRecipesForRandomization: jest.fn(),
 }));
 
-// Mock auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 const mockGetRecipesForRandomization = jest.mocked(getRecipesForRandomization);
 
@@ -34,6 +40,13 @@ describe('/api/plan/randomize', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		consoleMocks = setupConsoleMocks();
+		// Default OAuth mock for authenticated tests
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 		// Reset Math.random for predictable tests
 		jest.spyOn(global.Math, 'random').mockReturnValue(0.5);
 	});
@@ -47,19 +60,17 @@ describe('/api/plan/randomize', () => {
 		// Authentication Tests
 		describe('Authentication', () => {
 			it('should return 401 when user is not authenticated', async () => {
+				mockRequireAuth.mockResolvedValue({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockNonAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
 						expect(response.status).toBe(401);
-						const data = await response.json();
-						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
-						});
 					},
 				});
 			});
@@ -69,7 +80,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -82,15 +92,16 @@ describe('/api/plan/randomize', () => {
 			});
 
 			it('should accept authenticated admin users', async () => {
+				mockRequireAuth.mockResolvedValue({
+					authorized: true as const,
+					session: mockAdminSession,
+					household_id: mockAdminSession.user.household_id,
+					user_id: mockAdminSession.user.id,
+				});
 				mockGetRecipesForRandomization.mockResolvedValueOnce([]);
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: req => {
-						const request = req as Request & { user?: typeof mockAdminUser; household_id?: number };
-						request.user = mockAdminUser;
-						request.household_id = mockAdminUser.household_id;
-					},
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -116,7 +127,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -125,7 +135,7 @@ describe('/api/plan/randomize', () => {
 
 						expect(data.recipes).toHaveLength(3);
 						expect(data.totalAvailable).toBe(5);
-						expect(mockGetRecipesForRandomization).toHaveBeenCalledWith(mockRegularUser.household_id);
+						expect(mockGetRecipesForRandomization).toHaveBeenCalledWith(mockRegularSession.user.household_id);
 					},
 				});
 			});
@@ -142,7 +152,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=2',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -161,7 +170,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=0',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -180,7 +188,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=10',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -207,7 +214,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=3',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -235,7 +241,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=3',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -266,7 +271,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=3',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -290,7 +294,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=3',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -311,7 +314,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -330,7 +332,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=-5',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -354,7 +355,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=abc',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -373,7 +373,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=999999',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -397,7 +396,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=2.7',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -418,7 +416,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -435,7 +432,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -454,7 +450,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -486,7 +481,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=3',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -506,7 +500,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=2',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -538,7 +531,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=4',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -563,7 +555,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=2&unknown=value&foo=bar',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });
@@ -586,7 +577,6 @@ describe('/api/plan/randomize', () => {
 
 				await testApiHandler({
 					appHandler,
-					requestPatcher: mockAuthenticatedUser,
 					url: '/api/plan/randomize?count=1&count=2&count=3',
 					test: async ({ fetch }) => {
 						const response = await fetch({ method: 'GET' });

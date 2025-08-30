@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { resetShoppingListFromRecipes } from '@/lib/queries/menus';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
-async function handler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const body = await request.json();
 		const { week, year } = body;
@@ -81,7 +86,7 @@ async function handler(request: AuthenticatedRequest) {
 			);
 		}
 
-		await resetShoppingListFromRecipes(weekNum, yearNum, request.household_id);
+		await resetShoppingListFromRecipes(weekNum, yearNum, auth.household_id);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
@@ -123,5 +128,3 @@ async function handler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const POST = withAuth(handler);

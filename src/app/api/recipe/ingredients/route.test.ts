@@ -1,8 +1,12 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -12,8 +16,10 @@ jest.mock('@/lib/db.js', () => ({
 
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 // Mock the copy-on-write functions
 jest.mock('@/lib/copy-on-write', () => ({
@@ -40,6 +46,14 @@ describe('/api/recipe/ingredients', () => {
 		mockValidateRecipeInCollection.mockResolvedValue(true);
 		// Reset mock implementations
 		mockExecute.mockReset();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -71,7 +85,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'VALIDATION_ERROR',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -100,7 +113,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'VALIDATION_ERROR',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -129,7 +141,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'VALIDATION_ERROR',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -164,7 +175,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'INGREDIENT_NOT_FOUND',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -218,11 +228,23 @@ describe('/api/recipe/ingredients', () => {
 					// Verify database call
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE recipe_ingredients'), ['2 cups', '500ml', 5, 1]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('should return 401 with standardized error for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json(
+					{
+						success: false,
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
+					},
+					{ status: 401 }
+				),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -247,7 +269,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'UNAUTHORIZED',
 					});
 				},
-				requestPatcher: mockNonAuthenticatedUser,
 			});
 		});
 	});
@@ -278,7 +299,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'VALIDATION_ERROR',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -308,7 +328,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'VALIDATION_ERROR',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -338,7 +357,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'VALIDATION_ERROR',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -373,7 +391,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'RECIPE_NOT_FOUND',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -409,7 +426,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'DUPLICATE_INGREDIENT',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -468,11 +484,23 @@ describe('/api/recipe/ingredients', () => {
 					// Verify database call with all parameters including primaryIngredient as 0
 					expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipe_ingredients'), [1, 5, '3 cups', '750ml', 10, 2, 0]);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
 		it('should return 401 with standardized error for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json(
+					{
+						success: false,
+						error: 'Authentication required',
+						code: 'UNAUTHORIZED',
+					},
+					{ status: 401 }
+				),
+			});
+
 			await testApiHandler({
 				appHandler,
 				test: async ({ fetch }) => {
@@ -498,7 +526,6 @@ describe('/api/recipe/ingredients', () => {
 						code: 'UNAUTHORIZED',
 					});
 				},
-				requestPatcher: mockNonAuthenticatedUser,
 			});
 		});
 	});
@@ -508,7 +535,6 @@ describe('/api/recipe/ingredients', () => {
 			await testApiHandler({
 				appHandler,
 				url: '/api/recipe/ingredients?id=1',
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -529,7 +555,6 @@ describe('/api/recipe/ingredients', () => {
 			await testApiHandler({
 				appHandler,
 				url: '/api/recipe/ingredients?id=not-a-number&collectionId=1',
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -556,7 +581,6 @@ describe('/api/recipe/ingredients', () => {
 			await testApiHandler({
 				appHandler,
 				url: '/api/recipe/ingredients?id=999&collectionId=1',
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -593,7 +617,6 @@ describe('/api/recipe/ingredients', () => {
 			await testApiHandler({
 				appHandler,
 				url: '/api/recipe/ingredients?id=1&collectionId=1',
-				requestPatcher: mockAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',
@@ -616,10 +639,15 @@ describe('/api/recipe/ingredients', () => {
 		});
 
 		it('should return 401 for unauthenticated users', async () => {
+			// Mock auth failure
+			mockRequireAuth.mockResolvedValueOnce({
+				authorized: false as const,
+				response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+			});
+
 			await testApiHandler({
 				appHandler,
 				url: '/api/recipe/ingredients?id=1&collectionId=1',
-				requestPatcher: mockNonAuthenticatedUser,
 				test: async ({ fetch }) => {
 					const response = await fetch({
 						method: 'DELETE',

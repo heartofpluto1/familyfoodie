@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { AuthenticatedRequest, withAuth } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { cascadeCopyWithContext } from '@/lib/copy-on-write';
 import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
 import { copyIngredientForEdit } from '@/lib/copy-on-write';
@@ -35,7 +35,11 @@ function createErrorResponse(error: string, code: string, status: number, detail
 	);
 }
 
-async function updateIngredientsHandler(request: AuthenticatedRequest) {
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
 	const connection = await pool.getConnection();
 
 	try {
@@ -73,13 +77,13 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 		}
 
 		// Validate that the recipe belongs to the specified collection and household has access
-		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, request.household_id);
+		const isRecipeInCollection = await validateRecipeInCollection(recipeId, collectionId, auth.household_id);
 		if (!isRecipeInCollection) {
 			return createErrorResponse('Recipe not found', 'RECIPE_NOT_FOUND', 404);
 		}
 
 		// Check if the user owns the recipe
-		const canEditRecipe = await canEditResource(request.household_id, 'recipes', recipeId);
+		const canEditRecipe = await canEditResource(auth.household_id, 'recipes', recipeId);
 
 		let targetRecipeId = recipeId;
 		let actionsTaken: string[] = [];
@@ -89,7 +93,7 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 		let newCollectionSlug: string | undefined;
 
 		if (!canEditRecipe) {
-			const cascadeResult = await cascadeCopyWithContext(request.household_id, collectionId, recipeId);
+			const cascadeResult = await cascadeCopyWithContext(auth.household_id, collectionId, recipeId);
 
 			targetRecipeId = cascadeResult.newRecipeId;
 			actionsTaken = cascadeResult.actionsTaken;
@@ -140,12 +144,12 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 		// Update existing and add new ingredients
 		for (const ingredient of ingredients) {
 			// Check if user owns the ingredient
-			const canEditIngredient = await canEditResource(request.household_id, 'ingredients', ingredient.ingredientId);
+			const canEditIngredient = await canEditResource(auth.household_id, 'ingredients', ingredient.ingredientId);
 			let targetIngredientId = ingredient.ingredientId;
 
 			// Copy ingredient if not owned
 			if (!canEditIngredient) {
-				const ingredientCopyResult = await copyIngredientForEdit(ingredient.ingredientId, request.household_id);
+				const ingredientCopyResult = await copyIngredientForEdit(ingredient.ingredientId, auth.household_id);
 				targetIngredientId = ingredientCopyResult.newId;
 				if (ingredientCopyResult.copied) {
 					actionsTaken.push('ingredient_copied');
@@ -250,5 +254,3 @@ async function updateIngredientsHandler(request: AuthenticatedRequest) {
 		connection.release();
 	}
 }
-
-export const PUT = withAuth(updateIngredientsHandler);

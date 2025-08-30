@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getCurrentWeekRecipes, getCurrentWeek } from '@/lib/queries/menus';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
-async function handler(req: AuthenticatedRequest) {
+export async function GET(): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const currentWeek = getCurrentWeek();
-		const recipes = await getCurrentWeekRecipes(req.household_id);
+		const recipes = await getCurrentWeekRecipes(auth.household_id);
 
 		return NextResponse.json({
 			week: currentWeek.week,
@@ -16,5 +21,3 @@ async function handler(req: AuthenticatedRequest) {
 		return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to fetch current week recipes' }, { status: 500 });
 	}
 }
-
-export const GET = withAuth(handler);

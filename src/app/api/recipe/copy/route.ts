@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 
 interface RecipeRow extends RowDataPacket {
 	id: number;
@@ -51,7 +51,12 @@ function validateInput(body: { recipeIds?: unknown; targetCollectionId?: unknown
 	return { isValid: true, recipeIds: body.recipeIds as number[], targetCollectionId: collectionId };
 }
 
-async function copyHandler(request: AuthenticatedRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	let body: { recipeIds?: unknown; targetCollectionId?: unknown };
 
 	// Handle JSON parsing with proper error handling
@@ -78,7 +83,7 @@ async function copyHandler(request: AuthenticatedRequest) {
 		// Verify target collection exists and belongs to the user's household
 		const [collectionRows] = await pool.execute<CollectionRow[]>('SELECT id, household_id FROM collections WHERE id = ? AND household_id = ?', [
 			targetCollectionId,
-			request.household_id,
+			auth.household_id,
 		]);
 
 		if (collectionRows.length === 0) {
@@ -186,5 +191,3 @@ async function copyHandler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const POST = withAuth(copyHandler);

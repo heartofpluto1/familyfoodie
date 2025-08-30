@@ -1,9 +1,12 @@
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 import { getSupermarketCategories, getPantryCategories } from '@/lib/queries/shop';
 import { getMyIngredients } from '@/lib/queries/menus';
-import { getSession } from '@/lib/session';
-import withAuth from '@/app/components/withAuth';
 import HeaderPage from '@/app/components/HeaderPage';
 import { IngredientsTable } from './components/IngredientsTable';
+
+export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export interface IngredientData {
 	id: number;
@@ -21,15 +24,15 @@ export interface CategoryData {
 	name: string;
 }
 
-async function IngredientsPage() {
-	// Get session for household context
-	const session = await getSession();
-	if (!session || !session.household_id) {
-		throw new Error('No household context available');
+export default async function IngredientsPage() {
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
+	const household_id = session.user.household_id;
 
 	const [ingredients, supermarketCategories, pantryCategories] = await Promise.all([
-		getMyIngredients(session.household_id),
+		getMyIngredients(household_id),
 		getSupermarketCategories(),
 		getPantryCategories(),
 	]);
@@ -50,7 +53,3 @@ async function IngredientsPage() {
 		</div>
 	);
 }
-
-// Force dynamic rendering for authenticated pages
-export const dynamic = 'force-dynamic';
-export default withAuth(IngredientsPage);

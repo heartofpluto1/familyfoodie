@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockRegularUser, mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -13,8 +15,10 @@ jest.mock('@/lib/db.js', () => ({
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 // Mock the copy-on-write module
 jest.mock('@/lib/copy-on-write', () => ({
@@ -22,6 +26,7 @@ jest.mock('@/lib/copy-on-write', () => ({
 }));
 
 const mockTriggerCascadeCopyIfNeededForIngredient = jest.mocked(jest.requireMock('@/lib/copy-on-write').triggerCascadeCopyIfNeededForIngredient);
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 describe('/api/ingredients/update', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -31,6 +36,14 @@ describe('/api/ingredients/update', () => {
 		consoleMocks = setupConsoleMocks();
 		// Reset the mock before each test
 		mockTriggerCascadeCopyIfNeededForIngredient.mockReset();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -77,7 +90,7 @@ describe('/api/ingredients/update', () => {
 						});
 
 						// Verify copy-on-write was called
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 
 						// Verify database call with all parameters
 						expect(mockExecute).toHaveBeenCalledWith(
@@ -85,7 +98,6 @@ describe('/api/ingredients/update', () => {
 							['Updated Ingredient', false, 3.99, 54321, 2, 3, 1] // Note: uses original ID since no copy was needed
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -118,7 +130,7 @@ describe('/api/ingredients/update', () => {
 						});
 
 						// Verify copy-on-write was called
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 
 						// Verify database call uses new ingredient ID after copy
 						expect(mockExecute).toHaveBeenCalledWith(
@@ -126,7 +138,6 @@ describe('/api/ingredients/update', () => {
 							['Updated Ingredient', false, 3.99, 54321, 2, 3, 101] // Uses new ID from copy-on-write
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -176,7 +187,6 @@ describe('/api/ingredients/update', () => {
 							1,
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -218,7 +228,6 @@ describe('/api/ingredients/update', () => {
 						// Verify zero values are passed as-is (ingredient route doesn't convert zeros to null)
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE ingredients'), ['Zero Values Ingredient', false, 0, 0, 0, 0, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -260,7 +269,6 @@ describe('/api/ingredients/update', () => {
 						// Verify boolean value is handled correctly
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE ingredients'), ['Boolean Test', true, 1.99, 123, 1, 1, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -310,7 +318,6 @@ describe('/api/ingredients/update', () => {
 							1,
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -335,7 +342,6 @@ describe('/api/ingredients/update', () => {
 						const data = await response.json();
 						expect(data.error).toBe('ID and name are required');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Ensure no database calls were made
@@ -362,7 +368,6 @@ describe('/api/ingredients/update', () => {
 						const data = await response.json();
 						expect(data.error).toBe('ID and name are required');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Ensure no database calls were made
@@ -390,7 +395,6 @@ describe('/api/ingredients/update', () => {
 						const data = await response.json();
 						expect(data.error).toBe('ID and name are required');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Ensure no database calls were made
@@ -414,7 +418,6 @@ describe('/api/ingredients/update', () => {
 						const data = await response.json();
 						expect(data.error).toBeDefined();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Ensure no database calls were made
@@ -468,7 +471,6 @@ describe('/api/ingredients/update', () => {
 							1,
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -499,7 +501,7 @@ describe('/api/ingredients/update', () => {
 						});
 
 						// Verify copy-on-write was called with correct parameters
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 
 						// Verify database update uses original ID (no copy was made)
 						expect(mockExecute).toHaveBeenCalledWith(
@@ -515,7 +517,6 @@ describe('/api/ingredients/update', () => {
 							])
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -546,7 +547,7 @@ describe('/api/ingredients/update', () => {
 						});
 
 						// Verify copy-on-write was called
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 
 						// Verify database update uses new ingredient ID after copy
 						expect(mockExecute).toHaveBeenCalledWith(
@@ -562,7 +563,6 @@ describe('/api/ingredients/update', () => {
 							])
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -586,12 +586,11 @@ describe('/api/ingredients/update', () => {
 						expect(data.error).toBe('Copy failed: ingredient not found');
 
 						// Verify copy-on-write was called but failed
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 
 						// Verify no database update was attempted
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -630,7 +629,7 @@ describe('/api/ingredients/update', () => {
 						});
 
 						// Verify copy-on-write was called with original ID
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, originalId);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, originalId);
 
 						// Verify database update uses the copied ID, not the original
 						expect(mockExecute).toHaveBeenCalledWith(
@@ -638,13 +637,18 @@ describe('/api/ingredients/update', () => {
 							['Updated Ingredient', false, 3.99, 54321, 2, 3, copiedId] // Last parameter should be copiedId, not originalId
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
 
 		describe('Authentication & Permission Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock auth failure
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -659,16 +663,13 @@ describe('/api/ingredients/update', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 
 						// Verify no database or copy-on-write calls were made
 						expect(mockExecute).not.toHaveBeenCalled();
 						expect(mockTriggerCascadeCopyIfNeededForIngredient).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 
@@ -691,9 +692,8 @@ describe('/api/ingredients/update', () => {
 						expect(response.status).toBe(200);
 
 						// Verify household_id from authenticated user is passed to copy-on-write
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -720,12 +720,11 @@ describe('/api/ingredients/update', () => {
 						expect(data.error).toBe('Ingredient with ID 999 not found');
 
 						// Verify copy-on-write was called and failed (acts as permission check)
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 999);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 999);
 
 						// Verify no database update was attempted
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -753,10 +752,9 @@ describe('/api/ingredients/update', () => {
 						expect(data.error).toBe('Database connection failed');
 
 						// Verify copy-on-write succeeded but database update failed
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE ingredients'), expect.any(Array));
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -779,12 +777,11 @@ describe('/api/ingredients/update', () => {
 						expect(data.error).toBe('Failed to update ingredient');
 
 						// Verify copy-on-write was called
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 
 						// Verify no database update was attempted
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -810,10 +807,9 @@ describe('/api/ingredients/update', () => {
 						expect(data.error).toBe('SQL syntax error');
 
 						// Verify both copy-on-write and database calls were made
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE ingredients'), expect.any(Array));
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -850,7 +846,6 @@ describe('/api/ingredients/update', () => {
 						// Verify long name is passed through (database will handle length constraints)
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE ingredients'), ['A'.repeat(300), false, 3.99, 54321, 2, 3, 1]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -883,7 +878,7 @@ describe('/api/ingredients/update', () => {
 						});
 
 						// Verify copy-on-write succeeded and database update was attempted
-						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularUser.household_id, 1);
+						expect(mockTriggerCascadeCopyIfNeededForIngredient).toHaveBeenCalledWith(mockRegularSession.user.household_id, 1);
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE ingredients'), [
 							'Updated Ingredient',
 							false,
@@ -894,7 +889,6 @@ describe('/api/ingredients/update', () => {
 							999,
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

@@ -1,10 +1,12 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
-import type { NextRequest } from 'next/server';
-import type { SessionUser } from '@/types/auth';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Type for ingredients in the response
 interface IngredientResponse {
@@ -23,8 +25,10 @@ jest.mock('@/lib/db.js', () => ({
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+}));
 
 // Mock getMyIngredients function
 jest.mock('@/lib/queries/menus', () => ({
@@ -42,6 +46,14 @@ describe('/api/recipe/options', () => {
 		// Reset the mocks
 		mockGetMyIngredients.mockReset();
 		mockExecute.mockReset();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -51,6 +63,12 @@ describe('/api/recipe/options', () => {
 	describe('GET /api/recipe/options', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock auth failure
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -61,12 +79,9 @@ describe('/api/recipe/options', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 
@@ -106,7 +121,6 @@ describe('/api/recipe/options', () => {
 						expect(data).toHaveProperty('measures');
 						expect(data).toHaveProperty('preparations');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -215,7 +229,6 @@ describe('/api/recipe/options', () => {
 							{ id: 3, name: 'Minced' },
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -247,7 +260,6 @@ describe('/api/recipe/options', () => {
 						expect(data.measures).toEqual([]);
 						expect(data.preparations).toEqual([]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -278,7 +290,6 @@ describe('/api/recipe/options', () => {
 						// Verify getMyIngredients was called
 						expect(mockGetMyIngredients).toHaveBeenCalledWith(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -315,7 +326,6 @@ describe('/api/recipe/options', () => {
 							{ id: 3, name: 'Salt', pantryCategory_id: 3, pantryCategory_name: 'Seasonings', household_id: 1 },
 						]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -376,7 +386,6 @@ describe('/api/recipe/options', () => {
 						expect(data.measures[0].name).toBe('1/2 Cup');
 						expect(data.preparations[0].name).toBe('Chopped & Diced');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -433,7 +442,6 @@ describe('/api/recipe/options', () => {
 							household_id: 1,
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -459,7 +467,6 @@ describe('/api/recipe/options', () => {
 						// Verify error was logged
 						expect(consoleMocks.mockConsoleError).toHaveBeenCalledWith('Error fetching recipe options:', connectionError);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -482,7 +489,6 @@ describe('/api/recipe/options', () => {
 
 						expect(consoleMocks.mockConsoleError).toHaveBeenCalledWith('Error fetching recipe options:', queryError);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -507,7 +513,6 @@ describe('/api/recipe/options', () => {
 							error: 'Failed to fetch recipe options',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -530,7 +535,6 @@ describe('/api/recipe/options', () => {
 
 						expect(consoleMocks.mockConsoleError).toHaveBeenCalledWith('Error fetching recipe options:', 'String error');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -552,7 +556,6 @@ describe('/api/recipe/options', () => {
 							error: 'Failed to fetch recipe options',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -581,7 +584,6 @@ describe('/api/recipe/options', () => {
 							error: 'Failed to fetch recipe options',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -608,7 +610,6 @@ describe('/api/recipe/options', () => {
 						expect(response.status).toBe(200);
 						expect(response.headers.get('content-type')).toContain('application/json');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -642,7 +643,6 @@ describe('/api/recipe/options', () => {
 							expect(Array.isArray(data[key])).toBe(true);
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -672,7 +672,6 @@ describe('/api/recipe/options', () => {
 						const keys = Object.keys(data);
 						expect(keys).toEqual(['seasons', 'primaryTypes', 'secondaryTypes', 'ingredients', 'measures', 'preparations']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -715,7 +714,6 @@ describe('/api/recipe/options', () => {
 							expect(ingredient.household_id).toBe(1);
 						});
 					},
-					requestPatcher: mockAuthenticatedUser, // household_id = 1
 				});
 			});
 
@@ -775,7 +773,6 @@ describe('/api/recipe/options', () => {
 							])
 						);
 					},
-					requestPatcher: mockAuthenticatedUser, // household_id = 1
 				});
 			});
 
@@ -831,7 +828,6 @@ describe('/api/recipe/options', () => {
 						const hasOtherPublic = data.ingredients.some((i: IngredientResponse) => i.id === 200);
 						expect(hasOtherPublic).toBe(false);
 					},
-					requestPatcher: mockAuthenticatedUser, // household_id = 1
 				});
 			});
 
@@ -888,7 +884,6 @@ describe('/api/recipe/options', () => {
 							])
 						);
 					},
-					requestPatcher: mockAuthenticatedUser, // household_id = 1
 				});
 			});
 
@@ -912,7 +907,6 @@ describe('/api/recipe/options', () => {
 						expect(mockGetMyIngredients).toHaveBeenCalledWith(1);
 						expect(mockGetMyIngredients).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -933,9 +927,8 @@ describe('/api/recipe/options', () => {
 						await fetch({ method: 'GET' });
 
 						// Check that getMyIngredients was called with household_id
-						expect(mockGetMyIngredients).toHaveBeenCalledWith(1); // household_id from mockAuthenticatedUser
+						expect(mockGetMyIngredients).toHaveBeenCalledWith(1); // household_id from mockRegularSession
 					},
-					requestPatcher: mockAuthenticatedUser, // household_id = 1
 				});
 			});
 
@@ -962,21 +955,25 @@ describe('/api/recipe/options', () => {
 						expect(data.ingredients).toHaveLength(1);
 						expect(data.ingredients[0].id).toBe(1);
 					},
-					requestPatcher: mockAuthenticatedUser, // household_id = 1
 				});
 
 				// Test with household 2 user
 				const household2Ingredients = [{ id: 2, name: 'Onion', pantryCategory_id: 1, pantryCategory_name: 'Produce', household_id: 2 }];
 
-				const household2UserPatcher = (req: NextRequest & { user?: SessionUser; household_id?: number }) => {
-					mockAuthenticatedUser(req);
-					req.user = {
-						...req.user!,
-						household_id: 2,
-						household_name: 'Household 2',
-					};
-					return req;
-				};
+				// Mock auth for household 2 user
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: true as const,
+					session: {
+						...mockRegularSession,
+						user: {
+							...mockRegularSession.user,
+							household_id: 2,
+							household_name: 'Household 2',
+						},
+					},
+					household_id: 2,
+					user_id: mockRegularSession.user.id,
+				});
 
 				mockExecute
 					.mockResolvedValueOnce([[], []]) // seasons
@@ -997,8 +994,8 @@ describe('/api/recipe/options', () => {
 						// This will fail as the route currently returns all ingredients
 						expect(data.ingredients).toHaveLength(1);
 						expect(data.ingredients[0].id).toBe(2);
+						expect(mockGetMyIngredients).toHaveBeenLastCalledWith(2); // household_id = 2
 					},
-					requestPatcher: household2UserPatcher, // household_id = 2
 				});
 			});
 		});
@@ -1065,7 +1062,6 @@ describe('/api/recipe/options', () => {
 							household_id: 1,
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1106,7 +1102,6 @@ describe('/api/recipe/options', () => {
 						expect(data.measures[0].name).toBe(veryLongName);
 						expect(data.preparations[0].name).toBe(veryLongName);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1151,7 +1146,6 @@ describe('/api/recipe/options', () => {
 						expect(data.ingredients[0].pantryCategory_name).toBe('蔬菜 🥬');
 						expect(data.ingredients[1].name).toBe("Huile d'olive 🫒");
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -1166,16 +1160,20 @@ describe('/api/recipe/options', () => {
 
 				mockGetMyIngredients.mockResolvedValueOnce([]);
 
-				// Custom user with different household_id
-				const customUserPatcher = (req: NextRequest & { user?: SessionUser; household_id?: number }) => {
-					mockAuthenticatedUser(req);
-					req.user = {
-						...req.user!,
-						household_id: 42,
-						household_name: 'Different Household',
-					};
-					return req;
-				};
+				// Mock auth for custom user with different household_id
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: true as const,
+					session: {
+						...mockRegularSession,
+						user: {
+							...mockRegularSession.user,
+							household_id: 42,
+							household_name: 'Different Household',
+						},
+					},
+					household_id: 42,
+					user_id: mockRegularSession.user.id,
+				});
 
 				await testApiHandler({
 					appHandler,
@@ -1195,8 +1193,10 @@ describe('/api/recipe/options', () => {
 						expect(data).toHaveProperty('ingredients');
 						expect(data).toHaveProperty('measures');
 						expect(data).toHaveProperty('preparations');
+
+						// Verify getMyIngredients was called with the correct household_id
+						expect(mockGetMyIngredients).toHaveBeenCalledWith(42);
 					},
-					requestPatcher: customUserPatcher,
 				});
 			});
 		});

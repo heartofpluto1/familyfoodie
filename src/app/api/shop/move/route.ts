@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { ResultSetHeader } from 'mysql2';
 
-async function handler(request: AuthenticatedRequest) {
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
+
 	try {
 		const body = await request.json();
 		const { id, fresh, sort, week, year } = body;
@@ -91,7 +96,7 @@ async function handler(request: AuthenticatedRequest) {
 			// Update the moved item (household-scoped)
 			const [updateResult] = await connection.execute<ResultSetHeader>(
 				'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ? AND household_id = ?',
-				[fresh, sort, id, week, year, request.household_id]
+				[fresh, sort, id, week, year, auth.household_id]
 			);
 
 			// Check if the item was actually updated (exists and belongs to user's household)
@@ -111,7 +116,7 @@ async function handler(request: AuthenticatedRequest) {
 			// Get all items in the target list (fresh or pantry) for this week/year/household
 			const [items] = await connection.execute(
 				'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id != ? ORDER BY sort ASC',
-				[fresh, week, year, request.household_id, id]
+				[fresh, week, year, auth.household_id, id]
 			);
 
 			// Update sort values for items that need to be shifted
@@ -188,5 +193,3 @@ async function handler(request: AuthenticatedRequest) {
 		);
 	}
 }
-
-export const PUT = withAuth(handler);

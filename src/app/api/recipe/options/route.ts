@@ -1,7 +1,7 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
 import { RowDataPacket } from 'mysql2';
-import { withAuth } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth/helpers';
 import { getMyIngredients } from '@/lib/queries/menus';
 
 interface Season extends RowDataPacket {
@@ -37,13 +37,14 @@ interface Preparation extends RowDataPacket {
 	name: string;
 }
 
-async function getHandler(request: NextRequest & { household_id?: number }) {
-	try {
-		const household_id = request.household_id;
+export async function GET(): Promise<NextResponse> {
+	const auth = await requireAuth();
+	if (!auth.authorized) {
+		return auth.response;
+	}
 
-		if (!household_id) {
-			return NextResponse.json({ error: 'Household ID is required' }, { status: 400 });
-		}
+	try {
+		const household_id = auth.household_id;
 
 		// Get all available options for dropdowns
 		// Seasons, types, measures, and preparations are global (not household-specific)
@@ -78,5 +79,3 @@ async function getHandler(request: NextRequest & { household_id?: number }) {
 		return NextResponse.json({ error: 'Failed to fetch recipe options' }, { status: 500 });
 	}
 }
-
-export const GET = withAuth(getHandler);
