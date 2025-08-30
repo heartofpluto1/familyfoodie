@@ -31,7 +31,8 @@ const mockDeleteUser = deleteUser as jest.MockedFunction<typeof deleteUser>;
 // Test data
 const mockUser: User = {
 	id: 1,
-	username: 'testuser',
+	oauth_provider: 'google',
+	oauth_provider_id: '12345',
 	first_name: 'Test',
 	last_name: 'User',
 	email: 'test@example.com',

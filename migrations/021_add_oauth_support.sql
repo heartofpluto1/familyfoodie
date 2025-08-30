@@ -35,6 +35,21 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- Drop last_login column (redundant with NextAuth sessions tracking)
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'users' 
+    AND COLUMN_NAME = 'last_login'
+);
+SET @sql = IF(@column_exists > 0, 
+    'ALTER TABLE users DROP COLUMN last_login', 
+    'SELECT "Column last_login does not exist" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Add OAuth-specific fields (only if they don't exist)
 SET @column_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'oauth_provider');
 SET @sql = IF(@column_exists = 0, 

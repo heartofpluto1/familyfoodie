@@ -16,7 +16,8 @@ describe('Admin Users Queries', () => {
 	const mockUsers = [
 		{
 			id: 1,
-			username: 'user1',
+			oauth_provider: 'google',
+			oauth_provider_id: '12345',
 			email: 'user1@example.com',
 			first_name: 'John',
 			last_name: 'Doe',
@@ -27,7 +28,8 @@ describe('Admin Users Queries', () => {
 		},
 		{
 			id: 2,
-			username: 'admin',
+			oauth_provider: 'google',
+			oauth_provider_id: '67890',
 			email: 'admin@example.com',
 			first_name: 'Admin',
 			last_name: 'User',
@@ -75,14 +77,16 @@ describe('Admin Users Queries', () => {
 			const queryArg = mockPool.execute.mock.calls[0][0];
 			const query = typeof queryArg === 'string' ? queryArg : queryArg.sql;
 			expect(query).toContain('u.id');
-			expect(query).toContain('u.username');
+			expect(query).toContain('u.oauth_provider');
+			expect(query).toContain('u.oauth_provider_id');
 			expect(query).toContain('u.first_name');
 			expect(query).toContain('u.last_name');
 			expect(query).toContain('u.email');
 			expect(query).toContain('u.is_active');
 			expect(query).toContain('u.is_admin');
 			expect(query).toContain('u.date_joined');
-			expect(query).toContain('u.last_login');
+			expect(query).toContain('nextauth_sessions');
+			expect(query).toContain('as last_login');
 		});
 	});
 
