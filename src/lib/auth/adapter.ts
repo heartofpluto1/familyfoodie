@@ -17,8 +17,8 @@ interface DbUser extends RowDataPacket {
 	is_active: boolean;
 }
 
-// Placeholder IDs that indicate account needs OAuth linking
-const PLACEHOLDER_OAUTH_IDS = ['1', '2', '3'];
+// Placeholder IDs that indicate account needs OAuth linking (for 2 existing users)
+const PLACEHOLDER_OAUTH_IDS = ['1', '2'];
 
 export function MySQLAdapter(): Adapter {
 	return {

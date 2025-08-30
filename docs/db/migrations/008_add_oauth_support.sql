@@ -18,7 +18,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active TINYINT(1) DEFAULT 1 COMMEN
 ALTER TABLE users ADD COLUMN IF NOT EXISTS date_joined DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Account creation date';
 
 -- Migrate existing users to have placeholder OAuth values
--- Use their user ID as the oauth_provider_id (1, 2, 3)
+-- Use their user ID as the oauth_provider_id (1, 2 for the two existing users)
 UPDATE users 
 SET oauth_provider = 'google',
     oauth_provider_id = CAST(id AS CHAR),
