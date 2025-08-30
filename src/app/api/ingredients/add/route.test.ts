@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 
@@ -9,29 +9,15 @@ jest.mock('@/lib/db.js', () => ({
 	execute: jest.fn(),
 }));
 
-// Mock auth middleware with inline definition to avoid hoisting issues
-jest.mock('@/lib/auth-middleware', () => ({
-	withAuth: (handler: (request: NextRequest & { user?: { household_id: number }; household_id?: number }, context?: unknown) => Promise<Response>) => {
-		return async (request: NextRequest & { user?: { household_id: number }; household_id?: number }, context?: unknown) => {
-			// Check if user is set by requestPatcher
-			if (!request.user) {
-				return new Response(
-					JSON.stringify({
-						success: false,
-						error: 'Authentication required',
-						code: 'UNAUTHORIZED',
-					}),
-					{ status: 401, headers: { 'Content-Type': 'application/json' } }
-				);
-			}
-			// Set household_id from user as the real middleware does
-			request.household_id = request.user.household_id || 1; // Default to household_id 1 for testing
-			return handler(request, context);
-		};
-	},
+// Mock the OAuth auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
 }));
 
-import { mockRegularUser, clearAllMocks, setupConsoleMocks, standardErrorScenarios } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
+import { requireAuth } from '@/lib/auth/helpers';
+
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 // Get mocked database function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
@@ -58,24 +44,17 @@ const minimalIngredientData = {
 	pantryCategoryId: null,
 };
 
-// Helper to create authenticated request
-function createAuthenticatedRequest(body: unknown) {
-	const request = new NextRequest('http://localhost:3000/api/ingredients/add', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(body),
-	});
-
-	// Mock auth middleware adds these properties
-	(request as NextRequest & { user: typeof mockRegularUser; household_id: number }).user = mockRegularUser;
-	(request as NextRequest & { user: typeof mockRegularUser; household_id: number }).household_id = mockRegularUser.household_id;
-
-	return request;
-}
-
 describe('/api/ingredients/add', () => {
 	beforeEach(() => {
 		clearAllMocks();
+
+		// Setup default OAuth auth response
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -93,7 +72,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: 12345,
 					supermarketCategoryId: 1,
 					pantryCategoryId: 2,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -102,8 +81,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([[], []]) // Check existing ingredient (none found)
 					.mockResolvedValueOnce([{ insertId: 123, affectedRows: 1 }, []]) // Insert ingredient
 					.mockResolvedValueOnce([[mockCreatedIngredient], []]); // Fetch created ingredient
-
-				const request = createAuthenticatedRequest(validIngredientData);
 
 				await testApiHandler({
 					appHandler,
@@ -128,7 +105,7 @@ describe('/api/ingredients/add', () => {
 								stockcode: 12345,
 								supermarketCategoryId: 1,
 								pantryCategoryId: 2,
-								household_id: mockRegularUser.household_id,
+								household_id: mockRegularSession.user.household_id,
 								created_at: '2024-01-01T12:00:00Z',
 							},
 							message: 'Ingredient added successfully',
@@ -137,7 +114,7 @@ describe('/api/ingredients/add', () => {
 						// Verify check for existing ingredient in household
 						expect(mockExecute).toHaveBeenNthCalledWith(1, 'SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
 							'Test Ingredient',
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 
 						// Verify insert with household ownership
@@ -148,13 +125,12 @@ describe('/api/ingredients/add', () => {
 							12345, // stockcode
 							1, // supermarketCategoryId
 							2, // pantryCategoryId
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 
 						// Verify fetch of created ingredient
 						expect(mockExecute).toHaveBeenNthCalledWith(3, expect.stringContaining('SELECT id, name, fresh, cost as price'), [123]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -167,7 +143,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: null,
 					supermarketCategoryId: null,
 					pantryCategoryId: null,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -175,8 +151,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([[], []]) // No existing ingredient
 					.mockResolvedValueOnce([{ insertId: 456, affectedRows: 1 }, []]) // Insert successful
 					.mockResolvedValueOnce([[mockCreatedIngredient], []]); // Fetch created ingredient
-
-				const request = createAuthenticatedRequest(minimalIngredientData);
 
 				await testApiHandler({
 					appHandler,
@@ -201,10 +175,9 @@ describe('/api/ingredients/add', () => {
 							null, // stockcode
 							null, // supermarketCategoryId
 							null, // pantryCategoryId
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -217,7 +190,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: 12345,
 					supermarketCategoryId: 1,
 					pantryCategoryId: 2,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -230,8 +203,6 @@ describe('/api/ingredients/add', () => {
 					...validIngredientData,
 					name: '  Whitespace Ingredient  ',
 				};
-
-				const request = createAuthenticatedRequest(ingredientWithWhitespace);
 
 				await testApiHandler({
 					appHandler,
@@ -247,7 +218,7 @@ describe('/api/ingredients/add', () => {
 						// Verify name is trimmed in both check and insert
 						expect(mockExecute).toHaveBeenNthCalledWith(1, 'SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
 							'Whitespace Ingredient',
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 
 						expect(mockExecute).toHaveBeenNthCalledWith(
@@ -256,7 +227,6 @@ describe('/api/ingredients/add', () => {
 							expect.arrayContaining(['Whitespace Ingredient'])
 						);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -269,7 +239,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: 12345,
 					supermarketCategoryId: 1,
 					pantryCategoryId: 2,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -277,8 +247,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([[], []]) // No existing ingredient
 					.mockResolvedValueOnce([{ insertId: 999, affectedRows: 1 }, []]) // Insert successful
 					.mockResolvedValueOnce([[mockCreatedIngredient], []]); // Fetch created ingredient
-
-				const request = createAuthenticatedRequest(validIngredientData);
 
 				await testApiHandler({
 					appHandler,
@@ -298,7 +266,6 @@ describe('/api/ingredients/add', () => {
 							expect.arrayContaining([expect.any(String), expect.any(Boolean), expect.any(Number)])
 						);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -307,8 +274,6 @@ describe('/api/ingredients/add', () => {
 			it('should return 400 when name is missing', async () => {
 				const ingredientWithoutName: Partial<typeof validIngredientData> = { ...validIngredientData };
 				delete ingredientWithoutName.name;
-
-				const request = createAuthenticatedRequest(ingredientWithoutName);
 
 				await testApiHandler({
 					appHandler,
@@ -338,7 +303,6 @@ describe('/api/ingredients/add', () => {
 						// Should not call database
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -347,8 +311,6 @@ describe('/api/ingredients/add', () => {
 					...validIngredientData,
 					name: '',
 				};
-
-				const request = createAuthenticatedRequest(ingredientWithEmptyName);
 
 				await testApiHandler({
 					appHandler,
@@ -376,7 +338,6 @@ describe('/api/ingredients/add', () => {
 						});
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -385,8 +346,6 @@ describe('/api/ingredients/add', () => {
 					...validIngredientData,
 					name: '   \t\n   ',
 				};
-
-				const request = createAuthenticatedRequest(ingredientWithWhitespaceOnlyName);
 
 				await testApiHandler({
 					appHandler,
@@ -414,15 +373,12 @@ describe('/api/ingredients/add', () => {
 						});
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should return 409 when ingredient already exists in household', async () => {
 				// Mock existing ingredient found
 				mockExecute.mockResolvedValueOnce([[{ id: 555 }], []]);
-
-				const request = createAuthenticatedRequest(validIngredientData);
 
 				await testApiHandler({
 					appHandler,
@@ -451,10 +407,9 @@ describe('/api/ingredients/add', () => {
 						expect(mockExecute).toHaveBeenCalledTimes(1);
 						expect(mockExecute).toHaveBeenCalledWith('SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
 							'Test Ingredient',
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -469,7 +424,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: null,
 					supermarketCategoryId: null,
 					pantryCategoryId: null,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -478,15 +433,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([[], []]) // No ingredient found in user's household
 					.mockResolvedValueOnce([{ insertId: 777, affectedRows: 1 }, []]) // Insert successful
 					.mockResolvedValueOnce([[mockCreatedIngredient], []]); // Fetch created ingredient
-
-				const request = createAuthenticatedRequest({
-					name: 'Common Ingredient Name',
-					fresh: true,
-					price: 1.99,
-					stockcode: null,
-					supermarketCategoryId: null,
-					pantryCategoryId: null,
-				});
 
 				await testApiHandler({
 					appHandler,
@@ -513,21 +459,34 @@ describe('/api/ingredients/add', () => {
 						// Verify household isolation in duplicate check
 						expect(mockExecute).toHaveBeenNthCalledWith(1, 'SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
 							'Common Ingredient Name',
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 
 						// Verify household_id is set correctly in insert
 						expect(mockExecute).toHaveBeenNthCalledWith(
 							2,
 							expect.stringContaining('INSERT INTO ingredients'),
-							expect.arrayContaining([mockRegularUser.household_id])
+							expect.arrayContaining([mockRegularSession.user.household_id])
 						);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should assign ingredient to authenticated user household', async () => {
+				// Override auth with different household_id
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: true as const,
+					session: {
+						...mockRegularSession,
+						user: {
+							...mockRegularSession.user,
+							household_id: 99,
+						},
+					},
+					household_id: 99,
+					user_id: mockRegularSession.user.id,
+				});
+
 				const mockCreatedIngredient = {
 					id: 888,
 					name: 'Test Ingredient',
@@ -545,12 +504,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([{ insertId: 888, affectedRows: 1 }, []]) // Insert successful
 					.mockResolvedValueOnce([[mockCreatedIngredient], []]); // Fetch created ingredient
 
-				// Create request with different household_id to test isolation
-				const request = createAuthenticatedRequest(validIngredientData);
-				const customUser = { ...mockRegularUser, household_id: 99 };
-				(request as NextRequest & { user: typeof customUser; household_id: number }).user = customUser;
-				(request as NextRequest & { user: typeof customUser; household_id: number }).household_id = 99;
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -567,7 +520,6 @@ describe('/api/ingredients/add', () => {
 
 						expect(mockExecute).toHaveBeenNthCalledWith(2, expect.stringContaining('INSERT INTO ingredients'), expect.arrayContaining([99]));
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -576,8 +528,6 @@ describe('/api/ingredients/add', () => {
 			it('should handle database connection failure during duplicate check', async () => {
 				mockExecute.mockRejectedValueOnce(standardErrorScenarios.databaseError);
 
-				const request = createAuthenticatedRequest(validIngredientData);
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -596,7 +546,6 @@ describe('/api/ingredients/add', () => {
 							code: 'INTERNAL_ERROR',
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -605,8 +554,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([[], []]) // Duplicate check succeeds
 					.mockRejectedValueOnce(new Error('Insert failed')); // Insert fails
 
-				const request = createAuthenticatedRequest(validIngredientData);
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -625,20 +572,10 @@ describe('/api/ingredients/add', () => {
 							code: 'INTERNAL_ERROR',
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should handle invalid JSON request body', async () => {
-				const request = new NextRequest('http://localhost:3000/api/ingredients/add', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: 'invalid json{',
-				});
-
-				(request as NextRequest & { user: typeof mockRegularUser; household_id: number }).user = mockRegularUser;
-				(request as NextRequest & { user: typeof mockRegularUser; household_id: number }).household_id = mockRegularUser.household_id;
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -660,15 +597,12 @@ describe('/api/ingredients/add', () => {
 						// Should not call database on JSON parse error
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should handle generic error gracefully', async () => {
 				mockExecute.mockResolvedValueOnce([[], []]).mockRejectedValueOnce(new Error('Unexpected error'));
 
-				const request = createAuthenticatedRequest(validIngredientData);
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -687,15 +621,12 @@ describe('/api/ingredients/add', () => {
 							code: 'INTERNAL_ERROR',
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
 			it('should handle non-Error exceptions', async () => {
 				mockExecute.mockResolvedValueOnce([[], []]).mockRejectedValueOnce('String error'); // Non-Error object
 
-				const request = createAuthenticatedRequest(validIngredientData);
-
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -714,20 +645,24 @@ describe('/api/ingredients/add', () => {
 							code: 'INTERNAL_ERROR',
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
 
 		describe('Authentication integration', () => {
 			it('should require authentication', async () => {
-				// Create request without authentication
-				const request = new NextRequest('http://localhost:3000/api/ingredients/add', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(validIngredientData),
+				// Mock auth failure
+				mockRequireAuth.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json(
+						{
+							success: false,
+							error: 'Authentication required',
+							code: 'UNAUTHORIZED',
+						},
+						{ status: 401 }
+					),
 				});
-				// Don't set user property - this simulates unauthenticated request
 
 				await testApiHandler({
 					appHandler,
@@ -750,7 +685,6 @@ describe('/api/ingredients/add', () => {
 						// Should not call database without authentication
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -763,7 +697,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: 12345,
 					supermarketCategoryId: 1,
 					pantryCategoryId: 2,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -771,11 +705,6 @@ describe('/api/ingredients/add', () => {
 					.mockResolvedValueOnce([[], []]) // No existing ingredient
 					.mockResolvedValueOnce([{ insertId: 111, affectedRows: 1 }, []]) // Insert successful
 					.mockResolvedValueOnce([[mockCreatedIngredient], []]); // Fetch created ingredient
-
-				// Test that household_id comes from auth middleware
-				const request = createAuthenticatedRequest(validIngredientData);
-				// Verify the middleware sets household_id
-				expect((request as NextRequest & { household_id: number }).household_id).toBe(mockRegularUser.household_id);
 
 				await testApiHandler({
 					appHandler,
@@ -791,16 +720,15 @@ describe('/api/ingredients/add', () => {
 						// Verify household_id from middleware is used
 						expect(mockExecute).toHaveBeenNthCalledWith(1, 'SELECT id FROM ingredients WHERE name = ? AND household_id = ?', [
 							'Test Ingredient',
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 
 						expect(mockExecute).toHaveBeenNthCalledWith(
 							2,
 							expect.stringContaining('INSERT INTO ingredients'),
-							expect.arrayContaining([mockRegularUser.household_id])
+							expect.arrayContaining([mockRegularSession.user.household_id])
 						);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -815,8 +743,6 @@ describe('/api/ingredients/add', () => {
 					supermarketCategoryId: 'produce', // Should be number or null
 					pantryCategoryId: true, // Should be number or null
 				};
-
-				const request = createAuthenticatedRequest(invalidData);
 
 				await testApiHandler({
 					appHandler,
@@ -855,7 +781,6 @@ describe('/api/ingredients/add', () => {
 
 						expect(mockExecute).not.toHaveBeenCalled();
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -864,8 +789,6 @@ describe('/api/ingredients/add', () => {
 					...validIngredientData,
 					name: 'A'.repeat(300), // Exceeds 255 char limit
 				};
-
-				const request = createAuthenticatedRequest(dataWithLongName);
 
 				await testApiHandler({
 					appHandler,
@@ -894,7 +817,6 @@ describe('/api/ingredients/add', () => {
 							],
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -905,8 +827,6 @@ describe('/api/ingredients/add', () => {
 					supermarketCategoryId: 0, // Should be > 0
 					pantryCategoryId: -5, // Should be > 0
 				};
-
-				const request = createAuthenticatedRequest(dataWithInvalidNumbers);
 
 				await testApiHandler({
 					appHandler,
@@ -943,7 +863,6 @@ describe('/api/ingredients/add', () => {
 							]),
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -953,8 +872,6 @@ describe('/api/ingredients/add', () => {
 					price: 2.99,
 					// fresh is missing
 				};
-
-				const request = createAuthenticatedRequest(dataWithoutFresh);
 
 				await testApiHandler({
 					appHandler,
@@ -981,7 +898,6 @@ describe('/api/ingredients/add', () => {
 							],
 						});
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});
@@ -996,7 +912,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: 12345,
 					supermarketCategoryId: 1,
 					pantryCategoryId: 2,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -1009,8 +925,6 @@ describe('/api/ingredients/add', () => {
 					...validIngredientData,
 					fresh: false,
 				};
-
-				const request = createAuthenticatedRequest(ingredientWithFreshFalse);
 
 				await testApiHandler({
 					appHandler,
@@ -1026,7 +940,6 @@ describe('/api/ingredients/add', () => {
 						// Verify boolean false is passed correctly
 						expect(mockExecute).toHaveBeenNthCalledWith(2, expect.stringContaining('INSERT INTO ingredients'), expect.arrayContaining([false]));
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -1039,7 +952,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: 9876543210,
 					supermarketCategoryId: 5,
 					pantryCategoryId: 3,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -1055,8 +968,6 @@ describe('/api/ingredients/add', () => {
 					supermarketCategoryId: 5,
 					pantryCategoryId: 3,
 				};
-
-				const request = createAuthenticatedRequest(ingredientWithNumbers);
 
 				await testApiHandler({
 					appHandler,
@@ -1077,10 +988,9 @@ describe('/api/ingredients/add', () => {
 							9876543210,
 							5,
 							3,
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 
@@ -1093,7 +1003,7 @@ describe('/api/ingredients/add', () => {
 					stockcode: null,
 					supermarketCategoryId: null,
 					pantryCategoryId: null,
-					household_id: mockRegularUser.household_id,
+					household_id: mockRegularSession.user.household_id,
 					created_at: '2024-01-01T12:00:00Z',
 				};
 
@@ -1110,8 +1020,6 @@ describe('/api/ingredients/add', () => {
 					supermarketCategoryId: null,
 					pantryCategoryId: null,
 				};
-
-				const request = createAuthenticatedRequest(ingredientWithNulls);
 
 				await testApiHandler({
 					appHandler,
@@ -1132,10 +1040,9 @@ describe('/api/ingredients/add', () => {
 							null,
 							null,
 							null,
-							mockRegularUser.household_id,
+							mockRegularSession.user.household_id,
 						]);
 					},
-					requestPatcher: req => Object.assign(req, request),
 				});
 			});
 		});

@@ -2,10 +2,13 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockAuthenticatedUser } from '@/lib/test-utils';
+import { createMockFile, setupConsoleMocks, standardErrorScenarios, mockRegularSession } from '@/lib/test-utils';
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
+}));
 
 // Mock the database pool
 jest.mock('@/lib/db.js', () => ({
@@ -32,6 +35,10 @@ jest.mock('@/lib/utils/secureFilename', () => ({
 
 // Get the mocked execute function
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
+
+// Import auth helpers for mocking
+import { requireAuth } from '@/lib/auth/helpers';
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 import { uploadFile, getStorageMode, deleteFile } from '@/lib/storage';
 import { canEditResource, validateRecipeInCollection } from '@/lib/permissions';
@@ -66,6 +73,14 @@ describe('/api/recipe/upload-image', () => {
 
 		// Reset database mock
 		mockExecute.mockReset();
+
+		// Setup successful auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -117,7 +132,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockUploadFile).toHaveBeenCalled();
 					expect(mockExecute).toHaveBeenCalledTimes(2);
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -151,7 +165,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(json.success).toBe(true);
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'png', 'image/png');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -190,7 +203,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(json.success).toBe(true);
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'webp', 'image/webp');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -216,7 +228,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -242,7 +253,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -269,7 +279,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -296,7 +305,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -324,7 +332,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -352,7 +359,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -381,7 +387,6 @@ describe('/api/recipe/upload-image', () => {
 					});
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -414,7 +419,6 @@ describe('/api/recipe/upload-image', () => {
 						error: 'Storage service unavailable',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -452,7 +456,6 @@ describe('/api/recipe/upload-image', () => {
 						error: 'Failed to update recipe image filename',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -488,7 +491,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Uploading image with filename:'));
 					expect(json.storageMode).toBe('cloud');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -523,7 +525,6 @@ describe('/api/recipe/upload-image', () => {
 					// Should convert image/jpg to jpg extension
 					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), expect.any(String), 'jpg', 'image/jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -552,7 +553,6 @@ describe('/api/recipe/upload-image', () => {
 					});
 					expect(mockConsoleError).toHaveBeenCalledWith('Error uploading image:', expect.any(Error));
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -580,7 +580,6 @@ describe('/api/recipe/upload-image', () => {
 						error: 'Failed to upload image',
 					});
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -615,7 +614,6 @@ describe('/api/recipe/upload-image', () => {
 					// Should NOT try to update database since image_filename already exists
 					expect(mockExecute).toHaveBeenCalledTimes(1); // Only the SELECT query
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -643,7 +641,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -671,7 +668,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -705,7 +701,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(json.success).toBe(true);
 					expect(mockUploadFile).toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -740,7 +735,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(json.message).toBe('Image replaced successfully');
 					expect(json.previousImage).toBe('existing.jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -779,7 +773,6 @@ describe('/api/recipe/upload-image', () => {
 					// Should attempt to cleanup the uploaded file
 					expect(mockDeleteFile).toHaveBeenCalledWith(expect.stringMatching(/^recipe_1_\d+$/), 'jpg');
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 
@@ -810,7 +803,6 @@ describe('/api/recipe/upload-image', () => {
 					expect(mockExecute).not.toHaveBeenCalled();
 					expect(mockUploadFile).not.toHaveBeenCalled();
 				},
-				requestPatcher: mockAuthenticatedUser,
 			});
 		});
 	});

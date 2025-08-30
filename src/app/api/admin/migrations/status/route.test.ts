@@ -1,9 +1,10 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, mockAdminUser } from '@/lib/test-utils';
-import { requireAdminUser } from '@/lib/auth-helpers';
+import { clearAllMocks, setupConsoleMocks, mockAdminSession } from '@/lib/test-utils';
+import { requireAdminAuth } from '@/lib/auth/helpers';
 import path from 'path';
 
 // Type definitions for response
@@ -42,19 +43,16 @@ jest.mock('path', () => ({
 	join: jest.fn((...args) => args.join('/')),
 }));
 
-// Mock the auth-helpers module
-jest.mock('@/lib/auth-helpers', () => ({
-	requireAdminUser: jest.fn(),
+// Mock the auth helpers module
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAdminAuth: jest.fn(),
 }));
 
 // Get mocked functions
 const mockExecute = jest.mocked(jest.requireMock('@/lib/db.js').execute);
 const mockReaddir = jest.requireMock('fs/promises').readdir as jest.MockedFunction<(path: string) => Promise<string[]>>;
 const mockPathJoin = jest.mocked(path.join);
-const mockRequireAdminUser = jest.mocked(requireAdminUser);
-
-// Mock the auth middleware
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+const mockRequireAdminAuth = requireAdminAuth as jest.MockedFunction<typeof requireAdminAuth>;
 
 // Helper to mock environment variables
 const mockEnv = (env: Record<string, string | undefined>) => {
@@ -74,10 +72,16 @@ describe('/api/admin/migrations/status', () => {
 		// Reset all mocks
 		mockExecute.mockReset();
 		mockReaddir.mockReset();
-		mockRequireAdminUser.mockReset();
+		mockRequireAdminAuth.mockReset();
 		mockPathJoin.mockImplementation((...args) => args.join('/'));
 		// Default to admin user
-		mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+		mockRequireAdminAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockAdminSession,
+			household_id: mockAdminSession.user.household_id,
+			user_id: mockAdminSession.user.id,
+			is_admin: true,
+		});
 	});
 
 	afterAll(() => {
@@ -87,6 +91,12 @@ describe('/api/admin/migrations/status', () => {
 	describe('GET /api/admin/migrations/status', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock auth failure
+				mockRequireAdminAuth.mockResolvedValueOnce({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -97,12 +107,9 @@ describe('/api/admin/migrations/status', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 
@@ -125,13 +132,16 @@ describe('/api/admin/migrations/status', () => {
 						const data = await response.json();
 						expect(data.success).toBe(true);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
 			it('should return 403 for non-admin users', async () => {
-				// Mock requireAdminUser to reject for non-admin
-				mockRequireAdminUser.mockRejectedValueOnce(new Error('User is not an admin'));
+				// Mock requireAdminAuth to return unauthorized for non-admin
+				const mockResponse = NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+				mockRequireAdminAuth.mockResolvedValue({
+					authorized: false as const,
+					response: mockResponse,
+				});
 
 				await testApiHandler({
 					appHandler,
@@ -144,27 +154,31 @@ describe('/api/admin/migrations/status', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							error: 'Admin access required',
-							code: 'FORBIDDEN',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
-			it('should verify requireAdminUser is called', async () => {
+			it('should verify requireAdminAuth is called', async () => {
 				mockReaddir.mockResolvedValueOnce([]);
 				mockExecute.mockResolvedValueOnce([[], []]);
+
+				mockRequireAdminAuth.mockResolvedValue({
+					authorized: true as const,
+					session: mockAdminSession,
+					household_id: mockAdminSession.user.household_id,
+					user_id: mockAdminSession.user.id,
+					is_admin: true,
+				});
 
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
 						await fetch({ method: 'GET' });
 
-						// Verify that requireAdminUser was called
-						expect(mockRequireAdminUser).toHaveBeenCalledTimes(1);
-						expect(mockRequireAdminUser).toHaveBeenCalledWith(expect.any(Object));
+						// Verify that requireAdminAuth was called
+						expect(mockRequireAdminAuth).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -202,7 +216,6 @@ describe('/api/admin/migrations/status', () => {
 						// Verify correct path was used
 						expect(mockPathJoin).toHaveBeenCalledWith(process.cwd(), 'migrations');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -231,7 +244,6 @@ describe('/api/admin/migrations/status', () => {
 							schema_migrations_exists: false,
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -252,7 +264,6 @@ describe('/api/admin/migrations/status', () => {
 						const migrationData = data as MigrationStatusResponse;
 						expect(migrationData.migrations.map(m => m.version)).toEqual(['001_first.sql', '002_second.sql', '003_third.sql']);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -272,7 +283,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(data.error).toBe('Failed to fetch migration status');
 						expect(data.details).toContain('ENOENT');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -340,7 +350,6 @@ describe('/api/admin/migrations/status', () => {
 							execution_time_ms: null,
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -374,7 +383,6 @@ describe('/api/admin/migrations/status', () => {
 							expect(migration.execution_time_ms).toBeNull();
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -397,7 +405,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(data.error).toBe('Failed to fetch migration status');
 						expect(data.details).toContain('DATABASE_CONNECTION_FAILED');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -422,7 +429,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(data.error).toBe('Failed to fetch migration status');
 						expect(data.details).toContain('Column not found');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -460,7 +466,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(statuses['003_indexes.sql']).toBe('completed');
 						expect(statuses['004_constraints.sql']).toBe('pending');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -492,7 +497,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(migration.executed_at).toBe(executionDate.toISOString());
 						expect(migration.execution_time_ms).toBe(1250);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -520,7 +524,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(response.status).toBe(200);
 						expect(data.migrations[0].execution_time_ms).toBeNull();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -545,7 +548,6 @@ describe('/api/admin/migrations/status', () => {
 						const data = await response.json();
 						expect(data.environment).toBe('production');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 
 				// Restore original env
@@ -586,7 +588,6 @@ describe('/api/admin/migrations/status', () => {
 							expect(migration).toHaveProperty('execution_time_ms');
 						}
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -605,7 +606,6 @@ describe('/api/admin/migrations/status', () => {
 							'SELECT version, executed_at, execution_time_ms FROM schema_migrations ORDER BY executed_at DESC'
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -634,7 +634,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(migrationData.migrations.map(m => m.version)).toContain('001_initial-schema.sql');
 						expect(migrationData.migrations.map(m => m.version)).toContain('002_add_users_table.sql');
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -654,7 +653,6 @@ describe('/api/admin/migrations/status', () => {
 						expect(response.status).toBe(200);
 						expect(data.migrations[0].version).toBe(longFilename);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -676,7 +674,6 @@ describe('/api/admin/migrations/status', () => {
 							expect(response.status).toBe(200);
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

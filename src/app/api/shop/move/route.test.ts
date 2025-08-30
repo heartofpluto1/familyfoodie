@@ -1,8 +1,9 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { mockAuthenticatedUser, mockNonAuthenticatedUser, clearAllMocks, setupConsoleMocks, MockConnection } from '@/lib/test-utils';
+import { clearAllMocks, setupConsoleMocks, MockConnection, mockRegularSession } from '@/lib/test-utils';
 
 // Mock the database pool
 const mockConnection: MockConnection = {
@@ -17,8 +18,15 @@ jest.mock('@/lib/db.js', () => ({
 	getConnection: jest.fn(() => Promise.resolve(mockConnection)),
 }));
 
-// Mock the auth middleware to properly handle authentication
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').authMiddlewareMock);
+// Mock the auth helpers
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
+}));
+
+// Import auth helpers for mocking
+import { requireAuth } from '@/lib/auth/helpers';
+const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 
 describe('/api/shop/move', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
@@ -32,6 +40,14 @@ describe('/api/shop/move', () => {
 		mockConnection.rollback.mockReset().mockResolvedValue();
 		mockConnection.release.mockReset().mockImplementation(() => {});
 		mockConnection.execute.mockReset();
+
+		// Setup successful auth by default
+		mockRequireAuth.mockResolvedValue({
+			authorized: true as const,
+			session: mockRegularSession,
+			household_id: mockRegularSession.user.household_id,
+			user_id: mockRegularSession.user.id,
+		});
 	});
 
 	afterAll(() => {
@@ -41,6 +57,12 @@ describe('/api/shop/move', () => {
 	describe('PUT /api/shop/move', () => {
 		describe('Authentication Tests', () => {
 			it('should return 401 for unauthenticated requests', async () => {
+				// Mock authentication failure
+				mockRequireAuth.mockResolvedValue({
+					authorized: false as const,
+					response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+				});
+
 				await testApiHandler({
 					appHandler,
 					test: async ({ fetch }) => {
@@ -61,15 +83,12 @@ describe('/api/shop/move', () => {
 						expect(response.status).toBe(401);
 						const data = await response.json();
 						expect(data).toEqual({
-							success: false,
-							error: 'Authentication required',
-							code: 'UNAUTHORIZED',
+							error: 'Unauthorized',
 						});
 
 						// Verify database was never touched
 						expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockNonAuthenticatedUser,
 				});
 			});
 		});
@@ -101,7 +120,6 @@ describe('/api/shop/move', () => {
 							details: 'All fields (id, fresh, sort, week, year) are required',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -131,7 +149,6 @@ describe('/api/shop/move', () => {
 							details: 'All fields (id, fresh, sort, week, year) are required',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -161,7 +178,6 @@ describe('/api/shop/move', () => {
 							details: 'All fields (id, fresh, sort, week, year) are required',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -191,7 +207,6 @@ describe('/api/shop/move', () => {
 							details: 'All fields (id, fresh, sort, week, year) are required',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -221,7 +236,6 @@ describe('/api/shop/move', () => {
 							details: 'All fields (id, fresh, sort, week, year) are required',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -253,7 +267,6 @@ describe('/api/shop/move', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true, message: 'Item moved successfully' });
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -284,7 +297,6 @@ describe('/api/shop/move', () => {
 							details: 'Sort value must be a number between 0 and 1000',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -315,7 +327,6 @@ describe('/api/shop/move', () => {
 							details: 'Sort value must be a number between 0 and 1000',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -347,7 +358,6 @@ describe('/api/shop/move', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true, message: 'Item moved successfully' });
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -410,7 +420,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.rollback).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -460,7 +469,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET sort = ? WHERE id = ?', [2, 5]);
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET sort = ? WHERE id = ?', [3, 6]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -494,7 +502,6 @@ describe('/api/shop/move', () => {
 						// Verify no sort updates were needed
 						expect(mockConnection.execute).toHaveBeenCalledTimes(2); // Just the move and the select
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -534,7 +541,6 @@ describe('/api/shop/move', () => {
 						// Verify no sort updates were needed (item added at end)
 						expect(mockConnection.execute).toHaveBeenCalledTimes(2); // Just the move and the select
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -580,7 +586,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET sort = ? WHERE id = ?', [2, 3]);
 						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET sort = ? WHERE id = ?', [3, 4]);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -621,7 +626,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -662,7 +666,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -709,7 +712,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -759,7 +761,6 @@ describe('/api/shop/move', () => {
 							[true, 45, 2024, 1, 1]
 						);
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -803,7 +804,6 @@ describe('/api/shop/move', () => {
 						expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});
@@ -830,7 +830,6 @@ describe('/api/shop/move', () => {
 							details: 'Request body must be valid JSON',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -861,7 +860,6 @@ describe('/api/shop/move', () => {
 							details: 'Sort value must be a number between 0 and 1000',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 
@@ -892,7 +890,6 @@ describe('/api/shop/move', () => {
 							details: 'Sort value must be a number between 0 and 1000',
 						});
 					},
-					requestPatcher: mockAuthenticatedUser,
 				});
 			});
 		});

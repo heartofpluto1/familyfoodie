@@ -1,19 +1,18 @@
 /** @jest-environment node */
 
 import { testApiHandler } from 'next-test-api-route-handler';
+import { NextResponse } from 'next/server';
 import * as appHandler from './route';
-import { requireAdminUser } from '@/lib/auth-helpers';
 import { getAllUsers, getUserStats } from '@/lib/queries/admin/users';
-import { setupConsoleMocks, standardErrorScenarios, mockAdminUser } from '@/lib/test-utils';
+import { requireAdminAuth } from '@/lib/auth/helpers';
+import { setupConsoleMocks, standardErrorScenarios, mockAdminSession } from '@/lib/test-utils';
 import type { User } from '@/types/user';
 
 // Mock the auth helpers
-jest.mock('@/lib/auth-helpers', () => ({
-	requireAdminUser: jest.fn(),
+jest.mock('@/lib/auth/helpers', () => ({
+	requireAuth: jest.fn(),
+	requireAdminAuth: jest.fn(),
 }));
-
-// Mock the auth middleware to pass through for testing
-jest.mock('@/lib/auth-middleware', () => jest.requireActual('@/lib/test-utils').passthroughAuthMock);
 
 // Mock the user queries
 jest.mock('@/lib/queries/admin/users', () => ({
@@ -22,7 +21,7 @@ jest.mock('@/lib/queries/admin/users', () => ({
 }));
 
 // Type assertions for mocked modules
-const mockRequireAdminUser = requireAdminUser as jest.MockedFunction<typeof requireAdminUser>;
+const mockRequireAdminAuth = requireAdminAuth as jest.MockedFunction<typeof requireAdminAuth>;
 const mockGetAllUsers = getAllUsers as jest.MockedFunction<typeof getAllUsers>;
 const mockGetUserStats = getUserStats as jest.MockedFunction<typeof getUserStats>;
 
@@ -30,7 +29,8 @@ const mockGetUserStats = getUserStats as jest.MockedFunction<typeof getUserStats
 const mockUsers: User[] = [
 	{
 		id: 1,
-		username: 'admin',
+		oauth_provider: 'google',
+		oauth_provider_id: '123456',
 		first_name: 'Admin',
 		last_name: 'User',
 		email: 'admin@example.com',
@@ -41,7 +41,8 @@ const mockUsers: User[] = [
 	},
 	{
 		id: 2,
-		username: 'john.doe',
+		oauth_provider: 'google',
+		oauth_provider_id: '789012',
 		first_name: 'John',
 		last_name: 'Doe',
 		email: 'john@example.com',
@@ -52,7 +53,8 @@ const mockUsers: User[] = [
 	},
 	{
 		id: 3,
-		username: 'jane.smith',
+		oauth_provider: 'facebook',
+		oauth_provider_id: 'fb_345678',
 		first_name: 'Jane',
 		last_name: 'Smith',
 		email: 'jane@example.com',
@@ -63,7 +65,7 @@ const mockUsers: User[] = [
 	},
 ];
 
-const mockUserStats = {
+const mockStats = {
 	total: 3,
 	active: 2,
 	admins: 1,
@@ -84,7 +86,12 @@ describe('/api/admin/users', () => {
 	describe('GET /api/admin/users', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 403 for non-admin users', async () => {
-				mockRequireAdminUser.mockResolvedValue(null);
+				const mockResponse = NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: false as const,
+				response: mockResponse,
+			});
 
 				await testApiHandler({
 					appHandler,
@@ -93,10 +100,7 @@ describe('/api/admin/users', () => {
 						const json = await response.json();
 
 						expect(response.status).toBe(403);
-						expect(json).toEqual({
-							error: 'Admin access required',
-							code: 'ADMIN_ACCESS_REQUIRED',
-						});
+						expect(json).toEqual({ error: 'Admin access required' });
 						expect(mockGetAllUsers).not.toHaveBeenCalled();
 						expect(mockGetUserStats).not.toHaveBeenCalled();
 					},
@@ -104,7 +108,7 @@ describe('/api/admin/users', () => {
 			});
 
 			it('returns 403 when requireAdminUser throws an error', async () => {
-				mockRequireAdminUser.mockRejectedValue(standardErrorScenarios.authError);
+				mockRequireAdminAuth.mockRejectedValue(standardErrorScenarios.authError);
 
 				await testApiHandler({
 					appHandler,
@@ -125,7 +129,12 @@ describe('/api/admin/users', () => {
 
 			it('returns 403 when user is authenticated but not admin', async () => {
 				// Mock non-admin user scenario
-				mockRequireAdminUser.mockResolvedValue(null);
+				const mockResponse = NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
+			mockRequireAdminAuth.mockResolvedValue({
+				authorized: false as const,
+				response: mockResponse,
+			});
 
 				await testApiHandler({
 					appHandler,
@@ -134,10 +143,7 @@ describe('/api/admin/users', () => {
 						const json = await response.json();
 
 						expect(response.status).toBe(403);
-						expect(json).toEqual({
-							error: 'Admin access required',
-							code: 'ADMIN_ACCESS_REQUIRED',
-						});
+						expect(json).toEqual({ error: 'Admin access required' });
 					},
 				});
 			});
@@ -145,7 +151,13 @@ describe('/api/admin/users', () => {
 
 		describe('Success Path Tests', () => {
 			it('returns all users without stats for admin users', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -165,9 +177,15 @@ describe('/api/admin/users', () => {
 			});
 
 			it('returns all users with stats when includeStats=true', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
-				mockGetUserStats.mockResolvedValue(mockUserStats);
+				mockGetUserStats.mockResolvedValue(mockStats);
 
 				await testApiHandler({
 					appHandler,
@@ -179,7 +197,7 @@ describe('/api/admin/users', () => {
 						expect(response.status).toBe(200);
 						expect(json).toEqual({
 							users: mockUsers,
-							stats: mockUserStats,
+							stats: mockStats,
 						});
 						expect(mockGetAllUsers).toHaveBeenCalledTimes(1);
 						expect(mockGetUserStats).toHaveBeenCalledTimes(1);
@@ -188,7 +206,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles empty user list gracefully', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue([]);
 				mockGetUserStats.mockResolvedValue({
 					total: 0,
@@ -229,7 +253,13 @@ describe('/api/admin/users', () => {
 					last_session: i % 3 === 0 ? '2024-12-01T10:00:00Z' : null,
 				}));
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(largeUserList);
 
 				await testApiHandler({
@@ -246,7 +276,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('does not include stats when includeStats=false', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -290,7 +326,13 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(specialUsers);
 
 				await testApiHandler({
@@ -308,7 +350,13 @@ describe('/api/admin/users', () => {
 
 		describe('Error Handling Tests', () => {
 			it('handles database connection failures', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockRejectedValue(standardErrorScenarios.databaseError);
 
 				await testApiHandler({
@@ -327,7 +375,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles getUserStats failure when includeStats=true', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockRejectedValue(new Error('Stats query failed'));
 
@@ -348,7 +402,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles getAllUsers query failure', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockRejectedValue(new Error('Query execution failed'));
 
 				await testApiHandler({
@@ -367,7 +427,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles unknown error types', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockRejectedValue('String error');
 
 				await testApiHandler({
@@ -400,7 +466,13 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(usersWithNulls);
 
 				await testApiHandler({
@@ -418,7 +490,13 @@ describe('/api/admin/users', () => {
 
 		describe('Query Parameter Validation Tests', () => {
 			it('ignores invalid includeStats values', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -437,9 +515,15 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles multiple query parameters', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
-				mockGetUserStats.mockResolvedValue(mockUserStats);
+				mockGetUserStats.mockResolvedValue(mockStats);
 
 				await testApiHandler({
 					appHandler,
@@ -451,14 +535,20 @@ describe('/api/admin/users', () => {
 						expect(response.status).toBe(200);
 						expect(json).toEqual({
 							users: mockUsers,
-							stats: mockUserStats,
+							stats: mockStats,
 						});
 					},
 				});
 			});
 
 			it('handles case-sensitive includeStats parameter', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -477,7 +567,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles empty query string', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -500,7 +596,13 @@ describe('/api/admin/users', () => {
 			// These tests verify that behavior
 
 			it('should reject POST requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 				await testApiHandler({
 					appHandler,
@@ -524,7 +626,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should reject PUT requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 				await testApiHandler({
 					appHandler,
@@ -543,7 +651,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should reject DELETE requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 				await testApiHandler({
 					appHandler,
@@ -558,7 +672,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should reject PATCH requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 
 				await testApiHandler({
 					appHandler,
@@ -577,7 +697,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('should accept HEAD requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -610,7 +736,13 @@ describe('/api/admin/users', () => {
 
 		describe('Response Format & Data Integrity Tests', () => {
 			it('maintains consistent response structure', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -628,7 +760,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('maintains user data structure integrity', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue([mockUsers[0]]);
 
 				await testApiHandler({
@@ -640,7 +778,7 @@ describe('/api/admin/users', () => {
 						expect(response.status).toBe(200);
 						const user = json.users[0];
 						expect(user).toHaveProperty('id');
-						expect(user).toHaveProperty('username');
+						expect(user).toHaveProperty('email');
 						expect(user).toHaveProperty('first_name');
 						expect(user).toHaveProperty('last_name');
 						expect(user).toHaveProperty('email');
@@ -659,9 +797,15 @@ describe('/api/admin/users', () => {
 			});
 
 			it('maintains stats structure integrity when included', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
-				mockGetUserStats.mockResolvedValue(mockUserStats);
+				mockGetUserStats.mockResolvedValue(mockStats);
 
 				await testApiHandler({
 					appHandler,
@@ -699,7 +843,13 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(usersWithDates);
 
 				await testApiHandler({
@@ -719,7 +869,13 @@ describe('/api/admin/users', () => {
 
 		describe('Edge Cases & Boundary Tests', () => {
 			it('handles mixed active/inactive users', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 				mockGetUserStats.mockResolvedValue({
 					total: 3,
@@ -746,7 +902,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles users with null last_session', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({
@@ -777,7 +939,13 @@ describe('/api/admin/users', () => {
 					},
 				];
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(longDataUsers);
 
 				await testApiHandler({
@@ -794,7 +962,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles stats with zero values', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue([]);
 				mockGetUserStats.mockResolvedValue({
 					total: 0,
@@ -818,9 +992,15 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles concurrent requests', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
-				mockGetUserStats.mockResolvedValue(mockUserStats);
+				mockGetUserStats.mockResolvedValue(mockStats);
 
 				await testApiHandler({
 					appHandler,
@@ -840,7 +1020,7 @@ describe('/api/admin/users', () => {
 						// All should have same data
 						jsons.forEach(json => {
 							expect(json.users).toEqual(mockUsers);
-							expect(json.stats).toEqual(mockUserStats);
+							expect(json.stats).toEqual(mockStats);
 						});
 
 						// Functions should be called once per request
@@ -866,7 +1046,13 @@ describe('/api/admin/users', () => {
 					last_session: null,
 				}));
 
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(veryLargeUserList);
 
 				await testApiHandler({
@@ -887,7 +1073,13 @@ describe('/api/admin/users', () => {
 			});
 
 			it('handles rapid sequential requests efficiently', async () => {
-				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
+				mockRequireAdminAuth.mockResolvedValue({
+				authorized: true as const,
+				session: mockAdminSession,
+				household_id: mockAdminSession.user.household_id,
+				user_id: mockAdminSession.user.id,
+				is_admin: true,
+			});
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
 				await testApiHandler({

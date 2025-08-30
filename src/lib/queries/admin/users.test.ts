@@ -79,9 +79,8 @@ describe('Admin Users Queries', () => {
 			expect(query).toContain('u.id');
 			expect(query).toContain('u.oauth_provider');
 			expect(query).toContain('u.oauth_provider_id');
-			expect(query).toContain('u.first_name');
-			expect(query).toContain('u.last_name');
 			expect(query).toContain('u.email');
+			expect(query).toContain('u.last_name');
 			expect(query).toContain('u.is_active');
 			expect(query).toContain('u.is_admin');
 			expect(query).toContain('u.date_joined');
@@ -125,7 +124,6 @@ describe('Admin Users Queries', () => {
 
 	describe('updateUser', () => {
 		const updateData = {
-			username: 'newusername',
 			email: 'newemail@example.com',
 			first_name: 'NewFirst',
 			is_active: false,
@@ -137,7 +135,7 @@ describe('Admin Users Queries', () => {
 			const result = await updateUser(1, updateData);
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET'), ['newusername', 'NewFirst', 'newemail@example.com', 0, 1]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET'), ['NewFirst', 'newemail@example.com', 0, 1]);
 		});
 
 		it('returns false when user not found', async () => {
@@ -149,13 +147,13 @@ describe('Admin Users Queries', () => {
 		});
 
 		it('handles partial updates', async () => {
-			const partialUpdate = { username: 'newusername' };
+			const partialUpdate = { first_name: 'NewFirst' };
 			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
 			const result = await updateUser(1, partialUpdate);
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET'), expect.arrayContaining(['newusername', 1]));
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET'), expect.arrayContaining(['NewFirst', 1]));
 		});
 
 		it('handles database errors', async () => {
@@ -174,7 +172,7 @@ describe('Admin Users Queries', () => {
 		it('uses parameterized query to prevent SQL injection', async () => {
 			mockPool.execute.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]);
 
-			await updateUser(1, { username: 'test' });
+			await updateUser(1, { first_name: 'test' });
 
 			const [query, params] = mockPool.execute.mock.calls[0];
 			expect(query).toContain('?');

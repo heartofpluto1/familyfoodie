@@ -64,6 +64,30 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 			);
 		}
 
+		// Validate week range
+		if (typeof week !== 'number' || week < 1 || week > 53) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Week must be between 1 and 53',
+					code: 'INVALID_WEEK',
+				},
+				{ status: 400 }
+			);
+		}
+
+		// Validate year range
+		if (typeof year !== 'number' || year < 2000 || year > 2100) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: 'Year must be between 2000 and 2100',
+					code: 'INVALID_YEAR',
+				},
+				{ status: 400 }
+			);
+		}
+
 		const connection = await pool.getConnection();
 
 		try {

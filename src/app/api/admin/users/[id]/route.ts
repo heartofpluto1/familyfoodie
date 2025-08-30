@@ -54,7 +54,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 			return NextResponse.json({ error: 'Cannot modify your own privileges' }, { status: 400 });
 		}
 
-		await updateUser(userId, updates);
+		const result = await updateUser(userId, updates);
+
+		if (!result) {
+			return NextResponse.json({ error: 'User not found' }, { status: 404 });
+		}
 
 		const updatedUser = await getUserById(userId);
 
@@ -86,7 +90,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 			return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
 		}
 
-		await deleteUser(userId);
+		const result = await deleteUser(userId);
+
+		if (!result) {
+			return NextResponse.json({ error: 'User not found' }, { status: 404 });
+		}
 
 		return NextResponse.json({
 			message: 'User deleted successfully',
