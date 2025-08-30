@@ -153,6 +153,8 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async getUserByAccount({ provider, providerAccountId }) {
+			console.log('🔎 getUserByAccount called with:', { provider, providerAccountId });
+			
 			// First check users table directly for OAuth provider info
 			const [directUsers] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE oauth_provider = ? AND oauth_provider_id = ?', [
 				provider,
@@ -161,6 +163,12 @@ export function MySQLAdapter(): Adapter {
 
 			if (directUsers.length > 0) {
 				const user = directUsers[0];
+				// Don't return users with placeholder IDs - let NextAuth link them properly
+				if (PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id) || user.oauth_provider_id === 'pending') {
+					console.log('🚫 Found user with placeholder ID, returning null to allow linking:', { id: user.id, oauth_provider_id: user.oauth_provider_id });
+					return null;
+				}
+				console.log('✅ Found user by account:', { id: user.id, email: user.email });
 				return {
 					id: user.id.toString(),
 					email: user.email,
@@ -169,6 +177,8 @@ export function MySQLAdapter(): Adapter {
 					emailVerified: user.email_verified ? new Date() : null,
 				};
 			}
+
+			console.log('❌ No user found by account, checking nextauth_accounts table...');
 
 			// Fallback to checking nextauth_accounts table
 			const [users] = await pool.execute<DbUser[]>(
