@@ -68,9 +68,13 @@ export function MySQLAdapter(): Adapter {
 					// Mark invitation as accepted
 					await connection.execute('UPDATE household_invitations SET accepted_at = NOW() WHERE email = ? AND household_id = ?', [user.email, householdId]);
 				} else {
-					// Create new household for user
+					// Extract name parts to get last name for household
+					const nameParts = (user.name || '').split(' ');
+					const lastName = nameParts.slice(1).join(' ') || nameParts[0] || user.email?.split('@')[0] || 'Household';
+					
+					// Create new household for user with just last name
 					const [householdResult] = await connection.execute<ResultSetHeader>('INSERT INTO households (name) VALUES (?)', [
-						`${user.name || user.email}'s Household`,
+						lastName,
 					]);
 					householdId = householdResult.insertId;
 

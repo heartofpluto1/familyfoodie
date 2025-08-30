@@ -12,7 +12,6 @@ export default function NewUserWelcome({ householdName }: NewUserWelcomeProps) {
 			<div className="bg-surface border border-custom rounded-sm p-8 text-center">
 				<div className="mb-6">
 					<h2 className="text-2xl text-foreground mb-2">Welcome to the {householdName} kitchen! 🍽️</h2>
-					<p className="text-lg text-secondary mb-4">&ldquo;Never ask &lsquo;what&rsquo;s for dinner?&rsquo; again&rdquo;</p>
 				</div>
 
 				<div className="max-w-2xl mx-auto">
