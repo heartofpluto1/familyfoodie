@@ -89,13 +89,11 @@ describe('/api/settings GET', () => {
 		});
 		const mockUserValidation = [{ id: 2 }];
 		const mockHouseholdMembers = [
-			{ first_name: 'Alice', last_name: 'Smith' }, 
-			{ first_name: 'Bob', last_name: 'Johnson' }, 
-			{ first_name: 'Carol', last_name: 'Davis' }
+			{ first_name: 'Alice', last_name: 'Smith' },
+			{ first_name: 'Bob', last_name: 'Johnson' },
+			{ first_name: 'Carol', last_name: 'Davis' },
 		];
-		const mockPendingInvitations = [
-			{ email: 'pending@example.com' }
-		];
+		const mockPendingInvitations = [{ email: 'pending@example.com' }];
 
 		mockExecute
 			.mockResolvedValueOnce([mockUserValidation as RowDataPacket[], []]) // User validation query
@@ -227,9 +225,9 @@ describe('/api/settings GET', () => {
 		});
 		const mockUserValidation = [{ id: 2 }];
 		const mockHouseholdMembers = [
-			{ first_name: "José", last_name: "García" }, 
-			{ first_name: "Mary-Jane", last_name: "O'Connor" }, 
-			{ first_name: "François", last_name: "Müller" }
+			{ first_name: 'José', last_name: 'García' },
+			{ first_name: 'Mary-Jane', last_name: "O'Connor" },
+			{ first_name: 'François', last_name: 'Müller' },
 		];
 
 		mockExecute
@@ -246,7 +244,7 @@ describe('/api/settings GET', () => {
 				const data = await response.json();
 				expect(data).toEqual({
 					household_name: 'Test Household',
-					members: ["José García", "Mary-Jane O'Connor", "François Müller"],
+					members: ['José García', "Mary-Jane O'Connor", 'François Müller'],
 				});
 			},
 		});

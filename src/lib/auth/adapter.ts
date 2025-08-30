@@ -17,7 +17,6 @@ interface DbUser extends RowDataPacket {
 	is_active: boolean;
 }
 
-
 export function MySQLAdapter(): Adapter {
 	return {
 		async createUser(user: Omit<AdapterUser, 'id'>) {
@@ -32,8 +31,12 @@ export function MySQLAdapter(): Adapter {
 				if (existingUsers.length > 0) {
 					// User exists - update their OAuth info and profile image for first-time OAuth login
 					const existingUser = existingUsers[0];
-					console.log('👤 Found existing user:', { id: existingUser.id, oauth_provider: existingUser.oauth_provider, oauth_provider_id: existingUser.oauth_provider_id });
-					
+					console.log('👤 Found existing user:', {
+						id: existingUser.id,
+						oauth_provider: existingUser.oauth_provider,
+						oauth_provider_id: existingUser.oauth_provider_id,
+					});
+
 					// Only update if they don't already have OAuth credentials
 					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending') {
 						console.log('🔄 Updating existing user with OAuth info...');
@@ -42,7 +45,7 @@ export function MySQLAdapter(): Adapter {
 							['google', 'pending', user.image, existingUser.id]
 						);
 					}
-					
+
 					await connection.commit();
 					const result = {
 						id: existingUser.id.toString(),
@@ -141,13 +144,13 @@ export function MySQLAdapter(): Adapter {
 
 			const user = users[0];
 			console.log('✅ Found user:', { id: user.id, email: user.email, oauth_provider: user.oauth_provider, oauth_provider_id: user.oauth_provider_id });
-			
+
 			// If user has pending OAuth credentials, treat them as non-OAuth user for NextAuth
 			if (user.oauth_provider && user.oauth_provider_id === 'pending') {
 				console.log('🔄 User has pending OAuth, returning null to trigger account creation/linking flow');
 				return null;
 			}
-			
+
 			return {
 				id: user.id.toString(),
 				email: user.email,
@@ -159,7 +162,7 @@ export function MySQLAdapter(): Adapter {
 
 		async getUserByAccount({ provider, providerAccountId }) {
 			console.log('🔎 getUserByAccount called with:', { provider, providerAccountId });
-			
+
 			// First check users table directly for OAuth provider info
 			const [directUsers] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE oauth_provider = ? AND oauth_provider_id = ?', [
 				provider,

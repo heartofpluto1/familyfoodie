@@ -89,19 +89,12 @@ export default function UserSettings({ isOpen, onClose }: UserSettingsProps) {
 								<h3 className="text-sm font-medium text-foreground mb-2">Members ({householdData.members.length})</h3>
 								<div className="space-y-1 mb-3">
 									{householdData.members.map((member, index) => (
-										<p 
-											key={index} 
-											className={`text-sm ${
-												member.includes('(pending)') 
-													? 'text-muted italic' 
-													: 'text-secondary'
-											}`}
-										>
+										<p key={index} className={`text-sm ${member.includes('(pending)') ? 'text-muted italic' : 'text-secondary'}`}>
 											{member}
 										</p>
 									))}
 								</div>
-								
+
 								{/* Invite Button */}
 								<button
 									onClick={() => setShowInviteModal(true)}
@@ -114,7 +107,7 @@ export default function UserSettings({ isOpen, onClose }: UserSettingsProps) {
 					) : null}
 				</div>
 			</div>
-			
+
 			{/* Invitation Modal */}
 			<InvitationModal
 				isOpen={showInviteModal}

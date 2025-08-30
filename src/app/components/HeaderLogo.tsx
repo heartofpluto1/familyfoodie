@@ -148,11 +148,7 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 											</div>
 										)}
 									</button>
-									<button
-										onClick={() => signOut({ callbackUrl: '/' })}
-										className="btn-default p-1.5 sm:p-2 rounded-sm inline-block"
-										title="Sign Out"
-									>
+									<button onClick={() => signOut({ callbackUrl: '/' })} className="btn-default p-1.5 sm:p-2 rounded-sm inline-block" title="Sign Out">
 										<LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
 									</button>
 								</div>

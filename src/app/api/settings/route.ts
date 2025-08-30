@@ -41,7 +41,7 @@ export async function GET(): Promise<NextResponse> {
 			 ORDER BY first_name ASC, last_name ASC`,
 			[auth.household_id]
 		);
-		
+
 		// Fetch pending invitations for this household
 		const [pendingInvitations] = await pool.execute<PendingInvitationRow[]>(
 			`SELECT email 
@@ -57,7 +57,7 @@ export async function GET(): Promise<NextResponse> {
 		// Combine active members and pending invitations
 		const allMembers = [
 			...householdMembers.map(member => `${member.first_name} ${member.last_name}`.trim()),
-			...pendingInvitations.map(invitation => `${invitation.email} (pending)`)
+			...pendingInvitations.map(invitation => `${invitation.email} (pending)`),
 		];
 
 		return NextResponse.json({

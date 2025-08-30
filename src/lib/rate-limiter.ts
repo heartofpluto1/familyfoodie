@@ -122,7 +122,7 @@ class RateLimiter {
 		} else {
 			const newAttempts = data.attempts + 1;
 			const shouldBlock = newAttempts >= this.MAX_ATTEMPTS;
-			
+
 			this.attempts.set(key, {
 				...data,
 				attempts: newAttempts,

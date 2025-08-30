@@ -15,18 +15,18 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState(false);
-	
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		
+
 		if (!email) {
 			setError('Please enter an email address');
 			return;
 		}
-		
+
 		setIsLoading(true);
 		setError(null);
-		
+
 		try {
 			const response = await fetch('/api/invitations/send', {
 				method: 'POST',
@@ -35,51 +35,47 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 				},
 				body: JSON.stringify({ email }),
 			});
-			
+
 			const data = await response.json();
-			
+
 			if (!response.ok) {
 				throw new Error(data.error || 'Failed to send invitation');
 			}
-			
+
 			setSuccess(true);
 			setEmail('');
-			
+
 			// Notify parent component to refresh the members list
 			if (onInvitationSent) {
 				onInvitationSent();
 			}
-			
+
 			// Close modal after 2 seconds
 			setTimeout(() => {
 				setSuccess(false);
 				onClose();
 			}, 2000);
-			
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Failed to send invitation');
 		} finally {
 			setIsLoading(false);
 		}
 	};
-	
+
 	const handleClose = () => {
 		setEmail('');
 		setError(null);
 		setSuccess(false);
 		onClose();
 	};
-	
+
 	if (!isOpen) return null;
-	
+
 	return (
 		<>
 			{/* Backdrop */}
-			<div 
-				className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300"
-				onClick={handleClose}
-			/>
-			
+			<div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300" onClick={handleClose} />
+
 			{/* Modal */}
 			<div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4">
 				<div className="bg-surface rounded-sm border border-custom shadow-xl">
@@ -94,7 +90,7 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 							<CloseIcon className="w-5 h-5" />
 						</button>
 					</div>
-					
+
 					{/* Body */}
 					<div className="p-4">
 						{success ? (
@@ -117,23 +113,21 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 										type="email"
 										id="email"
 										value={email}
-										onChange={(e) => setEmail(e.target.value)}
+										onChange={e => setEmail(e.target.value)}
 										placeholder="Enter email address"
 										className="w-full px-3 py-2 bg-background border border-custom rounded-sm text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
 										disabled={isLoading}
 										autoFocus
 									/>
-									<p className="text-xs text-secondary mt-2">
-										They'll receive an email invitation to join your household.
-									</p>
+									<p className="text-xs text-secondary mt-2">They&apos;ll receive an email invitation to join your household.</p>
 								</div>
-								
+
 								{error && (
 									<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-sm">
 										<p className="text-sm text-red-600">{error}</p>
 									</div>
 								)}
-								
+
 								<div className="flex gap-3">
 									<button
 										type="button"

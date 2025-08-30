@@ -2,7 +2,6 @@
 
 import { signIn } from 'next-auth/react';
 import { FcGoogle } from 'react-icons/fc';
-import { SiFacebook } from 'react-icons/si';
 
 export default function SignIn() {
 	return (

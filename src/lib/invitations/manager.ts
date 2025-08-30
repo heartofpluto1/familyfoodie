@@ -25,22 +25,22 @@ interface InvitationRow extends RowDataPacket {
 export async function createInvitation(params: CreateInvitationParams) {
 	// Generate secure random token (URL-safe)
 	const inviteToken = crypto.randomBytes(32).toString('base64url');
-	
+
 	// Set expiration to 7 days from now
 	const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-	
+
 	// Check if user is already in the household
-	const [existingMembers] = await pool.execute<RowDataPacket[]>(
-		'SELECT id FROM users WHERE email = ? AND household_id = ?',
-		[params.email, params.householdId]
-	);
-	
+	const [existingMembers] = await pool.execute<RowDataPacket[]>('SELECT id FROM users WHERE email = ? AND household_id = ?', [
+		params.email,
+		params.householdId,
+	]);
+
 	if (existingMembers.length > 0) {
 		// Log specific reason for internal debugging
 		console.log(`Invitation blocked: User ${params.email} is already a member of household ${params.householdId}`);
 		throw new Error('Cannot send invitation');
 	}
-	
+
 	// Check if invitation already exists for this email/household
 	const [existingInvitations] = await pool.execute<RowDataPacket[]>(
 		`SELECT id FROM household_invitations 
@@ -48,13 +48,13 @@ export async function createInvitation(params: CreateInvitationParams) {
 		 AND expires_at > NOW() AND accepted_at IS NULL AND declined_at IS NULL`,
 		[params.email, params.householdId]
 	);
-	
+
 	if (existingInvitations.length > 0) {
 		// Log specific reason for internal debugging
 		console.log(`Invitation blocked: Pending invitation exists for ${params.email} to household ${params.householdId}`);
 		throw new Error('Cannot send invitation');
 	}
-	
+
 	// Insert invitation record
 	const [result] = await pool.execute<ResultSetHeader>(
 		`INSERT INTO household_invitations 
@@ -62,11 +62,11 @@ export async function createInvitation(params: CreateInvitationParams) {
 		 VALUES (?, ?, ?, ?, ?)`,
 		[params.email, params.householdId, params.invitedByUserId, inviteToken, expiresAt]
 	);
-	
+
 	return {
 		invitationId: result.insertId,
 		inviteToken,
-		expiresAt
+		expiresAt,
 	};
 }
 
@@ -83,7 +83,7 @@ export async function validateInvitationToken(token: string): Promise<Invitation
 		 AND hi.declined_at IS NULL`,
 		[token]
 	);
-	
+
 	return rows[0] || null;
 }
 
@@ -101,22 +101,16 @@ export async function getPendingInvitations(email: string): Promise<InvitationRo
 		 ORDER BY hi.created_at DESC`,
 		[email]
 	);
-	
+
 	return rows;
 }
 
 export async function markInvitationAccepted(token: string) {
-	await pool.execute(
-		'UPDATE household_invitations SET accepted_at = NOW() WHERE invite_token = ?',
-		[token]
-	);
+	await pool.execute('UPDATE household_invitations SET accepted_at = NOW() WHERE invite_token = ?', [token]);
 }
 
 export async function markInvitationDeclined(token: string) {
-	await pool.execute(
-		'UPDATE household_invitations SET declined_at = NOW() WHERE invite_token = ?',
-		[token]
-	);
+	await pool.execute('UPDATE household_invitations SET declined_at = NOW() WHERE invite_token = ?', [token]);
 }
 
 // Check rate limiting for invitation sending
@@ -129,6 +123,6 @@ export async function checkInvitationRateLimit(userId: number): Promise<boolean>
 		 AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
 		[userId]
 	);
-	
+
 	return rows[0].count < 10;
 }

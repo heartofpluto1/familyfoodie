@@ -13,7 +13,7 @@ interface SendInvitationEmailParams {
 
 export async function sendInvitationEmail(params: SendInvitationEmailParams) {
 	const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/invite?token=${params.inviteToken}`;
-	
+
 	const html = `
 		<!DOCTYPE html>
 		<html>
@@ -50,18 +50,18 @@ export async function sendInvitationEmail(params: SendInvitationEmailParams) {
 				<hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
 				
 				<p style="font-size: 12px; color: #999; text-align: center;">
-					This invitation expires on ${params.expiresAt.toLocaleDateString('en-US', { 
-						weekday: 'long', 
-						year: 'numeric', 
-						month: 'long', 
-						day: 'numeric' 
+					This invitation expires on ${params.expiresAt.toLocaleDateString('en-US', {
+						weekday: 'long',
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
 					})}.
 				</p>
 			</div>
 		</body>
 		</html>
 	`;
-	
+
 	const text = `
 You're Invited to Family Foodie!
 
@@ -70,17 +70,17 @@ ${params.inviterName} has invited you to join their household "${params.househol
 Accept the invitation by clicking this link:
 ${inviteUrl}
 
-This invitation expires on ${params.expiresAt.toLocaleDateString('en-US', { 
-	weekday: 'long', 
-	year: 'numeric', 
-	month: 'long', 
-	day: 'numeric' 
-})}.
+This invitation expires on ${params.expiresAt.toLocaleDateString('en-US', {
+		weekday: 'long',
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+	})}.
 
 Thanks,
 The Family Foodie Team
 	`;
-	
+
 	try {
 		// If no API key is configured, log the email instead (for development)
 		if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'development') {
@@ -88,16 +88,20 @@ The Family Foodie Team
 			console.log('Invitation URL:', inviteUrl);
 			return { success: true, messageId: 'dev-mode' };
 		}
-		
-		const data = await resend.emails.send({
+
+		const response = await resend.emails.send({
 			from: process.env.RESEND_FROM_EMAIL || 'Family Foodie <onboarding@resend.dev>',
 			to: [params.recipientEmail],
 			subject: `${params.inviterName} invited you to join ${params.householdName} on Family Foodie`,
 			html,
 			text,
 		});
-		
-		return { success: true, messageId: data.id };
+
+		if (!response.data) {
+			throw new Error('Failed to send email - no response data');
+		}
+
+		return { success: true, messageId: response.data.id };
 	} catch (error) {
 		console.error('Failed to send invitation email:', error);
 		throw new Error('Failed to send invitation email');

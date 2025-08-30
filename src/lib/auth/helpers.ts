@@ -24,7 +24,7 @@ export async function requireAuth() {
 			household_id: session.user.household_id,
 			user_id: session.user.id,
 		};
-	} catch (error) {
+	} catch {
 		// Handle session fetch errors
 		return {
 			authorized: false as const,
@@ -67,7 +67,7 @@ export async function requireAdminAuth() {
 			user_id: session.user.id,
 			is_admin: true,
 		};
-	} catch (error) {
+	} catch {
 		// Handle session fetch or database errors
 		return {
 			authorized: false as const,
