@@ -48,8 +48,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 			collectionId = result.insertId;
 			filename = generateCollectionSecureFilename(collectionId, title);
 
-			console.log(`Storage mode: ${getStorageMode()}`);
-			console.log(`Creating collection with filename: ${filename}`);
 
 			// Determine dark filename based on whether dark image is provided
 			let darkFilename: string;
@@ -65,7 +63,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 					await pool.execute('DELETE FROM collections WHERE id = ?', [collectionId]);
 					return NextResponse.json({ error: 'Failed to upload light mode image' }, { status: 500 });
 				}
-				console.log('Successfully uploaded light mode image');
 			}
 
 			if (darkImage) {
@@ -78,14 +75,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 					console.error('Failed to upload dark image:', darkUploadResult.error);
 					// Use light image as fallback for dark mode
 					darkFilename = filename;
-					console.warn('Dark mode image upload failed, using light image as fallback');
 				} else {
-					console.log('Successfully uploaded dark mode image');
 				}
 			} else {
 				// No dark image provided - use light image for dark mode
 				darkFilename = filename;
-				console.log('No dark image provided, using light image for dark mode');
 			}
 
 			// Update collection with both light and dark filenames
