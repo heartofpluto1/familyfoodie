@@ -21,11 +21,12 @@ import { UpdateImageResponse, UpdatePdfResponse } from '@/types/fileUpload';
 interface RecipeEditorProps {
 	recipe: RecipeDetail;
 	collections: Collection[];
+	isOwned: boolean;
 }
 
 type EditMode = 'none' | 'details' | 'ingredients';
 
-const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
+const RecipeEditor = ({ recipe, collections, isOwned }: RecipeEditorProps) => {
 	const router = useRouter();
 	const { showToast } = useToast();
 	const { options } = useRecipeOptions();
@@ -453,72 +454,74 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 									e.currentTarget.src = '/onerror_recipe.png';
 								}}
 							/>
-							{/* Edit buttons */}
-							<div className="absolute bottom-4 right-4 flex gap-2">
-								{editMode === 'details' ? (
-									<>
-										{/* Save button */}
-										<button
-											onClick={handleSaveDetails}
-											disabled={isLoading}
-											className="w-10 h-10 bg-green-600 text-white rounded-full shadow-sm hover:bg-green-700 hover:shadow transition-colors disabled:opacity-50 flex items-center justify-center"
-											title="Save"
-										>
-											<SaveIcon className="w-4 h-4" />
-										</button>
-										{/* Cancel button */}
-										<button
-											onClick={handleCancel}
-											className="w-10 h-10 bg-gray-500 text-white rounded-full shadow-sm hover:bg-gray-600 hover:shadow transition-colors flex items-center justify-center"
-											title="Cancel"
-										>
-											<CancelIcon className="w-4 h-4" />
-										</button>
-									</>
-								) : (
-									<>
-										{/* Camera edit button */}
-										<button
-											onClick={() => setShowImageModal(true)}
-											className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
-											title="Edit image"
-										>
-											<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-												/>
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-											</svg>
-										</button>
-										{/* Paper edit button */}
-										<button
-											onClick={() => setShowPdfModal(true)}
-											className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
-											title="Edit PDF"
-										>
-											<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-												/>
-											</svg>
-										</button>
-										{/* Recipe Details edit button */}
-										<button
-											onClick={() => startEdit('details')}
-											className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
-											title="Edit details"
-										>
-											<EditIcon className="w-4 h-4" />
-										</button>
-									</>
-								)}
-							</div>
+							{/* Edit buttons - only show if user owns the collection */}
+							{isOwned && (
+								<div className="absolute bottom-4 right-4 flex gap-2">
+									{editMode === 'details' ? (
+										<>
+											{/* Save button */}
+											<button
+												onClick={handleSaveDetails}
+												disabled={isLoading}
+												className="w-10 h-10 bg-green-600 text-white rounded-full shadow-sm hover:bg-green-700 hover:shadow transition-colors disabled:opacity-50 flex items-center justify-center"
+												title="Save"
+											>
+												<SaveIcon className="w-4 h-4" />
+											</button>
+											{/* Cancel button */}
+											<button
+												onClick={handleCancel}
+												className="w-10 h-10 bg-gray-500 text-white rounded-full shadow-sm hover:bg-gray-600 hover:shadow transition-colors flex items-center justify-center"
+												title="Cancel"
+											>
+												<CancelIcon className="w-4 h-4" />
+											</button>
+										</>
+									) : (
+										<>
+											{/* Camera edit button */}
+											<button
+												onClick={() => setShowImageModal(true)}
+												className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
+												title="Edit image"
+											>
+												<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+													/>
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+												</svg>
+											</button>
+											{/* Paper edit button */}
+											<button
+												onClick={() => setShowPdfModal(true)}
+												className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
+												title="Edit PDF"
+											>
+												<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+													/>
+												</svg>
+											</button>
+											{/* Recipe Details edit button */}
+											<button
+												onClick={() => startEdit('details')}
+												className="w-10 h-10 btn-default rounded-full shadow-sm hover:shadow flex items-center justify-center"
+												title="Edit details"
+											>
+												<EditIcon className="w-4 h-4" />
+											</button>
+										</>
+									)}
+								</div>
+							)}
 						</div>
 
 						{/* Recipe Details Form */}
@@ -539,29 +542,30 @@ const RecipeEditor = ({ recipe, collections }: RecipeEditorProps) => {
 					<div>
 						<div className="pb-4 flex justify-between items-center">
 							<h2 className="text-lg">Ingredients</h2>
-							{editMode === 'ingredients' ? (
-								<div className="flex gap-2">
-									<button
-										onClick={handleSaveIngredients}
-										disabled={isLoading}
-										className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
-										title="Save"
-									>
-										<SaveIcon className="w-4 h-4" />
+							{isOwned &&
+								(editMode === 'ingredients' ? (
+									<div className="flex gap-2">
+										<button
+											onClick={handleSaveIngredients}
+											disabled={isLoading}
+											className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50"
+											title="Save"
+										>
+											<SaveIcon className="w-4 h-4" />
+										</button>
+										<button
+											onClick={handleCancel}
+											className="p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
+											title="Cancel"
+										>
+											<CancelIcon className="w-4 h-4" />
+										</button>
+									</div>
+								) : (
+									<button onClick={() => startEdit('ingredients')} className="p-2 btn-default rounded-full hover:shadow" title="Edit ingredients">
+										<EditIcon className="w-4 h-4" />
 									</button>
-									<button
-										onClick={handleCancel}
-										className="p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
-										title="Cancel"
-									>
-										<CancelIcon className="w-4 h-4" />
-									</button>
-								</div>
-							) : (
-								<button onClick={() => startEdit('ingredients')} className="p-2 btn-default rounded-full hover:shadow" title="Edit ingredients">
-									<EditIcon className="w-4 h-4" />
-								</button>
-							)}
+								))}
 						</div>
 						<IngredientsTable
 							ingredients={ingredients}

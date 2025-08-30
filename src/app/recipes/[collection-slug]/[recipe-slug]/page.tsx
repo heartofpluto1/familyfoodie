@@ -64,8 +64,15 @@ export default async function RecipeDetailsPage({ params }: PageProps) {
 
 	// Check if the recipe exists in the requested collection AND user has access to the collection
 	// A user has access if they: own it, are subscribed to it, or it's public
+	// Also determine if the user owns the collection
 	const [checkResult] = await pool.execute<RowDataPacket[]>(
-		`SELECT 1 
+		`SELECT 
+			CASE 
+				WHEN c.household_id = ? THEN 'owned'
+				WHEN cs.household_id IS NOT NULL THEN 'subscribed'
+				WHEN c.public = 1 THEN 'public'
+				ELSE NULL
+			END as access_type
 		FROM collection_recipes cr
 		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
@@ -76,13 +83,16 @@ export default async function RecipeDetailsPage({ params }: PageProps) {
 			cs.household_id IS NOT NULL OR  -- User subscribed to collection  
 			c.public = 1                    -- Public collection
 		)`,
-		[household_id, parsed.recipeId, parsed.collectionId, household_id]
+		[household_id, household_id, parsed.recipeId, parsed.collectionId, household_id]
 	);
 
 	if (checkResult.length === 0) {
 		// Recipe doesn't exist in this collection OR user doesn't have access - show 404
 		notFound();
 	}
+
+	const accessType = checkResult[0].access_type;
+	const isOwned = accessType === 'owned';
 
 	// Update the recipe object to use the current collection context (not its original collection)
 	// This is important for the delete functionality to work correctly
@@ -92,5 +102,5 @@ export default async function RecipeDetailsPage({ params }: PageProps) {
 		collection_url_slug: collectionSlug,
 	};
 
-	return <RecipeDetailsClient recipe={recipeWithCurrentCollection} collections={collections} />;
+	return <RecipeDetailsClient recipe={recipeWithCurrentCollection} collections={collections} isOwned={isOwned} />;
 }
