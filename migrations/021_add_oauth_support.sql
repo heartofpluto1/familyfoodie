@@ -164,6 +164,17 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- Clean up duplicate 'pending' entries before adding constraint
+-- Update 'pending' oauth_provider_id values to NULL (NULLs don't violate unique constraints)
+UPDATE users 
+SET oauth_provider_id = NULL 
+WHERE oauth_provider_id = 'pending';
+
+-- Also update oauth_provider to NULL for consistency when oauth_provider_id is NULL
+UPDATE users 
+SET oauth_provider = NULL 
+WHERE oauth_provider_id IS NULL AND oauth_provider = 'pending';
+
 -- Add unique constraints (only if they don't exist)
 SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND CONSTRAINT_NAME = 'unique_oauth_user');
 SET @sql = IF(@constraint_exists = 0,
