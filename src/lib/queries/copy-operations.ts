@@ -1,4 +1,5 @@
 import { PoolConnection, ResultSetHeader } from 'mysql2/promise';
+import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 /**
  * Database query utilities for copy-on-write operations
@@ -119,6 +120,7 @@ export async function getIngredientById(connection: PoolConnection, ingredientId
  * Copy a recipe to a new household
  */
 export async function copyRecipe(connection: PoolConnection, recipe: Recipe, newHouseholdId: number): Promise<number> {
+	// First insert with a temporary slug
 	const [result] = await connection.execute(
 		`
     INSERT INTO recipes (name, prepTime, cookTime, description, archived, season_id, 
@@ -136,7 +138,7 @@ export async function copyRecipe(connection: PoolConnection, recipe: Recipe, new
 			recipe.primaryType_id,
 			recipe.secondaryType_id,
 			recipe.public,
-			recipe.url_slug,
+			'temp', // Temporary slug
 			recipe.image_filename,
 			recipe.pdf_filename,
 			newHouseholdId,
@@ -144,7 +146,13 @@ export async function copyRecipe(connection: PoolConnection, recipe: Recipe, new
 		]
 	);
 
-	return (result as ResultSetHeader).insertId;
+	const newRecipeId = (result as ResultSetHeader).insertId;
+
+	// Generate and update with the new slug based on the new ID
+	const newSlug = generateSlugFromTitle(newRecipeId, recipe.name);
+	await connection.execute('UPDATE recipes SET url_slug = ? WHERE id = ?', [newSlug, newRecipeId]);
+
+	return newRecipeId;
 }
 
 /**
@@ -167,6 +175,7 @@ export async function copyRecipeIngredients(connection: PoolConnection, original
  * Copy a collection to a new household
  */
 export async function copyCollection(connection: PoolConnection, collection: Collection, newHouseholdId: number): Promise<number> {
+	// First insert with a temporary slug
 	const [result] = await connection.execute(
 		`
     INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, parent_id, public, url_slug)
@@ -180,11 +189,17 @@ export async function copyCollection(connection: PoolConnection, collection: Col
 			newHouseholdId,
 			collection.id, // parent_id
 			0, // private by default
-			collection.url_slug,
+			'temp', // Temporary slug
 		]
 	);
 
-	return (result as ResultSetHeader).insertId;
+	const newCollectionId = (result as ResultSetHeader).insertId;
+
+	// Generate and update with the new slug based on the new ID
+	const newSlug = generateSlugFromTitle(newCollectionId, collection.title);
+	await connection.execute('UPDATE collections SET url_slug = ? WHERE id = ?', [newSlug, newCollectionId]);
+
+	return newCollectionId;
 }
 
 /**

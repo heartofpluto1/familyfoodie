@@ -128,7 +128,7 @@ describe('Copy Operations Database Queries', () => {
 	});
 
 	describe('copyRecipe', () => {
-		it('should copy recipe and return new ID', async () => {
+		it('should copy recipe and generate new slug', async () => {
 			const mockRecipe = {
 				id: 1,
 				name: 'Test Recipe',
@@ -140,19 +140,23 @@ describe('Copy Operations Database Queries', () => {
 				primaryType_id: 1,
 				secondaryType_id: 1,
 				public: 0,
-				url_slug: 'test-recipe',
+				url_slug: '1-test-recipe',
 				image_filename: 'test.jpg',
 				pdf_filename: 'test.pdf',
 				household_id: 1,
 				parent_id: null,
 			};
 
-			mockConnection.execute.mockResolvedValue([{ insertId: 10 } as ResultSetHeader, []]);
+			mockConnection.execute
+				.mockResolvedValueOnce([{ insertId: 10 } as ResultSetHeader, []]) // INSERT
+				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]); // UPDATE slug
 
 			const result = await copyRecipe(mockConnection, mockRecipe, 2);
 
 			expect(result).toBe(10);
-			expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recipes'), [
+
+			// First call: INSERT with temporary slug
+			expect(mockConnection.execute).toHaveBeenNthCalledWith(1, expect.stringContaining('INSERT INTO recipes'), [
 				mockRecipe.name,
 				mockRecipe.prepTime,
 				mockRecipe.cookTime,
@@ -162,12 +166,48 @@ describe('Copy Operations Database Queries', () => {
 				mockRecipe.primaryType_id,
 				mockRecipe.secondaryType_id,
 				mockRecipe.public,
-				mockRecipe.url_slug,
+				'temp', // temporary slug
 				mockRecipe.image_filename,
 				mockRecipe.pdf_filename,
 				2, // new household_id
 				mockRecipe.id, // parent_id
 			]);
+
+			// Second call: UPDATE with new slug
+			expect(mockConnection.execute).toHaveBeenNthCalledWith(
+				2,
+				'UPDATE recipes SET url_slug = ? WHERE id = ?',
+				['10-test-recipe', 10] // new slug with new ID
+			);
+		});
+
+		it('should handle recipe names with special characters when generating slug', async () => {
+			const mockRecipe = {
+				id: 1,
+				name: 'Test Recipe with Spaces & Special!',
+				prepTime: null,
+				cookTime: null,
+				description: null,
+				archived: 0,
+				season_id: null,
+				primaryType_id: null,
+				secondaryType_id: null,
+				public: 0,
+				url_slug: '1-test-recipe-with-spaces-special',
+				image_filename: null,
+				pdf_filename: null,
+				household_id: 1,
+				parent_id: null,
+			};
+
+			mockConnection.execute
+				.mockResolvedValueOnce([{ insertId: 20 } as ResultSetHeader, []])
+				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]);
+
+			const result = await copyRecipe(mockConnection, mockRecipe, 2);
+
+			expect(result).toBe(20);
+			expect(mockConnection.execute).toHaveBeenNthCalledWith(2, 'UPDATE recipes SET url_slug = ? WHERE id = ?', ['20-test-recipe-with-spaces-special', 20]);
 		});
 	});
 
@@ -185,7 +225,7 @@ describe('Copy Operations Database Queries', () => {
 	});
 
 	describe('copyCollection', () => {
-		it('should copy collection and return new ID', async () => {
+		it('should copy collection and generate new slug', async () => {
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -195,15 +235,19 @@ describe('Copy Operations Database Queries', () => {
 				household_id: 1,
 				parent_id: null,
 				public: 1,
-				url_slug: 'test-collection',
+				url_slug: '1-test-collection',
 			};
 
-			mockConnection.execute.mockResolvedValue([{ insertId: 20 } as ResultSetHeader, []]);
+			mockConnection.execute
+				.mockResolvedValueOnce([{ insertId: 20 } as ResultSetHeader, []]) // INSERT
+				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]); // UPDATE slug
 
 			const result = await copyCollection(mockConnection, mockCollection, 2);
 
 			expect(result).toBe(20);
-			expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
+
+			// First call: INSERT with temporary slug
+			expect(mockConnection.execute).toHaveBeenNthCalledWith(1, expect.stringContaining('INSERT INTO collections'), [
 				`${mockCollection.title} (Copy)`,
 				mockCollection.subtitle,
 				mockCollection.filename,
@@ -211,7 +255,40 @@ describe('Copy Operations Database Queries', () => {
 				2, // new household_id
 				mockCollection.id, // parent_id
 				0, // private by default
-				mockCollection.url_slug,
+				'temp', // temporary slug
+			]);
+
+			// Second call: UPDATE with new slug (using original title without (Copy))
+			expect(mockConnection.execute).toHaveBeenNthCalledWith(
+				2,
+				'UPDATE collections SET url_slug = ? WHERE id = ?',
+				['20-test-collection', 20] // new slug with new ID
+			);
+		});
+
+		it('should handle collection titles with special characters when generating slug', async () => {
+			const mockCollection = {
+				id: 1,
+				title: 'Collection with Spaces & Special!',
+				subtitle: null,
+				filename: null,
+				filename_dark: null,
+				household_id: 1,
+				parent_id: null,
+				public: 0,
+				url_slug: '1-collection-with-spaces-special',
+			};
+
+			mockConnection.execute
+				.mockResolvedValueOnce([{ insertId: 30 } as ResultSetHeader, []])
+				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]);
+
+			const result = await copyCollection(mockConnection, mockCollection, 2);
+
+			expect(result).toBe(30);
+			expect(mockConnection.execute).toHaveBeenNthCalledWith(2, 'UPDATE collections SET url_slug = ? WHERE id = ?', [
+				'30-collection-with-spaces-special',
+				30,
 			]);
 		});
 	});

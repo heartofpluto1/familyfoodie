@@ -7,7 +7,8 @@ import { Collection } from '@/lib/queries/collections';
 import CollectionCardSmall from '@/app/components/CollectionCardSmall';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useToast } from '@/app/components/ToastProvider';
-import { EditIcon, TrashIcon, CursorClickIcon, CopyIcon, CancelIcon } from '@/app/components/Icons';
+import { TrashIcon, CursorClickIcon, CopyIcon, CancelIcon } from '@/app/components/Icons';
+// import { EditIcon } from '@/app/components/Icons'; // Uncomment when Edit functionality is implemented
 import RecipeList from '../components/RecipeList';
 import CopyRecipesModal from '../components/CopyRecipesModal';
 import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
@@ -160,7 +161,7 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 										</button>
 									</div>
 								) : (
-									// Normal mode: Select, Edit and Delete buttons
+									// Normal mode: Select button for all, Edit and Delete only for owned
 									<>
 										<button
 											onClick={handleEnterSelectionMode}
@@ -169,23 +170,29 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 										>
 											<CursorClickIcon className="w-4 h-4" />
 										</button>
-										<button
-											onClick={() => {
-												// TODO: Handle edit
-												console.log('Edit collection:', selectedCollection.id);
-											}}
-											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
-											title="Edit Collection"
-										>
-											<EditIcon className="w-4 h-4" />
-										</button>
-										<button
-											onClick={() => handleDeleteClick(selectedCollection)}
-											className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
-											title="Delete Collection"
-										>
-											<TrashIcon className="w-4 h-4" />
-										</button>
+										{selectedCollection.access_type === 'owned' && (
+											<>
+												{/* Edit button - commented out until implemented
+												<button
+													onClick={() => {
+														// TODO: Handle edit
+														console.log('Edit collection:', selectedCollection.id);
+													}}
+													className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+													title="Edit Collection"
+												>
+													<EditIcon className="w-4 h-4" />
+												</button>
+												*/}
+												<button
+													onClick={() => handleDeleteClick(selectedCollection)}
+													className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
+													title="Delete Collection"
+												>
+													<TrashIcon className="w-4 h-4" />
+												</button>
+											</>
+										)}
 									</>
 								)}
 							</div>
@@ -202,6 +209,7 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 					isSelecting={isSelecting}
 					selectedRecipeIds={selectedRecipeIds}
 					onToggleSelection={handleToggleRecipeSelection}
+					isOwned={selectedCollection.access_type === 'owned'}
 				/>
 			</Suspense>
 
