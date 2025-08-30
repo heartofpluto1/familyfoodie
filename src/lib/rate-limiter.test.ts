@@ -56,7 +56,7 @@ describe('RateLimiter', () => {
 			const result = await rateLimiter.checkLimit(request);
 			expect(result.allowed).toBe(false);
 			expect(result.retryAfter).toBeGreaterThan(0);
-			expect(result.message).toContain('Too many failed login attempts');
+			expect(result.message).toContain('Account temporarily locked');
 		});
 
 		it('should reset after time window expires', async () => {
@@ -285,22 +285,25 @@ describe('RateLimiter', () => {
 		it('should handle rapid concurrent requests', async () => {
 			const request = createMockRequest('192.168.1.1');
 
-			// Simulate concurrent requests
-			const promises = Array(10)
+			// Exceed the limit first to ensure blocking
+			for (let i = 0; i < 5; i++) {
+				await rateLimiter.checkLimit(request);
+				await rateLimiter.recordAttempt(request, false);
+			}
+
+			// Now all concurrent requests should be blocked
+			const promises = Array(5)
 				.fill(null)
 				.map(async () => {
 					const result = await rateLimiter.checkLimit(request);
-					if (result.allowed) {
-						await rateLimiter.recordAttempt(request, false);
-					}
 					return result;
 				});
 
 			const results = await Promise.all(promises);
 
-			// At least some should be blocked due to limit
+			// All should be blocked since we already exceeded the limit
 			const blockedCount = results.filter(r => !r.allowed).length;
-			expect(blockedCount).toBeGreaterThan(0);
+			expect(blockedCount).toBe(5);
 		});
 	});
 
@@ -417,7 +420,7 @@ describe('RateLimiter', () => {
 			// Message should not reveal specific IPs or internal state
 			expect(result.message).not.toContain('192.168.1.1');
 			expect(result.message).not.toContain('attempts');
-			expect(result.message).toMatch(/Too many failed login attempts/);
+			expect(result.message).toMatch(/Account temporarily locked/);
 		});
 
 		it('should handle XSS attempts in headers', async () => {
