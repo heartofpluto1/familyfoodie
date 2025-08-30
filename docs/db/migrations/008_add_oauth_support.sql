@@ -1,29 +1,46 @@
 -- Migration: 008_add_oauth_support.sql
--- Add NextAuth OAuth support to existing database
+-- Convert to pure OAuth authentication (idempotent)
 
--- Add OAuth fields to existing users table
-ALTER TABLE users ADD COLUMN oauth_provider VARCHAR(50) NULL COMMENT 'OAuth provider: google, facebook, etc.';
-ALTER TABLE users ADD COLUMN oauth_provider_id VARCHAR(255) NULL COMMENT 'Provider-specific user ID';
-ALTER TABLE users ADD COLUMN oauth_email VARCHAR(254) NULL COMMENT 'Email from OAuth provider';
-ALTER TABLE users ADD COLUMN email_verified TINYINT(1) DEFAULT 0 COMMENT 'Email verification status';
-ALTER TABLE users ADD COLUMN profile_image_url VARCHAR(500) NULL COMMENT 'Profile image from OAuth provider';
+-- Drop legacy authentication columns
+ALTER TABLE users DROP COLUMN IF EXISTS username;
+ALTER TABLE users DROP COLUMN IF EXISTS password;
 
--- Make password optional for OAuth users
-ALTER TABLE users MODIFY COLUMN password VARCHAR(128) NULL COMMENT 'Password hash (NULL for OAuth users)';
+-- Add OAuth-specific fields (only if they don't exist)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(50) NOT NULL DEFAULT 'google' COMMENT 'OAuth provider: google, facebook, etc.';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider_id VARCHAR(255) NOT NULL DEFAULT '0' COMMENT 'Provider-specific user ID';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TINYINT(1) DEFAULT 1 COMMENT 'Email verification status';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR(500) NULL COMMENT 'Profile image from OAuth provider';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp';
 
--- Add performance indexes
-ALTER TABLE users ADD INDEX idx_oauth_provider (oauth_provider);
-ALTER TABLE users ADD INDEX idx_oauth_provider_id (oauth_provider_id);
-ALTER TABLE users ADD INDEX idx_oauth_email (oauth_email);
-ALTER TABLE users ADD INDEX idx_email_verified (email_verified);
+-- Ensure required fields exist (may already be present from Django)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin TINYINT(1) DEFAULT 0 COMMENT 'Admin status';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active TINYINT(1) DEFAULT 1 COMMENT 'Account active status';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS date_joined DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Account creation date';
 
--- Add unique constraints
-ALTER TABLE users ADD UNIQUE KEY unique_oauth_user (oauth_provider, oauth_provider_id);
--- Note: unique_email constraint may already exist, check first
--- ALTER TABLE users ADD UNIQUE KEY unique_email (email);
+-- Migrate existing users to have placeholder OAuth values
+-- Use their user ID as the oauth_provider_id (1, 2, 3)
+UPDATE users 
+SET oauth_provider = 'google',
+    oauth_provider_id = CAST(id AS CHAR),
+    email_verified = 1
+WHERE oauth_provider = 'google' AND oauth_provider_id = '0';
+
+-- Remove the defaults after migration
+ALTER TABLE users ALTER COLUMN oauth_provider DROP DEFAULT;
+ALTER TABLE users ALTER COLUMN oauth_provider_id DROP DEFAULT;
+
+-- Add performance indexes (only if they don't exist)
+ALTER TABLE users ADD INDEX IF NOT EXISTS idx_oauth_provider (oauth_provider);
+ALTER TABLE users ADD INDEX IF NOT EXISTS idx_oauth_provider_id (oauth_provider_id);
+ALTER TABLE users ADD INDEX IF NOT EXISTS idx_email_verified (email_verified);
+
+-- Add unique constraints (only if they don't exist)
+ALTER TABLE users ADD UNIQUE KEY IF NOT EXISTS unique_oauth_user (oauth_provider, oauth_provider_id);
+-- Email uniqueness - only add if doesn't exist
+ALTER TABLE users ADD UNIQUE KEY IF NOT EXISTS unique_email (email);
 
 -- Create NextAuth accounts table for OAuth token management
-CREATE TABLE nextauth_accounts (
+CREATE TABLE IF NOT EXISTS nextauth_accounts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     type VARCHAR(255) NOT NULL,
@@ -46,7 +63,7 @@ CREATE TABLE nextauth_accounts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Create NextAuth sessions table
-CREATE TABLE nextauth_sessions (
+CREATE TABLE IF NOT EXISTS nextauth_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     session_token VARCHAR(255) NOT NULL UNIQUE,
     user_id INT NOT NULL,
@@ -60,8 +77,8 @@ CREATE TABLE nextauth_sessions (
     INDEX idx_session_token (session_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Create household invitations table (for Phase 2)
-CREATE TABLE household_invitations (
+-- Create household invitations table
+CREATE TABLE IF NOT EXISTS household_invitations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
     household_id INT NOT NULL,
@@ -82,10 +99,10 @@ CREATE TABLE household_invitations (
     INDEX idx_invited_by (invited_by_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Mark existing users as email verified (they have passwords)
-UPDATE users SET email_verified = 1 WHERE password IS NOT NULL;
+-- No need to mark existing users as verified since we're removing password auth entirely
 
--- Create event to clean up expired sessions
+-- Create event to clean up expired sessions (drop if exists first)
+DROP EVENT IF EXISTS cleanup_expired_sessions;
 DELIMITER $$
 CREATE EVENT cleanup_expired_sessions
     ON SCHEDULE EVERY 1 DAY
@@ -95,7 +112,8 @@ CREATE EVENT cleanup_expired_sessions
     END$$
 DELIMITER ;
 
--- Create event to clean up expired invitations
+-- Create event to clean up expired invitations (drop if exists first)
+DROP EVENT IF EXISTS cleanup_expired_invitations;
 DELIMITER $$
 CREATE EVENT cleanup_expired_invitations
     ON SCHEDULE EVERY 1 DAY
@@ -111,6 +129,6 @@ DELIMITER ;
 -- Enable event scheduler if not already enabled
 SET GLOBAL event_scheduler = ON;
 
--- Insert migration record
-INSERT INTO schema_migrations (version, executed_at, execution_time_ms) VALUES
+-- Insert migration record (only if not already run)
+INSERT IGNORE INTO schema_migrations (version, executed_at, execution_time_ms) VALUES
 ('008_add_oauth_support.sql', NOW(), 0);

@@ -1,9 +1,10 @@
 export interface User {
 	id: number;
-	username: string;
+	email: string;
 	first_name: string;
 	last_name: string;
-	email: string;
+	oauth_provider: string;
+	oauth_provider_id: string;
 	is_active: boolean;
 	is_admin: boolean;
 	date_joined: string;
@@ -11,7 +12,6 @@ export interface User {
 }
 
 export interface UserUpdate {
-	username?: string;
 	first_name?: string;
 	last_name?: string;
 	email?: string;

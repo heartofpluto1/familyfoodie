@@ -9,11 +9,16 @@ interface DbUser extends RowDataPacket {
 	first_name: string;
 	last_name: string;
 	household_id: number;
-	oauth_provider: string | null;
-	oauth_provider_id: string | null;
+	oauth_provider: string;
+	oauth_provider_id: string;
 	email_verified: boolean;
 	profile_image_url: string | null;
+	is_admin: boolean;
+	is_active: boolean;
 }
+
+// Placeholder IDs that indicate account needs OAuth linking
+const PLACEHOLDER_OAUTH_IDS = ['1', '2', '3'];
 
 export function MySQLAdapter(): Adapter {
 	return {
@@ -70,13 +75,15 @@ export function MySQLAdapter(): Adapter {
 				const firstName = nameParts[0] || '';
 				const lastName = nameParts.slice(1).join(' ') || '';
 
+				// For new users, we'll update oauth details when they're linked via linkAccount
 				const [userResult] = await connection.execute<ResultSetHeader>(
 					`INSERT INTO users (
-            username, email, first_name, last_name, 
+            email, first_name, last_name, 
             household_id, email_verified, profile_image_url,
-            is_admin, is_active, date_joined, password
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, NOW(), NULL)`,
-					[user.email, user.email, firstName, lastName, householdId, user.emailVerified ? 1 : 0, user.image]
+            oauth_provider, oauth_provider_id,
+            is_admin, is_active, date_joined
+          ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', 0, 1, NOW())`,
+					[user.email, firstName, lastName, householdId, user.emailVerified ? 1 : 0, user.image]
 				);
 
 				await connection.commit();
@@ -127,6 +134,24 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async getUserByAccount({ provider, providerAccountId }) {
+			// First check users table directly for OAuth provider info
+			const [directUsers] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE oauth_provider = ? AND oauth_provider_id = ?', [
+				provider,
+				providerAccountId,
+			]);
+
+			if (directUsers.length > 0) {
+				const user = directUsers[0];
+				return {
+					id: user.id.toString(),
+					email: user.email,
+					name: `${user.first_name} ${user.last_name}`.trim(),
+					image: user.profile_image_url,
+					emailVerified: user.email_verified ? new Date() : null,
+				};
+			}
+
+			// Fallback to checking nextauth_accounts table
 			const [users] = await pool.execute<DbUser[]>(
 				`SELECT u.* FROM users u
          JOIN nextauth_accounts a ON u.id = a.user_id
@@ -186,6 +211,31 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async linkAccount(account: Account) {
+			// Check if this is a placeholder account that needs linking
+			const [users] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE id = ?', [account.userId]);
+
+			if (users.length > 0) {
+				const user = users[0];
+
+				// Check if this is a placeholder account (IDs 1, 2, or 3)
+				if (PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id)) {
+					// This is an existing user's first OAuth login - update their OAuth details
+					await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, email_verified = 1 WHERE id = ?', [
+						account.provider,
+						account.providerAccountId,
+						account.userId,
+					]);
+				} else if (user.oauth_provider === 'pending') {
+					// This is a new user created via createUser - update their OAuth details
+					await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ? WHERE id = ?', [
+						account.provider,
+						account.providerAccountId,
+						account.userId,
+					]);
+				}
+			}
+
+			// Still store in nextauth_accounts for session management
 			await pool.execute(
 				`INSERT INTO nextauth_accounts (
           user_id, type, provider, provider_account_id,
@@ -206,13 +256,6 @@ export function MySQLAdapter(): Adapter {
 					account.session_state,
 				]
 			);
-
-			// Update user with OAuth provider info
-			await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ? WHERE id = ?', [
-				account.provider,
-				account.providerAccountId,
-				account.userId,
-			]);
 		},
 
 		async unlinkAccount({ provider, providerAccountId }: { provider: string; providerAccountId: string }) {

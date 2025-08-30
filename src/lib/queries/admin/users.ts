@@ -8,10 +8,11 @@ export async function getAllUsers(): Promise<User[]> {
 	const [users] = await pool.execute<UserRow[]>(`
 		SELECT 
 			u.id,
-			u.username,
+			u.email,
 			u.first_name,
 			u.last_name,
-			u.email,
+			u.oauth_provider,
+			u.oauth_provider_id,
 			u.is_active,
 			u.is_admin,
 			u.date_joined,
@@ -28,10 +29,11 @@ export async function getUserById(userId: number): Promise<User | null> {
 		`
 		SELECT 
 			u.id,
-			u.username,
+			u.email,
 			u.first_name,
 			u.last_name,
-			u.email,
+			u.oauth_provider,
+			u.oauth_provider_id,
 			u.is_active,
 			u.is_admin,
 			u.date_joined,
@@ -49,10 +51,6 @@ export async function updateUser(userId: number, updates: UserUpdate): Promise<b
 	const fields: string[] = [];
 	const values: (string | number)[] = [];
 
-	if (updates.username !== undefined) {
-		fields.push('username = ?');
-		values.push(updates.username);
-	}
 	if (updates.first_name !== undefined) {
 		fields.push('first_name = ?');
 		values.push(updates.first_name);
