@@ -316,8 +316,9 @@ CREATE EVENT cleanup_expired_invitations
     END$$
 DELIMITER ;
 
--- Enable event scheduler if not already enabled
-SET GLOBAL event_scheduler = ON;
+-- Note: Event scheduler must be enabled at the database server level
+-- In Cloud SQL, this is done via the cloud console or gcloud CLI, not here
+-- SET GLOBAL event_scheduler = ON; -- Commented out for Cloud SQL compatibility
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
