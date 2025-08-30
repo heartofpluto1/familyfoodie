@@ -49,7 +49,7 @@ const Toast = ({ toast, onRemove }: ToastProps) => {
 
 	return (
 		<div
-			className={`relative w-80 mb-2 rounded-sm shadow-lg text-white transform transition-all duration-300 ease-out cursor-pointer hover:opacity-90 ${
+			className={`pointer-events-auto relative w-80 mb-2 rounded-sm shadow-lg text-white transform transition-all duration-300 ease-out cursor-pointer hover:opacity-90 ${
 				isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
 			}`}
 			style={{ backgroundColor: getBackgroundColor() }}
