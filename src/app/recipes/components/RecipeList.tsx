@@ -16,9 +16,10 @@ interface RecipeListProps {
 	isSelecting?: boolean;
 	selectedRecipeIds?: Set<number>;
 	onToggleSelection?: (recipeId: number) => void;
+	isOwned?: boolean;
 }
 
-const RecipeList = ({ recipes, collectionSlug, isSelecting = false, selectedRecipeIds = new Set(), onToggleSelection }: RecipeListProps) => {
+const RecipeList = ({ recipes, collectionSlug, isSelecting = false, selectedRecipeIds = new Set(), onToggleSelection, isOwned = false }: RecipeListProps) => {
 	const searchParams = useSearchParams();
 	const [searchTerm, setSearchTerm] = useState('');
 
@@ -65,13 +66,15 @@ const RecipeList = ({ recipes, collectionSlug, isSelecting = false, selectedReci
 		<>
 			<div className="mb-6 flex items-start justify-between gap-4">
 				<div className="flex gap-3 flex-shrink-0">
-					<Link
-						href={`/recipes/${collectionSlug}/import`}
-						className="inline-flex items-center bg-blue-600 hover:bg-blue-700 gap-2 px-4 py-2 text-white rounded-sm transition-colors shadow-md hover:shadow-lg"
-					>
-						<SparklesIcon className="w-4 h-4" />
-						PDF Import (powered by AI)
-					</Link>
+					{isOwned && (
+						<Link
+							href={`/recipes/${collectionSlug}/import`}
+							className="inline-flex items-center bg-blue-600 hover:bg-blue-700 gap-2 px-4 py-2 text-white rounded-sm transition-colors shadow-md hover:shadow-lg"
+						>
+							<SparklesIcon className="w-4 h-4" />
+							PDF Import (powered by AI)
+						</Link>
+					)}
 				</div>
 				<div className="flex-1 max-w-md">
 					<RecipeSearch onSearch={setSearchTerm} resultsCount={filteredRecipes.length} totalCount={recipes.length} initialSearchTerm={searchTerm} />
