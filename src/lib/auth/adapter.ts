@@ -23,6 +23,7 @@ const PLACEHOLDER_OAUTH_IDS = ['1', '2'];
 export function MySQLAdapter(): Adapter {
 	return {
 		async createUser(user: Omit<AdapterUser, 'id'>) {
+			console.log('🆕 createUser called with:', { email: user.email, name: user.name });
 			const connection = await pool.getConnection();
 			try {
 				await connection.beginTransaction();
@@ -33,9 +34,11 @@ export function MySQLAdapter(): Adapter {
 				if (existingUsers.length > 0) {
 					// User exists - update their OAuth info and profile image for first-time OAuth login
 					const existingUser = existingUsers[0];
+					console.log('👤 Found existing user:', { id: existingUser.id, oauth_provider: existingUser.oauth_provider, oauth_provider_id: existingUser.oauth_provider_id });
 					
 					// Only update if they don't already have OAuth credentials
 					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending' || PLACEHOLDER_OAUTH_IDS.includes(existingUser.oauth_provider_id)) {
+						console.log('🔄 Updating existing user with OAuth info...');
 						await connection.execute(
 							'UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, profile_image_url = ?, email_verified = 1, updated_at = NOW() WHERE id = ?',
 							['google', 'pending', user.image, existingUser.id]
@@ -43,13 +46,15 @@ export function MySQLAdapter(): Adapter {
 					}
 					
 					await connection.commit();
-					return {
+					const result = {
 						id: existingUser.id.toString(),
 						email: existingUser.email,
 						name: `${existingUser.first_name} ${existingUser.last_name}`.trim(),
 						image: user.image || existingUser.profile_image_url,
 						emailVerified: existingUser.email_verified ? new Date() : null,
 					};
+					console.log('✅ Returning existing user:', result);
+					return result;
 				}
 
 				// Check for pending invitation
@@ -128,11 +133,16 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async getUserByEmail(email) {
+			console.log('🔍 getUserByEmail called with:', email);
 			const [users] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE email = ?', [email]);
 
-			if (users.length === 0) return null;
+			if (users.length === 0) {
+				console.log('❌ No user found with email:', email);
+				return null;
+			}
 
 			const user = users[0];
+			console.log('✅ Found user:', { id: user.id, email: user.email, oauth_provider: user.oauth_provider, oauth_provider_id: user.oauth_provider_id });
 			return {
 				id: user.id.toString(),
 				email: user.email,
@@ -220,6 +230,7 @@ export function MySQLAdapter(): Adapter {
 		},
 
 		async linkAccount(account: Account) {
+			console.log('🔗 linkAccount called with:', { userId: account.userId, provider: account.provider, providerAccountId: account.providerAccountId });
 			// Check if this is a placeholder account that needs linking
 			const [users] = await pool.execute<DbUser[]>('SELECT * FROM users WHERE id = ?', [account.userId]);
 
