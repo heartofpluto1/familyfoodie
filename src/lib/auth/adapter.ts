@@ -2,6 +2,7 @@ import type { Adapter, AdapterUser } from 'next-auth/adapters';
 import pool from '@/lib/db';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { Account } from 'next-auth';
+import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 
 interface DbUser extends RowDataPacket {
 	id: number;
@@ -77,6 +78,26 @@ export function MySQLAdapter(): Adapter {
 
 					// Auto-subscribe to default collection (id=1)
 					await connection.execute('INSERT IGNORE INTO collection_subscriptions (household_id, collection_id) VALUES (?, 1)', [householdId]);
+
+					// Create a starter collection for the new household
+					const collectionTitle = 'A family tradition';
+					const [collectionResult] = await connection.execute<ResultSetHeader>(
+						`INSERT INTO collections (title, subtitle, household_id, public, filename, filename_dark, url_slug, created_at, updated_at) 
+						VALUES (?, ?, ?, 0, ?, ?, ?, NOW(), NOW())`,
+						[
+							collectionTitle,
+							'Build your collection of recipes - either by uploading or copying from other collections!',
+							householdId,
+							'custom_collection_004',
+							'custom_collection_004_dark',
+							'temp', // Temporary slug, will be updated
+						]
+					);
+
+					// Generate and update the URL slug with the collection ID
+					const collectionId = collectionResult.insertId;
+					const collectionSlug = generateSlugFromTitle(collectionId, collectionTitle);
+					await connection.execute('UPDATE collections SET url_slug = ? WHERE id = ?', [collectionSlug, collectionId]);
 				}
 
 				// Create user
