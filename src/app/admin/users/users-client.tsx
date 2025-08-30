@@ -299,7 +299,7 @@ export default function UsersClient() {
 										{new Date(user.date_joined).toLocaleDateString()}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-sm text-muted dark:text-gray-400">
-										{user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+										{user.last_session ? new Date(user.last_session).toLocaleString() : 'Never'}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-sm">
 										{editingUser === user.id ? (

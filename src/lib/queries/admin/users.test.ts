@@ -24,7 +24,7 @@ describe('Admin Users Queries', () => {
 			is_active: true,
 			is_admin: false,
 			date_joined: '2024-01-01T00:00:00.000Z',
-			last_login: '2024-01-02T00:00:00.000Z',
+			last_session: '2024-01-02T00:00:00.000Z',
 		},
 		{
 			id: 2,
@@ -36,7 +36,7 @@ describe('Admin Users Queries', () => {
 			is_active: true,
 			is_admin: true,
 			date_joined: '2024-01-01T00:00:00.000Z',
-			last_login: '2024-01-02T00:00:00.000Z',
+			last_session: '2024-01-02T00:00:00.000Z',
 		},
 	];
 
@@ -86,7 +86,7 @@ describe('Admin Users Queries', () => {
 			expect(query).toContain('u.is_admin');
 			expect(query).toContain('u.date_joined');
 			expect(query).toContain('nextauth_sessions');
-			expect(query).toContain('as last_login');
+			expect(query).toContain('as last_session');
 		});
 	});
 

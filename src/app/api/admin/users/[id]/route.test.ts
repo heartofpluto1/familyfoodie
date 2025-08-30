@@ -39,7 +39,7 @@ const mockUser: User = {
 	is_active: true,
 	is_admin: false,
 	date_joined: '2024-01-01T00:00:00Z',
-	last_login: '2024-01-02T00:00:00Z',
+	last_session: '2024-01-02T00:00:00Z',
 };
 
 // Create a custom admin user with ID 2 to avoid self-modification conflicts

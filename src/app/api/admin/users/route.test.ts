@@ -37,7 +37,7 @@ const mockUsers: User[] = [
 		is_active: true,
 		is_admin: true,
 		date_joined: '2024-01-01T10:00:00Z',
-		last_login: '2024-12-01T10:00:00Z',
+		last_session: '2024-12-01T10:00:00Z',
 	},
 	{
 		id: 2,
@@ -48,7 +48,7 @@ const mockUsers: User[] = [
 		is_active: true,
 		is_admin: false,
 		date_joined: '2024-02-01T10:00:00Z',
-		last_login: '2024-11-15T10:00:00Z',
+		last_session: '2024-11-15T10:00:00Z',
 	},
 	{
 		id: 3,
@@ -59,7 +59,7 @@ const mockUsers: User[] = [
 		is_active: false,
 		is_admin: false,
 		date_joined: '2024-03-01T10:00:00Z',
-		last_login: null,
+		last_session: null,
 	},
 ];
 
@@ -226,7 +226,7 @@ describe('/api/admin/users', () => {
 					is_active: i % 2 === 0,
 					is_admin: i % 10 === 0,
 					date_joined: '2024-01-01T10:00:00Z',
-					last_login: i % 3 === 0 ? '2024-12-01T10:00:00Z' : null,
+					last_session: i % 3 === 0 ? '2024-12-01T10:00:00Z' : null,
 				}));
 
 				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
@@ -275,7 +275,7 @@ describe('/api/admin/users', () => {
 						is_active: true,
 						is_admin: false,
 						date_joined: '2024-01-01T10:00:00Z',
-						last_login: null,
+						last_session: null,
 					},
 					{
 						id: 2,
@@ -286,7 +286,7 @@ describe('/api/admin/users', () => {
 						is_active: true,
 						is_admin: false,
 						date_joined: '2024-01-01T10:00:00Z',
-						last_login: '2024-12-01T10:00:00Z',
+						last_session: '2024-12-01T10:00:00Z',
 					},
 				];
 
@@ -396,7 +396,7 @@ describe('/api/admin/users', () => {
 						is_active: true,
 						is_admin: false,
 						date_joined: '2024-01-01T10:00:00Z',
-						last_login: null,
+						last_session: null,
 					},
 				];
 
@@ -647,7 +647,7 @@ describe('/api/admin/users', () => {
 						expect(user).toHaveProperty('is_active');
 						expect(user).toHaveProperty('is_admin');
 						expect(user).toHaveProperty('date_joined');
-						expect(user).toHaveProperty('last_login');
+						expect(user).toHaveProperty('last_session');
 
 						// Type checks
 						expect(typeof user.id).toBe('number');
@@ -695,7 +695,7 @@ describe('/api/admin/users', () => {
 						is_active: true,
 						is_admin: false,
 						date_joined: '2024-01-15T14:30:00.000Z',
-						last_login: '2024-12-01T09:15:30.500Z',
+						last_session: '2024-12-01T09:15:30.500Z',
 					},
 				];
 
@@ -711,7 +711,7 @@ describe('/api/admin/users', () => {
 						expect(response.status).toBe(200);
 						const user = json.users[0];
 						expect(user.date_joined).toBe('2024-01-15T14:30:00.000Z');
-						expect(user.last_login).toBe('2024-12-01T09:15:30.500Z');
+						expect(user.last_session).toBe('2024-12-01T09:15:30.500Z');
 					},
 				});
 			});
@@ -745,7 +745,7 @@ describe('/api/admin/users', () => {
 				});
 			});
 
-			it('handles users with null last_login', async () => {
+			it('handles users with null last_session', async () => {
 				mockRequireAdminUser.mockResolvedValue(mockAdminUser);
 				mockGetAllUsers.mockResolvedValue(mockUsers);
 
@@ -756,7 +756,7 @@ describe('/api/admin/users', () => {
 						const json = await response.json();
 
 						expect(response.status).toBe(200);
-						const usersWithNullLogin = json.users.filter((u: User) => u.last_login === null);
+						const usersWithNullLogin = json.users.filter((u: User) => u.last_session === null);
 						expect(usersWithNullLogin.length).toBeGreaterThan(0);
 					},
 				});
@@ -773,7 +773,7 @@ describe('/api/admin/users', () => {
 						is_active: true,
 						is_admin: false,
 						date_joined: '2024-01-01T10:00:00Z',
-						last_login: null,
+						last_session: null,
 					},
 				];
 
@@ -863,7 +863,7 @@ describe('/api/admin/users', () => {
 					is_active: true,
 					is_admin: false,
 					date_joined: '2024-01-01T10:00:00Z',
-					last_login: null,
+					last_session: null,
 				}));
 
 				mockRequireAdminUser.mockResolvedValue(mockAdminUser);

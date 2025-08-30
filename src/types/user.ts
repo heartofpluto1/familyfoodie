@@ -8,7 +8,7 @@ export interface User {
 	is_active: boolean;
 	is_admin: boolean;
 	date_joined: string;
-	last_login: string | null;
+	last_session?: string | null;
 }
 
 export interface UserUpdate {

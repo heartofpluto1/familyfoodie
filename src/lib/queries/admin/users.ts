@@ -20,7 +20,7 @@ export async function getAllUsers(): Promise<User[]> {
 				SELECT MAX(s.created_at)
 				FROM nextauth_sessions s
 				WHERE s.user_id = u.id
-			) as last_login
+			) as last_session
 		FROM users u
 		ORDER BY u.date_joined DESC
 	`);
@@ -45,7 +45,7 @@ export async function getUserById(userId: number): Promise<User | null> {
 				SELECT MAX(s.created_at)
 				FROM nextauth_sessions s
 				WHERE s.user_id = u.id
-			) as last_login
+			) as last_session
 		FROM users u
 		WHERE u.id = ?
 		`,
