@@ -88,11 +88,19 @@ describe('/api/settings GET', () => {
 			user_id: mockRegularSession.user.id,
 		});
 		const mockUserValidation = [{ id: 2 }];
-		const mockHouseholdMembers = [{ email: 'alice@example.com' }, { email: 'bob@example.com' }, { email: 'user@example.com' }];
+		const mockHouseholdMembers = [
+			{ first_name: 'Alice', last_name: 'Smith' }, 
+			{ first_name: 'Bob', last_name: 'Johnson' }, 
+			{ first_name: 'Carol', last_name: 'Davis' }
+		];
+		const mockPendingInvitations = [
+			{ email: 'pending@example.com' }
+		];
 
 		mockExecute
 			.mockResolvedValueOnce([mockUserValidation as RowDataPacket[], []]) // User validation query
-			.mockResolvedValueOnce([mockHouseholdMembers as RowDataPacket[], []]); // Household members query
+			.mockResolvedValueOnce([mockHouseholdMembers as RowDataPacket[], []]) // Household members query
+			.mockResolvedValueOnce([mockPendingInvitations as RowDataPacket[], []]); // Pending invitations query
 
 		await testApiHandler({
 			appHandler,
@@ -103,15 +111,25 @@ describe('/api/settings GET', () => {
 				const data = await response.json();
 				expect(data).toEqual({
 					household_name: 'Test Household',
-					members: ['alice@example.com', 'bob@example.com', 'user@example.com'],
+					members: ['Alice Smith', 'Bob Johnson', 'Carol Davis', 'pending@example.com (pending)'],
 				});
 
 				expect(mockExecute).toHaveBeenCalledWith(`SELECT id FROM users WHERE id = ? AND household_id = ?`, ['2', 1]);
 				expect(mockExecute).toHaveBeenCalledWith(
-					`SELECT email 
+					`SELECT first_name, last_name 
 			 FROM users 
 			 WHERE household_id = ? 
-			 ORDER BY email ASC`,
+			 ORDER BY first_name ASC, last_name ASC`,
+					[1]
+				);
+				expect(mockExecute).toHaveBeenCalledWith(
+					`SELECT email 
+			 FROM household_invitations 
+			 WHERE household_id = ? 
+			 AND accepted_at IS NULL 
+			 AND declined_at IS NULL 
+			 AND expires_at > NOW()
+			 ORDER BY created_at DESC`,
 					[1]
 				);
 			},
@@ -129,7 +147,8 @@ describe('/api/settings GET', () => {
 
 		mockExecute
 			.mockResolvedValueOnce([mockUserValidation as RowDataPacket[], []]) // User validation query
-			.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Empty household members
+			.mockResolvedValueOnce([[] as RowDataPacket[], []]) // Empty household members
+			.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Empty pending invitations
 
 		await testApiHandler({
 			appHandler,
@@ -154,11 +173,12 @@ describe('/api/settings GET', () => {
 			user_id: mockRegularSession.user.id,
 		});
 		const mockUserValidation = [{ id: 2 }];
-		const mockHouseholdMembers = [{ email: 'user@example.com' }];
+		const mockHouseholdMembers = [{ first_name: 'John', last_name: 'Doe' }];
 
 		mockExecute
 			.mockResolvedValueOnce([mockUserValidation as RowDataPacket[], []]) // User validation query
-			.mockResolvedValueOnce([mockHouseholdMembers as RowDataPacket[], []]); // Single household member
+			.mockResolvedValueOnce([mockHouseholdMembers as RowDataPacket[], []]) // Single household member
+			.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Empty pending invitations
 
 		await testApiHandler({
 			appHandler,
@@ -169,7 +189,7 @@ describe('/api/settings GET', () => {
 				const data = await response.json();
 				expect(data).toEqual({
 					household_name: 'Test Household',
-					members: ['user@example.com'],
+					members: ['John Doe'],
 				});
 			},
 		});
@@ -198,7 +218,7 @@ describe('/api/settings GET', () => {
 		});
 	});
 
-	it('should handle members with special characters in emails', async () => {
+	it('should handle members with special characters in names', async () => {
 		mockRequireAuth.mockResolvedValue({
 			authorized: true as const,
 			session: mockRegularSession,
@@ -206,11 +226,16 @@ describe('/api/settings GET', () => {
 			user_id: mockRegularSession.user.id,
 		});
 		const mockUserValidation = [{ id: 2 }];
-		const mockHouseholdMembers = [{ email: 'test+alias@example.com' }, { email: 'user.name@sub.domain.com' }, { email: 'special_chars-123@test.org' }];
+		const mockHouseholdMembers = [
+			{ first_name: "José", last_name: "García" }, 
+			{ first_name: "Mary-Jane", last_name: "O'Connor" }, 
+			{ first_name: "François", last_name: "Müller" }
+		];
 
 		mockExecute
 			.mockResolvedValueOnce([mockUserValidation as RowDataPacket[], []]) // User validation query
-			.mockResolvedValueOnce([mockHouseholdMembers as RowDataPacket[], []]); // Household members with special characters
+			.mockResolvedValueOnce([mockHouseholdMembers as RowDataPacket[], []]) // Household members with special characters
+			.mockResolvedValueOnce([[] as RowDataPacket[], []]); // Empty pending invitations
 
 		await testApiHandler({
 			appHandler,
@@ -221,7 +246,7 @@ describe('/api/settings GET', () => {
 				const data = await response.json();
 				expect(data).toEqual({
 					household_name: 'Test Household',
-					members: ['test+alias@example.com', 'user.name@sub.domain.com', 'special_chars-123@test.org'],
+					members: ["José García", "Mary-Jane O'Connor", "François Müller"],
 				});
 			},
 		});
