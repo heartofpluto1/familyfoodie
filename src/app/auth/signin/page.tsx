@@ -23,6 +23,7 @@ export default function SignIn() {
 							Continue with Google
 						</button>
 
+						{/* Facebook login hidden for now - credentials pending
 						<button
 							onClick={() => signIn('facebook', { callbackUrl: '/dashboard' })}
 							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-custom rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
@@ -30,6 +31,7 @@ export default function SignIn() {
 							<SiFacebook size={20} />
 							Continue with Facebook
 						</button>
+						*/}
 					</div>
 
 					<div className="mt-8 text-center">
