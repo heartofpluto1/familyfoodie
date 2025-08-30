@@ -110,6 +110,7 @@ describe('/api/recipe/update-image', () => {
 				.mockResolvedValueOnce([
 					[{ image_filename: 'recipe_abc123.jpg', pdf_filename: 'recipe_1.pdf' }], // Recipe with existing image
 				])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // No other recipes using this image
 				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Update successful
 
 			mockExtractBaseHash.mockReturnValue('abc123');
@@ -144,10 +145,75 @@ describe('/api/recipe/update-image', () => {
 						cleanup: 'Cleaned up 2 old file(s): recipe_abc123_v1.jpg, recipe_abc123_v2.jpg',
 					});
 
+					// Check that orphan check was performed
+					expect(mockDatabase.execute).toHaveBeenCalledWith('SELECT COUNT(*) as count FROM recipes WHERE image_filename = ? AND id != ?', [
+						'recipe_abc123.jpg',
+						1,
+					]);
 					expect(mockExtractBaseHash).toHaveBeenCalledWith('recipe_abc123.jpg');
 					expect(mockFindAndDeleteHashFiles).toHaveBeenCalledWith('abc123', 'image');
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('recipe_abc123.jpg', 'jpg');
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.jpg, recipe_abc123_v2.jpg');
+				},
+			});
+		});
+
+		it('skips file cleanup when other recipes are using the same image', async () => {
+			const mockFile = createMockFile('updated.jpg', 'image/jpeg', 2048);
+			const formData = new FormData();
+			formData.append('image', mockFile);
+			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockValidateRecipeInCollection.mockResolvedValue(true);
+			mockCanEditResource.mockResolvedValue(true);
+
+			mockDatabase.execute
+				.mockResolvedValueOnce([
+					[{ image_filename: 'recipe_shared123.jpg', pdf_filename: 'recipe_1.pdf' }], // Recipe with existing image
+				])
+				.mockResolvedValueOnce([[{ count: 2 }]]) // 2 other recipes using this image (from copy operation)
+				.mockResolvedValueOnce([{ affectedRows: 1 }]); // Update successful
+
+			mockExtractBaseHash.mockReturnValue('shared123');
+			mockGenerateVersionedFilename.mockReturnValue('recipe_new456.jpg');
+
+			mockUploadFile.mockResolvedValue({
+				success: true,
+				url: '/uploads/recipe_new456.jpg',
+				filename: 'recipe_new456.jpg',
+			});
+
+			mockGetRecipeImageUrl.mockReturnValue('/static/recipes/recipe_new456.jpg');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({
+						method: 'POST',
+						body: formData,
+					});
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+					expect(json).toEqual({
+						success: true,
+						message: 'Recipe image updated successfully',
+						filename: 'recipe_new456.jpg',
+						uploadUrl: '/uploads/recipe_new456.jpg',
+						displayUrl: '/static/recipes/recipe_new456.jpg',
+						storageMode: 'local',
+						cleanup: 'Skipped cleanup: 2 other recipe(s) using this image',
+					});
+
+					// Check that orphan check was performed
+					expect(mockDatabase.execute).toHaveBeenCalledWith('SELECT COUNT(*) as count FROM recipes WHERE image_filename = ? AND id != ?', [
+						'recipe_shared123.jpg',
+						1,
+					]);
+					// Verify that file deletion was NOT called since other recipes are using the image
+					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled();
+					expect(mockConsoleLog).not.toHaveBeenCalledWith(expect.stringContaining('Cleaned up'));
 				},
 			});
 		});
@@ -164,6 +230,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_def456.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // No other recipes using this image
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('def456');
@@ -206,6 +273,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_ghi789.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('ghi789');
@@ -249,6 +317,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_jkl012.png', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('jkl012');
@@ -291,6 +360,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_mno345.webp', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('mno345');
@@ -333,6 +403,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_pqr678.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('pqr678');
@@ -537,7 +608,10 @@ describe('/api/recipe/update-image', () => {
 			mockValidateRecipeInCollection.mockResolvedValue(true);
 			mockCanEditResource.mockResolvedValue(true);
 
-			mockDatabase.execute.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
+			mockDatabase.execute
+				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
 
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -622,6 +696,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_original.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('original');
@@ -867,6 +942,7 @@ describe('/api/recipe/update-image', () => {
 
 			mockDatabase.execute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_abc123.jpg', pdf_filename: null }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('abc123');

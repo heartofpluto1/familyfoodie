@@ -140,7 +140,7 @@ describe('/api/recipe/update-pdf', () => {
 	});
 
 	describe('POST /api/recipe/update-pdf', () => {
-		it('successfully updates PDF with file cleanup', async () => {
+		it('successfully updates PDF with file cleanup when no other recipes use it', async () => {
 			const mockFile = createMockFile('updated.pdf', 'application/pdf', 3072);
 			const formData = new FormData();
 			formData.append('pdf', mockFile);
@@ -149,6 +149,7 @@ describe('/api/recipe/update-pdf', () => {
 
 			mockExecute
 				.mockResolvedValueOnce([[{ image_filename: 'recipe_1.jpg', pdf_filename: 'recipe_abc123.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // No other recipes using this PDF
 				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('abc123');
@@ -179,9 +180,62 @@ describe('/api/recipe/update-pdf', () => {
 							fileSize: expect.any(String),
 						},
 					});
+					// Check that orphan check was performed
+					expect(mockExecute).toHaveBeenCalledWith('SELECT COUNT(*) as count FROM recipes WHERE pdf_filename = ? AND id != ?', ['recipe_abc123.pdf', 1]);
 					expect(mockConsoleLog).toHaveBeenCalledWith('Cleaned up 2 old file(s): recipe_abc123_v1.pdf, recipe_abc123_v2.pdf');
 					// Verify no cleanup details in response
 					expect(json.cleanup).toBeUndefined();
+				},
+			});
+		});
+
+		it('skips PDF file cleanup when other recipes are using the same PDF', async () => {
+			const mockFile = createMockFile('updated.pdf', 'application/pdf', 3072);
+			const formData = new FormData();
+			formData.append('pdf', mockFile);
+			formData.append('recipeId', '1');
+			formData.append('collectionId', '1');
+
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: 'recipe_1.jpg', pdf_filename: 'recipe_shared789.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 3 }]]) // 3 other recipes using this PDF (from copy operations)
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+			mockExtractBaseHash.mockReturnValue('shared789');
+			mockGenerateVersionedFilename.mockReturnValue('recipe_new999.pdf');
+			mockUploadFile.mockResolvedValue({ success: true, url: '/uploads/recipe_new999.pdf', filename: 'recipe_new999.pdf' });
+			mockGetRecipePdfUrl.mockReturnValue('/static/recipes/recipe_new999.pdf');
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const response = await fetch({ method: 'POST', body: formData });
+					const json = await response.json();
+
+					expect(response.status).toBe(200);
+					expect(json).toEqual({
+						success: true,
+						message: 'Recipe PDF updated successfully',
+						recipe: {
+							id: 1,
+							pdfUrl: '/static/recipes/recipe_new999.pdf',
+							filename: 'recipe_new999.pdf',
+						},
+						upload: {
+							storageUrl: '/uploads/recipe_new999.pdf',
+							storageMode: 'local',
+							timestamp: expect.any(String),
+							fileSize: expect.any(String),
+						},
+					});
+					// Check that orphan check was performed
+					expect(mockExecute).toHaveBeenCalledWith('SELECT COUNT(*) as count FROM recipes WHERE pdf_filename = ? AND id != ?', [
+						'recipe_shared789.pdf',
+						1,
+					]);
+					// Verify that file deletion was NOT called since other recipes are using the PDF
+					expect(mockFindAndDeleteHashFiles).not.toHaveBeenCalled();
+					expect(mockConsoleLog).not.toHaveBeenCalledWith(expect.stringContaining('Cleaned up'));
 				},
 			});
 		});
@@ -193,7 +247,10 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '2');
 			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_def456.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_def456.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('def456');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -264,7 +321,10 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '3');
 			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_ghi789.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_ghi789.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('ghi789');
 			mockFindAndDeleteHashFiles.mockRejectedValue(new Error('Cleanup failed'));
@@ -582,7 +642,10 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 0 }]); // Update fails
 
 			mockExtractBaseHash.mockReturnValue('abc');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -618,7 +681,10 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_original.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_original.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('original');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -706,7 +772,10 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '5');
 			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_test.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_test.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('test');
 			mockFindAndDeleteHashFiles.mockResolvedValue([]);
@@ -765,6 +834,7 @@ describe('/api/recipe/update-pdf', () => {
 			// Mock a database lock or conflict scenario
 			mockExecute
 				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc.pdf' }]]) // First query succeeds
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query succeeds
 				.mockRejectedValueOnce(new Error('ER_LOCK_WAIT_TIMEOUT')); // Update fails due to lock
 
 			mockExtractBaseHash.mockReturnValue('abc');
@@ -796,7 +866,10 @@ describe('/api/recipe/update-pdf', () => {
 			formData.append('recipeId', '1');
 			formData.append('collectionId', '1');
 
-			mockExecute.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc123.pdf' }]]).mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([[{ image_filename: null, pdf_filename: 'recipe_abc123.pdf' }]])
+				.mockResolvedValueOnce([[{ count: 0 }]]) // Orphan check query
+				.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
 			mockExtractBaseHash.mockReturnValue('abc123');
 			mockFindAndDeleteHashFiles.mockResolvedValue(['recipe_abc123_v1.pdf']);
