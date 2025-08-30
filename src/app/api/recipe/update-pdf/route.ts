@@ -262,16 +262,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 			}
 		}
 
-		// Defensive cleanup: remove all old files with the same base hash (only for the target recipe)
+		// Check if the old PDF file is orphaned before deleting
 		const baseHash = extractBaseHash(targetPdfFilename);
 		let cleanupSummary = '';
 
-		if (baseHash) {
+		if (baseHash && targetPdfFilename) {
 			try {
-				const deletedFiles = await findAndDeleteHashFiles(baseHash, 'pdf');
-				if (deletedFiles.length > 0) {
-					cleanupSummary = `Cleaned up ${deletedFiles.length} old file(s): ${deletedFiles.join(', ')}`;
-					console.log(cleanupSummary);
+				// Check if any other recipes are using this PDF
+				const [otherRecipes] = await pool.execute<RowDataPacket[]>('SELECT COUNT(*) as count FROM recipes WHERE pdf_filename = ? AND id != ?', [
+					targetPdfFilename,
+					targetRecipeId,
+				]);
+
+				// Only delete if no other recipes are using this PDF
+				const recipeCount = (otherRecipes[0] as { count: number }).count;
+				if (recipeCount === 0) {
+					const deletedFiles = await findAndDeleteHashFiles(baseHash, 'pdf');
+					if (deletedFiles.length > 0) {
+						cleanupSummary = `Cleaned up ${deletedFiles.length} old file(s): ${deletedFiles.join(', ')}`;
+						console.log(cleanupSummary);
+					}
+				} else {
+					cleanupSummary = `Skipped cleanup: ${recipeCount} other recipe(s) using this PDF`;
 				}
 			} catch (error) {
 				console.warn('File cleanup failed but continuing with upload:', error);

@@ -145,16 +145,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 		const currentImageFilename = recipeRows[0].image_filename;
 		const extension = getExtension(file.type);
 
-		// Defensive cleanup: remove all old files with the same base hash (only if existing image exists)
+		// Check if the old image file is orphaned before deleting
 		let cleanupSummary = '';
 		const baseHash = currentImageFilename ? extractBaseHash(currentImageFilename) : null;
 
-		if (baseHash) {
+		if (baseHash && currentImageFilename) {
 			try {
-				const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
-				if (deletedFiles.length > 0) {
-					cleanupSummary = `Cleaned up ${deletedFiles.length} old file(s): ${deletedFiles.join(', ')}`;
-					console.log(cleanupSummary);
+				// Check if any other recipes are using this image
+				const [otherRecipes] = await pool.execute<RowDataPacket[]>('SELECT COUNT(*) as count FROM recipes WHERE image_filename = ? AND id != ?', [
+					currentImageFilename,
+					recipeIdNum,
+				]);
+
+				// Only delete if no other recipes are using this image
+				const recipeCount = (otherRecipes[0] as { count: number }).count;
+				if (recipeCount === 0) {
+					const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
+					if (deletedFiles.length > 0) {
+						cleanupSummary = `Cleaned up ${deletedFiles.length} old file(s): ${deletedFiles.join(', ')}`;
+						console.log(cleanupSummary);
+					}
+				} else {
+					cleanupSummary = `Skipped cleanup: ${recipeCount} other recipe(s) using this image`;
 				}
 			} catch (error) {
 				console.warn('File cleanup failed but continuing with upload:', error);
