@@ -74,22 +74,18 @@ export async function POST(request: NextRequest) {
 	} catch (error) {
 		console.error('Send invitation error:', error);
 		
-		// Handle specific errors
-		if (error instanceof Error) {
-			if (error.message.includes('already a member')) {
-				return NextResponse.json(
-					{ error: error.message },
-					{ status: 409 }
-				);
-			}
-			if (error.message.includes('already pending')) {
-				return NextResponse.json(
-					{ error: error.message },
-					{ status: 409 }
-				);
-			}
+		// Generic error response to prevent email enumeration
+		// Log the actual error server-side but don't reveal it to the client
+		if (error instanceof Error && error.message === 'Cannot send invitation') {
+			// This is an expected business logic failure (already member or pending invitation)
+			// Return generic message to prevent email enumeration
+			return NextResponse.json(
+				{ error: 'Cannot send invitation to this email address' },
+				{ status: 400 }
+			);
 		}
 		
+		// Unexpected server errors
 		return NextResponse.json(
 			{ error: 'Failed to send invitation' },
 			{ status: 500 }

@@ -128,13 +128,13 @@ const ImageUploadSection = ({
 						</div>
 					) : (
 						<div className="space-y-2">
-							<div className={disabled ? 'text-gray-400' : 'text-gray-400'}>
+							<div className={disabled ? 'text-gray-400' : (previewUrl || defaultBackgroundImage) ? 'text-white' : 'text-gray-400'}>
 								<UploadIcon className="w-8 h-8 mx-auto mb-2" />
 							</div>
-							<p className={`font-medium ${disabled ? 'text-gray-400' : 'text-foreground'}`}>
+							<p className={`font-medium ${disabled ? 'text-gray-400' : (previewUrl || defaultBackgroundImage) ? 'text-white drop-shadow-md' : 'text-foreground'}`}>
 								{disabled ? 'Upload disabled' : 'Drop JPG image here or click to browse'}
 							</p>
-							<p className={`text-sm ${disabled ? 'text-gray-400' : 'text-muted'}`}>JPG files only (Max 10MB)</p>
+							<p className={`text-sm ${disabled ? 'text-gray-400' : (previewUrl || defaultBackgroundImage) ? 'text-white/80 drop-shadow-md' : 'text-muted'}`}>JPG files only (Max 10MB)</p>
 						</div>
 					)}
 				</div>

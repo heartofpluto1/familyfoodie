@@ -36,7 +36,9 @@ export async function createInvitation(params: CreateInvitationParams) {
 	);
 	
 	if (existingMembers.length > 0) {
-		throw new Error('This user is already a member of your household');
+		// Log specific reason for internal debugging
+		console.log(`Invitation blocked: User ${params.email} is already a member of household ${params.householdId}`);
+		throw new Error('Cannot send invitation');
 	}
 	
 	// Check if invitation already exists for this email/household
@@ -48,7 +50,9 @@ export async function createInvitation(params: CreateInvitationParams) {
 	);
 	
 	if (existingInvitations.length > 0) {
-		throw new Error('An invitation is already pending for this email');
+		// Log specific reason for internal debugging
+		console.log(`Invitation blocked: Pending invitation exists for ${params.email} to household ${params.householdId}`);
+		throw new Error('Cannot send invitation');
 	}
 	
 	// Insert invitation record
