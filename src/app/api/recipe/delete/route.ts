@@ -261,7 +261,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 					// Also check if it's used in shopping lists
 					const [shoppingCheck] = await connection.execute<RowDataPacket[]>(
 						`SELECT COUNT(*) as count FROM shopping_lists sl
-						 WHERE sl.ingredient_id = ? AND sl.household_id = ?`,
+						 INNER JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id 
+						 WHERE ri.ingredient_id = ? AND sl.household_id = ?`,
 						[ingredientId, auth.household_id]
 					);
 
