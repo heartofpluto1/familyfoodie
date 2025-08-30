@@ -31,14 +31,23 @@ export function MySQLAdapter(): Adapter {
 				const [existingUsers] = await connection.execute<DbUser[]>('SELECT * FROM users WHERE email = ?', [user.email]);
 
 				if (existingUsers.length > 0) {
-					// User exists, return existing user
+					// User exists - update their OAuth info and profile image for first-time OAuth login
 					const existingUser = existingUsers[0];
+					
+					// Only update if they don't already have OAuth credentials
+					if (!existingUser.oauth_provider || existingUser.oauth_provider === 'pending' || PLACEHOLDER_OAUTH_IDS.includes(existingUser.oauth_provider_id)) {
+						await connection.execute(
+							'UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, profile_image_url = ?, email_verified = 1, updated_at = NOW() WHERE id = ?',
+							['google', 'pending', user.image, existingUser.id]
+						);
+					}
+					
 					await connection.commit();
 					return {
 						id: existingUser.id.toString(),
 						email: existingUser.email,
 						name: `${existingUser.first_name} ${existingUser.last_name}`.trim(),
-						image: existingUser.profile_image_url,
+						image: user.image || existingUser.profile_image_url,
 						emailVerified: existingUser.email_verified ? new Date() : null,
 					};
 				}
@@ -217,8 +226,8 @@ export function MySQLAdapter(): Adapter {
 			if (users.length > 0) {
 				const user = users[0];
 
-				// Check if this is a placeholder account (IDs 1, 2, or 3)
-				if (PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id)) {
+				// Check if this is a placeholder account (IDs 1, 2, or 3) or pending OAuth setup
+				if (PLACEHOLDER_OAUTH_IDS.includes(user.oauth_provider_id) || user.oauth_provider_id === 'pending') {
 					// This is an existing user's first OAuth login - update their OAuth details
 					await pool.execute('UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, email_verified = 1 WHERE id = ?', [
 						account.provider,
