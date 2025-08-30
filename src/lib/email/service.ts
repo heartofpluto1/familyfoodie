@@ -1,8 +1,5 @@
 import { Resend } from 'resend';
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 interface SendInvitationEmailParams {
 	recipientEmail: string;
 	inviterName: string;
@@ -88,6 +85,9 @@ The Family Foodie Team
 			console.log('Invitation URL:', inviteUrl);
 			return { success: true, messageId: 'dev-mode' };
 		}
+
+		// Initialize Resend with API key only when we have one
+		const resend = new Resend(process.env.RESEND_API_KEY);
 
 		const response = await resend.emails.send({
 			from: process.env.RESEND_FROM_EMAIL || 'Family Foodie <onboarding@resend.dev>',
