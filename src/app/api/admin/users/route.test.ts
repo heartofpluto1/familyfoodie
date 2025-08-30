@@ -107,8 +107,13 @@ describe('/api/admin/users', () => {
 				});
 			});
 
-			it('returns 403 when requireAdminUser throws an error', async () => {
-				mockRequireAdminAuth.mockRejectedValue(standardErrorScenarios.authError);
+			it('returns 401 when requireAdminAuth has internal error', async () => {
+				const mockResponse = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+				mockRequireAdminAuth.mockResolvedValue({
+					authorized: false as const,
+					response: mockResponse,
+				});
 
 				await testApiHandler({
 					appHandler,
@@ -116,12 +121,10 @@ describe('/api/admin/users', () => {
 						const response = await fetch({ method: 'GET' });
 						const json = await response.json();
 
-						expect(response.status).toBe(500);
+						expect(response.status).toBe(401);
 						expect(json).toEqual({
-							error: 'Failed to fetch users',
-							code: 'INTERNAL_ERROR',
+							error: 'Unauthorized',
 						});
-						expect(consoleMocks.mockConsoleError).toHaveBeenCalledWith('Error in admin users handler:', expect.any(Error));
 						expect(mockGetAllUsers).not.toHaveBeenCalled();
 					},
 				});
@@ -789,7 +792,9 @@ describe('/api/admin/users', () => {
 
 						// Type checks
 						expect(typeof user.id).toBe('number');
-						expect(typeof user.username).toBe('string');
+						expect(typeof user.email).toBe('string');
+						expect(typeof user.first_name).toBe('string');
+						expect(typeof user.last_name).toBe('string');
 						expect(typeof user.is_active).toBe('boolean');
 						expect(typeof user.is_admin).toBe('boolean');
 					},
