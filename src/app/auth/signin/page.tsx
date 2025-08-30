@@ -10,14 +10,14 @@ export default function SignIn() {
 			<div className="max-w-md w-full">
 				<div className="bg-surface border border-custom rounded-sm p-8">
 					<div className="text-center mb-8">
-						<h1 className="text-2xl font-semibold text-foreground mb-2">Welcome to Family Foodie</h1>
+						<h1 className="text-2xl text-foreground mb-2">Welcome to Family Foodie</h1>
 						<p className="text-secondary">Sign in to start meal planning with your household</p>
 					</div>
 
 					<div className="space-y-3">
 						<button
 							onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
-							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-custom rounded-md bg-surface text-foreground hover:bg-muted transition-colors"
 						>
 							<FcGoogle size={20} />
 							Continue with Google
@@ -25,7 +25,7 @@ export default function SignIn() {
 
 						<button
 							onClick={() => signIn('facebook', { callbackUrl: '/dashboard' })}
-							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+							className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-custom rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
 						>
 							<SiFacebook size={20} />
 							Continue with Facebook
