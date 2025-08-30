@@ -6,7 +6,7 @@ import { SiFacebook } from 'react-icons/si';
 
 export default function SignIn() {
 	return (
-		<div className="min-h-screen bg-background flex items-center justify-center px-4">
+		<div className="flex items-center justify-center px-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
 			<div className="max-w-md w-full">
 				<div className="bg-surface border border-custom rounded-sm p-8">
 					<div className="text-center mb-8">
