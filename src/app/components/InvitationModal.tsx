@@ -15,6 +15,7 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState(false);
+	const [successMessage, setSuccessMessage] = useState<string>('');
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -43,6 +44,7 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 			}
 
 			setSuccess(true);
+			setSuccessMessage(data.message || 'Invitation sent successfully');
 			setEmail('');
 
 			// Notify parent component to refresh the members list
@@ -50,11 +52,11 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 				onInvitationSent();
 			}
 
-			// Close modal after 2 seconds
+			// Close modal after 10 seconds
 			setTimeout(() => {
 				setSuccess(false);
 				onClose();
-			}, 2000);
+			}, 10000);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Failed to send invitation');
 		} finally {
@@ -66,6 +68,7 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 		setEmail('');
 		setError(null);
 		setSuccess(false);
+		setSuccessMessage('');
 		onClose();
 	};
 
@@ -100,8 +103,10 @@ export default function InvitationModal({ isOpen, onClose, householdName, onInvi
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 									</svg>
 								</div>
-								<p className="text-foreground font-medium">Invitation sent successfully!</p>
-								<p className="text-secondary text-sm mt-1">The recipient will receive an email shortly.</p>
+								<p className="text-foreground font-medium">{successMessage}</p>
+								{successMessage === 'Invitation sent successfully' && (
+									<p className="text-secondary text-sm mt-1">The recipient will receive an email shortly.</p>
+								)}
 							</div>
 						) : (
 							<form onSubmit={handleSubmit}>
