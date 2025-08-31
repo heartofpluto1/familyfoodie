@@ -77,6 +77,12 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 						/>
 					</picture>
 
+					{/* Texture overlay */}
+					<picture className="absolute inset-0 w-full h-full pointer-events-none">
+						<source media="(prefers-color-scheme: dark)" srcSet="/collection_overlay_dark_mode.png" />
+						<img src="/collection_overlay_light_mode.png" alt="" className="w-full h-full object-cover" />
+					</picture>
+
 					<div
 						className="w-full h-full flex flex-col relative z-10"
 						style={{ background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), transparent 0, rgba(0, 0, 0, 0.8) 150px)' }}
