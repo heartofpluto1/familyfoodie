@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/helpers';
 import { canEditResource } from '@/lib/permissions';
 import pool from '@/lib/db';
-import { uploadFile, deleteFile } from '@/lib/storage';
-import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
+import { uploadFile } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
+import { generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
+import { findAndDeleteHashFiles } from '@/lib/utils/fileCleanup';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -192,24 +193,36 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		let newDarkFilename = collection.filename_dark;
 
 		if (revertToDefault) {
-			// Revert to default images
-			newLightFilename = 'custom_collection_004';
-			newDarkFilename = 'custom_collection_004_dark';
+			// Revert to default images (store WITH extensions for consistency)
+			newLightFilename = 'custom_collection_004.jpg';
+			newDarkFilename = 'custom_collection_004_dark.jpg';
 
-			// Check if current images can be deleted
+			// Clean up current custom images if orphaned
 			if (!isDefaultImage(collection.filename)) {
-				const isOrphaned = await checkImageIsOrphaned(collection.filename, collectionIdNum);
-				if (isOrphaned) {
-					const baseHash = collection.filename.split('.')[0];
-					await deleteFile(baseHash, 'jpg', 'collections');
+				const baseHash = extractBaseHash(collection.filename);
+				if (baseHash) {
+					const isOrphaned = await checkImageIsOrphaned(collection.filename, collectionIdNum);
+					if (isOrphaned) {
+						// Clean up all versions of the file
+						const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+						if (deletedFiles.length > 0) {
+							console.log(`Cleaned up ${deletedFiles.length} old collection image file(s): ${deletedFiles.join(', ')}`);
+						}
+					}
 				}
 			}
 
 			if (!isDefaultImage(collection.filename_dark)) {
-				const isOrphaned = await checkImageIsOrphaned(collection.filename_dark, collectionIdNum);
-				if (isOrphaned) {
-					const baseHash = collection.filename_dark.split('.')[0];
-					await deleteFile(baseHash, 'jpg', 'collections');
+				const baseHash = extractBaseHash(collection.filename_dark);
+				if (baseHash) {
+					const isOrphaned = await checkImageIsOrphaned(collection.filename_dark, collectionIdNum);
+					if (isOrphaned) {
+						// Clean up all versions of the dark file
+						const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+						if (deletedFiles.length > 0) {
+							console.log(`Cleaned up ${deletedFiles.length} old collection dark image file(s): ${deletedFiles.join(', ')}`);
+						}
+					}
 				}
 			}
 
@@ -273,18 +286,39 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 					);
 				}
 
-				// Generate secure filename and upload
-				const lightFilename = generateCollectionSecureFilename(collectionIdNum, (title as string) || collection.title);
+				// Generate versioned filename for cache busting
+				const versionedFilename = generateVersionedFilename(collection.filename, 'jpg');
+				const baseFilename = versionedFilename.includes('.') ? versionedFilename.split('.')[0] : versionedFilename;
 
-				await uploadFile(buffer, lightFilename, 'jpg', lightImageFile.type, 'collections');
-				newLightFilename = `${lightFilename}.jpg`;
+				// Upload with versioned filename
+				const uploadResult = await uploadFile(buffer, baseFilename, 'jpg', lightImageFile.type, 'collections');
+				if (!uploadResult.success) {
+					return NextResponse.json(
+						{
+							success: false,
+							error: 'Failed to upload light image',
+							code: 'UPLOAD_FAILED',
+							details: uploadResult.error || 'Upload failed',
+							suggestions: ['Try again or use a different image'],
+						},
+						{ status: 500 }
+					);
+				}
 
-				// Check if old image can be deleted
+				newLightFilename = versionedFilename; // Store WITH extension for consistency with recipes
+
+				// Clean up old versions if image is orphaned
 				if (!isDefaultImage(collection.filename) && collection.filename !== newLightFilename) {
-					const isOrphaned = await checkImageIsOrphaned(collection.filename, collectionIdNum);
-					if (isOrphaned) {
-						const baseHash = collection.filename.split('.')[0];
-						await deleteFile(baseHash, 'jpg', 'collections');
+					const baseHash = extractBaseHash(collection.filename);
+					if (baseHash) {
+						const isOrphaned = await checkImageIsOrphaned(collection.filename, collectionIdNum);
+						if (isOrphaned) {
+							// Clean up all versions of the old file
+							const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+							if (deletedFiles.length > 0) {
+								console.log(`Cleaned up ${deletedFiles.length} old collection image file(s): ${deletedFiles.join(', ')}`);
+							}
+						}
 					}
 				}
 
@@ -349,19 +383,39 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 					);
 				}
 
-				// Generate secure filename with _dark suffix and upload
-				const darkBaseFilename = generateCollectionSecureFilename(collectionIdNum, (title as string) || collection.title);
-				const darkFilename = `${darkBaseFilename}_dark`;
+				// Generate versioned filename for dark image with cache busting
+				const versionedDarkFilename = generateVersionedFilename(collection.filename_dark, 'jpg');
+				const baseDarkFilename = versionedDarkFilename.includes('.') ? versionedDarkFilename.split('.')[0] : versionedDarkFilename;
 
-				await uploadFile(buffer, darkFilename, 'jpg', darkImageFile.type, 'collections');
-				newDarkFilename = `${darkFilename}.jpg`;
+				// Upload with versioned filename
+				const uploadResult = await uploadFile(buffer, baseDarkFilename, 'jpg', darkImageFile.type, 'collections');
+				if (!uploadResult.success) {
+					return NextResponse.json(
+						{
+							success: false,
+							error: 'Failed to upload dark image',
+							code: 'UPLOAD_FAILED',
+							details: uploadResult.error || 'Upload failed',
+							suggestions: ['Try again or use a different image'],
+						},
+						{ status: 500 }
+					);
+				}
 
-				// Check if old image can be deleted
+				newDarkFilename = versionedDarkFilename; // Store WITH extension for consistency
+
+				// Clean up old versions if image is orphaned
 				if (!isDefaultImage(collection.filename_dark) && collection.filename_dark !== newDarkFilename) {
-					const isOrphaned = await checkImageIsOrphaned(collection.filename_dark, collectionIdNum);
-					if (isOrphaned) {
-						const baseHash = collection.filename_dark.split('.')[0];
-						await deleteFile(baseHash, 'jpg', 'collections');
+					const baseHash = extractBaseHash(collection.filename_dark);
+					if (baseHash) {
+						const isOrphaned = await checkImageIsOrphaned(collection.filename_dark, collectionIdNum);
+						if (isOrphaned) {
+							// Clean up all versions of the old dark file
+							const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+							if (deletedFiles.length > 0) {
+								console.log(`Cleaned up ${deletedFiles.length} old collection dark image file(s): ${deletedFiles.join(', ')}`);
+							}
+						}
 					}
 				}
 

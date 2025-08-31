@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/app/components/ToastProvider';
 import { SaveIcon } from '@/app/components/Icons';
 import ImageUploadSection from '../collection-add/components/ImageUploadSection';
+import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
 
 interface CollectionFormData {
 	title: string;
@@ -56,14 +57,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 	useEffect(() => {
 		if (mode === 'edit' && collection) {
 			// Use existing images as previews if no new files selected
-			if (!lightModeImage) {
-				setLightImagePreview(`/collections/${collection.filename}`);
+			if (!lightModeImage && !revertToDefault) {
+				setLightImagePreview(getCollectionImageUrl(collection.filename));
 			}
-			if (!darkModeImage) {
-				setDarkImagePreview(`/collections/${collection.filename_dark}`);
+			if (!darkModeImage && !revertToDefault) {
+				setDarkImagePreview(getCollectionDarkImageUrl(collection.filename_dark));
 			}
 		}
-	}, [mode, collection, lightModeImage, darkModeImage]);
+	}, [mode, collection]); // Remove file dependencies to only set on initial load
 
 	// Cleanup blob URLs on unmount or when files change
 	useEffect(() => {
@@ -195,11 +196,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 
 	// Determine current images for preview
 	const currentLightImage =
-		mode === 'edit' && collection && !lightModeImage && !revertToDefault ? `/collections/${collection.filename}` : '/collections/custom_collection_004.jpg';
+		mode === 'edit' && collection && !lightModeImage && !revertToDefault
+			? getCollectionImageUrl(collection.filename)
+			: '/collections/custom_collection_004.jpg';
 
 	const currentDarkImage =
 		mode === 'edit' && collection && !darkModeImage && !revertToDefault
-			? `/collections/${collection.filename_dark}`
+			? getCollectionDarkImageUrl(collection.filename_dark)
 			: '/collections/custom_collection_004_dark.jpg';
 
 	return (

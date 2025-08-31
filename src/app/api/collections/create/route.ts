@@ -26,12 +26,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 			return NextResponse.json({ error: 'Title is required' }, { status: 400 });
 		}
 
-		// Validate file types for uploaded images - only accept JPG
-		if (lightImage && !lightImage.type.includes('jpeg')) {
-			return NextResponse.json({ error: 'Light mode file must be a JPG image' }, { status: 400 });
+		// Validate file types for uploaded images - accept JPG, PNG, WebP
+		const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+		if (lightImage && !validTypes.includes(lightImage.type)) {
+			return NextResponse.json({ error: 'Light mode file must be a JPG, PNG, or WebP image' }, { status: 400 });
 		}
-		if (darkImage && !darkImage.type.includes('jpeg')) {
-			return NextResponse.json({ error: 'Dark mode file must be a JPG image' }, { status: 400 });
+		if (darkImage && !validTypes.includes(darkImage.type)) {
+			return NextResponse.json({ error: 'Dark mode file must be a JPG, PNG, or WebP image' }, { status: 400 });
 		}
 
 		// Determine filename to use
@@ -47,7 +48,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 			);
 
 			collectionId = result.insertId;
-			filename = generateCollectionSecureFilename(collectionId, title);
+
+			// Helper function to extract extension from file
+			const getExtensionFromFile = (file: File): string => {
+				const ext = file.name.split('.').pop()?.toLowerCase();
+				// Map common extensions to standardized ones
+				if (ext === 'jpeg') return 'jpg';
+				return ext || 'jpg'; // Default to jpg if no extension
+			};
+
+			// Generate base filename and add extension from uploaded file
+			const baseFilename = generateCollectionSecureFilename(collectionId, title);
+			const extension = lightImage ? getExtensionFromFile(lightImage) : darkImage ? getExtensionFromFile(darkImage) : 'jpg';
+			filename = `${baseFilename}.${extension}`;
 
 			// Determine dark filename based on whether dark image is provided
 			let darkFilename: string;
@@ -55,7 +68,8 @@ export async function POST(request: Request): Promise<NextResponse> {
 			// Upload images using the storage module (supports both local and GCS)
 			if (lightImage) {
 				const lightImageBuffer = Buffer.from(await lightImage.arrayBuffer());
-				const lightUploadResult = await uploadFile(lightImageBuffer, filename, 'jpg', 'image/jpeg', 'collections');
+				const lightExtension = getExtensionFromFile(lightImage);
+				const lightUploadResult = await uploadFile(lightImageBuffer, baseFilename, lightExtension, lightImage.type, 'collections');
 
 				if (!lightUploadResult.success) {
 					console.error('Failed to upload light image:', lightUploadResult.error);
@@ -67,9 +81,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 			if (darkImage) {
 				// Dark image provided - use separate dark filename
-				darkFilename = `${filename}_dark`;
+				const darkExtension = getExtensionFromFile(darkImage);
+				darkFilename = `${baseFilename}_dark.${darkExtension}`;
 				const darkImageBuffer = Buffer.from(await darkImage.arrayBuffer());
-				const darkUploadResult = await uploadFile(darkImageBuffer, darkFilename, 'jpg', 'image/jpeg', 'collections');
+				const darkUploadResult = await uploadFile(darkImageBuffer, `${baseFilename}_dark`, darkExtension, darkImage.type, 'collections');
 
 				if (!darkUploadResult.success) {
 					console.error('Failed to upload dark image:', darkUploadResult.error);
@@ -82,14 +97,14 @@ export async function POST(request: Request): Promise<NextResponse> {
 				darkFilename = filename;
 			}
 
-			// Update collection with both light and dark filenames
+			// Update collection with both light and dark filenames (already have extensions)
 			await pool.execute(`UPDATE collections SET filename = ?, filename_dark = ? WHERE id = ?`, [filename, darkFilename, collectionId]);
 		} else {
-			// No custom images, use default filenames
-			filename = 'custom_collection_004';
-			const darkFilename = 'custom_collection_004_dark';
+			// No custom images, use default filenames with extensions
+			filename = 'custom_collection_004.jpg';
+			const darkFilename = 'custom_collection_004_dark.jpg';
 
-			// Insert collection with default filenames
+			// Insert collection with default filenames (with extensions)
 			const [result] = await pool.execute<ResultSetHeader>(
 				`INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, public, show_overlay, created_at, updated_at) 
 				 VALUES (?, ?, ?, ?, ?, 0, ?, NOW(), NOW())`,
