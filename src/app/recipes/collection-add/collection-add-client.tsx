@@ -11,6 +11,7 @@ import ImageUploadSection from './components/ImageUploadSection';
 interface CollectionFormData {
 	title: string;
 	subtitle: string;
+	showOverlay: boolean;
 }
 
 const CollectionAddClient = () => {
@@ -22,6 +23,7 @@ const CollectionAddClient = () => {
 	const [formData, setFormData] = useState<CollectionFormData>({
 		title: '',
 		subtitle: '',
+		showOverlay: true, // Default to true to maintain existing behavior
 	});
 
 	// Image files
@@ -44,8 +46,12 @@ const CollectionAddClient = () => {
 		};
 	}, [lightImagePreview, darkImagePreview]);
 
-	const handleFieldChange = (field: keyof CollectionFormData, value: string) => {
-		setFormData(prev => ({ ...prev, [field]: value }));
+	const handleFieldChange = (field: keyof CollectionFormData, value: string | boolean) => {
+		if (field === 'showOverlay') {
+			setFormData(prev => ({ ...prev, [field]: value === 'true' || value === true }));
+		} else {
+			setFormData(prev => ({ ...prev, [field]: value as string }));
+		}
 	};
 
 	const handleFileValidationError = (title: string, message: string) => {
@@ -68,6 +74,7 @@ const CollectionAddClient = () => {
 			const uploadData = new FormData();
 			uploadData.append('title', formData.title);
 			uploadData.append('subtitle', formData.subtitle);
+			uploadData.append('showOverlay', formData.showOverlay.toString());
 
 			// Add images if provided (API will use defaults if not provided)
 			if (lightModeImage) {
@@ -141,6 +148,20 @@ const CollectionAddClient = () => {
 									placeholder="Enter collection subtitle (optional)"
 									disabled={isLoading}
 								/>
+							</div>
+
+							<div className="flex items-center">
+								<input
+									type="checkbox"
+									id="showOverlay"
+									checked={formData.showOverlay}
+									onChange={e => handleFieldChange('showOverlay', e.target.checked ? 'true' : 'false')}
+									className="h-4 w-4 text-accent focus:ring-accent border-gray-300 rounded"
+									disabled={isLoading}
+								/>
+								<label htmlFor="showOverlay" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+									Display texture overlay on collection card
+								</label>
 							</div>
 						</div>
 

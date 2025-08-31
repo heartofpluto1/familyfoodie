@@ -97,6 +97,7 @@ CREATE TABLE `collections` (
   `subtitle` text,
   `filename` varchar(255) DEFAULT 'custom_collection_004',
   `filename_dark` varchar(255) DEFAULT 'custom_collection_004_dark',
+  `show_overlay` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'Controls whether texture overlay displays on collection cards',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `url_slug` varchar(255) NOT NULL DEFAULT '1-initial',
@@ -109,6 +110,7 @@ CREATE TABLE `collections` (
   KEY `idx_household_id` (`household_id`),
   KEY `idx_parent_id` (`parent_id`),
   KEY `idx_public` (`public`),
+  KEY `idx_show_overlay` (`show_overlay`),
   CONSTRAINT `fk_collections_household` FOREIGN KEY (`household_id`) REFERENCES `households` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_collections_parent` FOREIGN KEY (`parent_id`) REFERENCES `collections` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

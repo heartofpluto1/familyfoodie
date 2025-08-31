@@ -73,6 +73,7 @@ const CollectionsPageClient = ({ myCollections, publicCollections }: Collections
 											subtitle={collection.subtitle || undefined}
 											subscribed={false}
 											recipeCount={collection.recipe_count}
+											showOverlay={collection.show_overlay}
 										/>
 									</Link>
 								) : (
@@ -85,6 +86,7 @@ const CollectionsPageClient = ({ myCollections, publicCollections }: Collections
 											subtitle={collection.subtitle || undefined}
 											subscribed={true}
 											recipeCount={collection.recipe_count}
+											showOverlay={collection.show_overlay}
 											onToggleSubscription={() => handleToggleSubscription(collection)}
 											isLoading={subscriptionLoading === collection.id}
 										/>
@@ -122,6 +124,7 @@ const CollectionsPageClient = ({ myCollections, publicCollections }: Collections
 										subtitle={collection.subtitle || undefined}
 										subscribed={collection.access_type === 'subscribed'}
 										recipeCount={collection.recipe_count}
+										showOverlay={collection.show_overlay}
 										onToggleSubscription={collection.access_type !== 'owned' ? () => handleToggleSubscription(collection) : undefined}
 										isLoading={subscriptionLoading === collection.id}
 									/>
