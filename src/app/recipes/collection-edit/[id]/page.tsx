@@ -47,7 +47,11 @@ async function getCollection(collectionId: number, householdId: number): Promise
 			return null;
 		}
 
-		return rows[0] as Collection;
+		const collection = rows[0] as any;
+		return {
+			...collection,
+			show_overlay: !!collection.show_overlay, // Convert TINYINT to boolean
+		} as Collection;
 	} catch (error) {
 		console.error('Error fetching collection:', error);
 		return null;

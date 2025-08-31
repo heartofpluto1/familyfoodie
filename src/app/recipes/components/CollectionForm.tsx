@@ -39,7 +39,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 	const [formData, setFormData] = useState<CollectionFormData>({
 		title: collection?.title || '',
 		subtitle: collection?.subtitle || '',
-		showOverlay: collection?.show_overlay !== undefined ? Boolean(collection.show_overlay) : true,
+		showOverlay: mode === 'edit' && collection ? !!collection.show_overlay : true,
 	});
 
 	// Image files for new uploads
@@ -80,7 +80,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 
 	const handleFieldChange = (field: keyof CollectionFormData, value: string | boolean) => {
 		if (field === 'showOverlay') {
-			setFormData(prev => ({ ...prev, [field]: value === 'true' || value === true }));
+			setFormData(prev => ({ ...prev, [field]: typeof value === 'boolean' ? value : value === 'true' }));
 		} else {
 			setFormData(prev => ({ ...prev, [field]: value as string }));
 		}
