@@ -32,7 +32,31 @@ export function MySQLAdapter(): Adapter {
 					// User exists - update their OAuth info and profile image for first-time OAuth login
 					const existingUser = existingUsers[0];
 
-					// Only update if they don't already have OAuth credentials
+					// Check if user has a household - if not, check for pending invitations
+					if (!existingUser.household_id) {
+						const [invitations] = await connection.execute<RowDataPacket[]>(
+							`SELECT household_id FROM household_invitations 
+							WHERE LOWER(email) = LOWER(?) AND expires_at > NOW() AND accepted_at IS NULL 
+							ORDER BY created_at DESC LIMIT 1`,
+							[user.email]
+						);
+
+						if (invitations.length > 0) {
+							// User has invitation, assign them to that household
+							const householdId = invitations[0].household_id;
+
+							// Update user with new household
+							await connection.execute('UPDATE users SET household_id = ?, updated_at = NOW() WHERE id = ?', [householdId, existingUser.id]);
+
+							// Mark invitation as accepted
+							await connection.execute('UPDATE household_invitations SET accepted_at = NOW() WHERE LOWER(email) = LOWER(?) AND household_id = ?', [
+								user.email,
+								householdId,
+							]);
+						}
+					}
+
+					// Only update OAuth info if they don't already have OAuth credentials
 					if (!existingUser.oauth_provider) {
 						await connection.execute(
 							'UPDATE users SET oauth_provider = ?, oauth_provider_id = ?, profile_image_url = ?, email_verified = 1, updated_at = NOW() WHERE id = ?',
@@ -54,7 +78,7 @@ export function MySQLAdapter(): Adapter {
 				// Check for pending invitation
 				const [invitations] = await connection.execute<RowDataPacket[]>(
 					`SELECT household_id FROM household_invitations 
-           WHERE email = ? AND expires_at > NOW() AND accepted_at IS NULL 
+           WHERE LOWER(email) = LOWER(?) AND expires_at > NOW() AND accepted_at IS NULL 
            ORDER BY created_at DESC LIMIT 1`,
 					[user.email]
 				);
@@ -66,7 +90,10 @@ export function MySQLAdapter(): Adapter {
 					householdId = invitations[0].household_id;
 
 					// Mark invitation as accepted
-					await connection.execute('UPDATE household_invitations SET accepted_at = NOW() WHERE email = ? AND household_id = ?', [user.email, householdId]);
+					await connection.execute('UPDATE household_invitations SET accepted_at = NOW() WHERE LOWER(email) = LOWER(?) AND household_id = ?', [
+						user.email,
+						householdId,
+					]);
 				} else {
 					// Extract name parts to get last name for household
 					const nameParts = (user.name || '').split(' ');
