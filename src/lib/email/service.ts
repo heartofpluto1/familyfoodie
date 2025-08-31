@@ -110,6 +110,19 @@ The Family Foodie Team
 			console.error('Resend API response:', response);
 			if (response.error) {
 				console.error('Resend API error:', response.error);
+
+				// Handle trial mode restriction specifically
+				// The error message contains the restriction info
+				if (response.error.message?.includes('testing emails')) {
+					console.warn('⚠️ Resend is in trial mode - can only send to verified email address');
+					console.warn('To fix: Verify a domain at resend.com/domains or upgrade your Resend account');
+					console.log('📧 Invitation created but email not sent (trial mode):', params.recipientEmail);
+
+					// Return success since the invitation was created successfully
+					// The user can still accept the invitation if they know about it
+					return { success: true, messageId: 'trial-mode-no-email' };
+				}
+
 				throw new Error(`Resend API error: ${response.error.message || response.error.name || 'Unknown error'}`);
 			}
 			throw new Error('Failed to send email - no response data');

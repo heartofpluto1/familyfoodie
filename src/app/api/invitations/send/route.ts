@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 		});
 
 		// Send the invitation email
-		await sendInvitationEmail({
+		const emailResult = await sendInvitationEmail({
 			recipientEmail: email,
 			inviterName: auth.session.user.name || 'A Family Foodie member',
 			householdName: auth.session.user.household_name,
@@ -53,9 +53,15 @@ export async function POST(request: NextRequest) {
 			expiresAt: invitation.expiresAt,
 		});
 
+		// Check if email was actually sent or just simulated due to trial mode
+		const message =
+			emailResult.messageId === 'trial-mode-no-email'
+				? 'Done! Invitation is ready and waiting for them to login (no email sent - service still pending setup).'
+				: 'Invitation sent successfully';
+
 		return NextResponse.json({
 			success: true,
-			message: 'Invitation sent successfully',
+			message,
 			expiresAt: invitation.expiresAt,
 		});
 	} catch (error) {
