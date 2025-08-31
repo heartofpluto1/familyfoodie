@@ -114,7 +114,15 @@ async function getCollectionFileStats(): Promise<{ orphaned: OrphanedFile[]; sta
 			const collectionsDir = path.join(process.cwd(), 'public', 'collections');
 
 			try {
-				const files = await fs.readdir(collectionsDir);
+				// Check if directory exists first
+				let files: string[] = [];
+				try {
+					await fs.access(collectionsDir);
+					files = await fs.readdir(collectionsDir);
+				} catch (err) {
+					// Directory doesn't exist, use empty array
+					console.log('Collections directory does not exist:', collectionsDir);
+				}
 
 				for (const file of files) {
 					// Skip overlay files and non-image files
@@ -246,7 +254,15 @@ async function getRecipeFileStats(): Promise<{ orphanedImages: OrphanedFile[]; o
 			const staticDir = path.join(process.cwd(), 'public', 'static');
 
 			try {
-				const files = await fs.readdir(staticDir);
+				// Check if directory exists first
+				let files: string[] = [];
+				try {
+					await fs.access(staticDir);
+					files = await fs.readdir(staticDir);
+				} catch (err) {
+					// Directory doesn't exist, use empty array
+					console.log('Static directory does not exist:', staticDir);
+				}
 
 				for (const file of files) {
 					const filePath = path.join(staticDir, file);
@@ -353,7 +369,7 @@ async function getOrphanedIngredients(): Promise<OrphanedRecord[]> {
 			SELECT i.id, i.name, i.household_id
 			FROM ingredients i
 			LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
-			WHERE ri.id IS NULL
+			WHERE ri.ingredient_id IS NULL
 			ORDER BY i.household_id, i.name
 		`);
 
@@ -376,7 +392,7 @@ async function getOrphanedRecipes(): Promise<OrphanedRecord[]> {
 			FROM recipes r
 			LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
 			LEFT JOIN plans p ON r.id = p.recipe_id
-			WHERE cr.id IS NULL AND p.id IS NULL
+			WHERE cr.recipe_id IS NULL AND p.recipe_id IS NULL
 			ORDER BY r.household_id, r.name
 		`);
 
