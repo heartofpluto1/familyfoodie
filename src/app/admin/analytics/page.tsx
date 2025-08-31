@@ -31,6 +31,7 @@ export const metadata: Metadata = {
 interface OrphanedFile {
 	filename: string;
 	type: 'collection' | 'recipe-image' | 'recipe-pdf';
+	size?: number;
 }
 
 interface OrphanedRecord {
@@ -39,7 +40,22 @@ interface OrphanedRecord {
 	type: string;
 }
 
-async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
+interface FileStats {
+	total: number;
+	totalSize: number;
+	orphaned: number;
+	orphanedSize: number;
+}
+
+function formatFileSize(bytes: number): string {
+	if (bytes === 0) return '0 Bytes';
+	const k = 1024;
+	const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function getCollectionFileStats(): Promise<{ orphaned: OrphanedFile[]; stats: FileStats }> {
 	try {
 		// Get all collection filenames from database
 		const [rows] = await pool.execute<RowDataPacket[]>('SELECT filename, filename_dark FROM collections');
@@ -51,6 +67,9 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 		});
 
 		const orphaned: OrphanedFile[] = [];
+		let totalFiles = 0;
+		let totalSize = 0;
+		let orphanedSize = 0;
 
 		if (useGCS && bucket) {
 			// Production: Check files in GCS bucket under collections/ prefix
@@ -65,6 +84,10 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 						continue;
 					}
 
+					const fileSize = parseInt(file.metadata.size?.toString() || '0');
+					totalFiles++;
+					totalSize += fileSize;
+
 					// Remove extension for comparison
 					const filenameWithoutExt = filename.replace(/\.(jpg|jpeg|png)$/i, '');
 
@@ -78,7 +101,8 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 					}
 
 					if (!isReferenced) {
-						orphaned.push({ filename: filename, type: 'collection' });
+						orphaned.push({ filename: filename, type: 'collection', size: fileSize });
+						orphanedSize += fileSize;
 					}
 				}
 			} catch (error) {
@@ -97,6 +121,12 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 						continue;
 					}
 
+					const filePath = path.join(collectionsDir, file);
+					const stats = await fs.stat(filePath);
+					const fileSize = stats.size;
+					totalFiles++;
+					totalSize += fileSize;
+
 					// Remove extension for comparison
 					const filenameWithoutExt = file.replace(/\.(jpg|jpeg|png)$/i, '');
 
@@ -110,7 +140,8 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 					}
 
 					if (!isReferenced) {
-						orphaned.push({ filename: file, type: 'collection' });
+						orphaned.push({ filename: file, type: 'collection', size: fileSize });
+						orphanedSize += fileSize;
 					}
 				}
 			} catch (error) {
@@ -118,14 +149,22 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 			}
 		}
 
-		return orphaned;
+		return {
+			orphaned,
+			stats: {
+				total: totalFiles,
+				totalSize,
+				orphaned: orphaned.length,
+				orphanedSize
+			}
+		};
 	} catch (error) {
-		console.error('Error getting orphaned collection files:', error);
-		return [];
+		console.error('Error getting collection file stats:', error);
+		return { orphaned: [], stats: { total: 0, totalSize: 0, orphaned: 0, orphanedSize: 0 } };
 	}
 }
 
-async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs: OrphanedFile[] }> {
+async function getRecipeFileStats(): Promise<{ orphanedImages: OrphanedFile[]; orphanedPdfs: OrphanedFile[]; imageStats: FileStats; pdfStats: FileStats }> {
 	try {
 		// Get all recipe filenames from database
 		const [rows] = await pool.execute<RowDataPacket[]>('SELECT image_filename, pdf_filename FROM recipes');
@@ -139,6 +178,12 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 
 		const orphanedImages: OrphanedFile[] = [];
 		const orphanedPdfs: OrphanedFile[] = [];
+		let totalImages = 0;
+		let totalImageSize = 0;
+		let orphanedImageSize = 0;
+		let totalPdfs = 0;
+		let totalPdfSize = 0;
+		let orphanedPdfSize = 0;
 
 		if (useGCS && bucket) {
 			// Production: Check files in GCS bucket (recipe files are stored at root level)
@@ -150,7 +195,12 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 					// Skip files in subdirectories (collections/, etc.)
 					if (file.name.includes('/')) continue;
 
+					const fileSize = parseInt(file.metadata.size?.toString() || '0');
+
 					if (file.name.match(/\.(jpg|jpeg|png)$/i)) {
+						totalImages++;
+						totalImageSize += fileSize;
+
 						// Check if this image is referenced in the database
 						const filenameWithoutExt = file.name.replace(/\.(jpg|jpeg|png)$/i, '');
 						let isReferenced = false;
@@ -163,9 +213,13 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 						}
 
 						if (!isReferenced) {
-							orphanedImages.push({ filename: file.name, type: 'recipe-image' });
+							orphanedImages.push({ filename: file.name, type: 'recipe-image', size: fileSize });
+							orphanedImageSize += fileSize;
 						}
 					} else if (file.name.endsWith('.pdf')) {
+						totalPdfs++;
+						totalPdfSize += fileSize;
+
 						// Check if this PDF is referenced in the database
 						const filenameWithoutExt = file.name.replace(/\.pdf$/i, '');
 						let isReferenced = false;
@@ -178,7 +232,8 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 						}
 
 						if (!isReferenced) {
-							orphanedPdfs.push({ filename: file.name, type: 'recipe-pdf' });
+							orphanedPdfs.push({ filename: file.name, type: 'recipe-pdf', size: fileSize });
+							orphanedPdfSize += fileSize;
 						}
 					}
 				}
@@ -193,7 +248,14 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 				const files = await fs.readdir(staticDir);
 
 				for (const file of files) {
+					const filePath = path.join(staticDir, file);
+					const stats = await fs.stat(filePath);
+					const fileSize = stats.size;
+
 					if (file.match(/\.(jpg|jpeg|png)$/i)) {
+						totalImages++;
+						totalImageSize += fileSize;
+
 						// Check if this image is referenced in the database
 						const filenameWithoutExt = file.replace(/\.(jpg|jpeg|png)$/i, '');
 						let isReferenced = false;
@@ -206,9 +268,13 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 						}
 
 						if (!isReferenced) {
-							orphanedImages.push({ filename: file, type: 'recipe-image' });
+							orphanedImages.push({ filename: file, type: 'recipe-image', size: fileSize });
+							orphanedImageSize += fileSize;
 						}
 					} else if (file.endsWith('.pdf')) {
+						totalPdfs++;
+						totalPdfSize += fileSize;
+
 						// Check if this PDF is referenced in the database
 						const filenameWithoutExt = file.replace(/\.pdf$/i, '');
 						let isReferenced = false;
@@ -221,7 +287,8 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 						}
 
 						if (!isReferenced) {
-							orphanedPdfs.push({ filename: file, type: 'recipe-pdf' });
+							orphanedPdfs.push({ filename: file, type: 'recipe-pdf', size: fileSize });
+							orphanedPdfSize += fileSize;
 						}
 					}
 				}
@@ -230,10 +297,30 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 			}
 		}
 
-		return { images: orphanedImages, pdfs: orphanedPdfs };
+		return {
+			orphanedImages,
+			orphanedPdfs,
+			imageStats: {
+				total: totalImages,
+				totalSize: totalImageSize,
+				orphaned: orphanedImages.length,
+				orphanedSize: orphanedImageSize
+			},
+			pdfStats: {
+				total: totalPdfs,
+				totalSize: totalPdfSize,
+				orphaned: orphanedPdfs.length,
+				orphanedSize: orphanedPdfSize
+			}
+		};
 	} catch (error) {
-		console.error('Error getting orphaned recipe files:', error);
-		return { images: [], pdfs: [] };
+		console.error('Error getting recipe file stats:', error);
+		return {
+			orphanedImages: [],
+			orphanedPdfs: [],
+			imageStats: { total: 0, totalSize: 0, orphaned: 0, orphanedSize: 0 },
+			pdfStats: { total: 0, totalSize: 0, orphaned: 0, orphanedSize: 0 }
+		};
 	}
 }
 
@@ -287,14 +374,15 @@ export default async function SystemAnalyticsPage() {
 	}
 
 	// Fetch all orphaned data
-	const [orphanedCollectionFiles, recipeFiles, orphanedIngredients, orphanedRecipes] = await Promise.all([
-		getOrphanedCollectionFiles(),
-		getOrphanedRecipeFiles(),
+	const [collectionData, recipeData, orphanedIngredients, orphanedRecipes] = await Promise.all([
+		getCollectionFileStats(),
+		getRecipeFileStats(),
 		getOrphanedIngredients(),
 		getOrphanedRecipes(),
 	]);
 
-	const { images: orphanedRecipeImages, pdfs: orphanedRecipePdfs } = recipeFiles;
+	const { orphaned: orphanedCollectionFiles, stats: collectionStats } = collectionData;
+	const { orphanedImages: orphanedRecipeImages, orphanedPdfs: orphanedRecipePdfs, imageStats, pdfStats } = recipeData;
 
 	return (
 		<main className="container mx-auto px-4 py-8">
@@ -314,9 +402,26 @@ export default async function SystemAnalyticsPage() {
 								d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
 							/>
 						</svg>
-						Orphaned Collection Files
-						<span className="text-sm font-normal text-muted">({orphanedCollectionFiles.length} found)</span>
+						Collection Files
 					</h2>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+						<div>
+							<div className="text-sm text-muted">Total Files</div>
+							<div className="text-lg font-semibold">{collectionStats.total}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Total Size</div>
+							<div className="text-lg font-semibold">{formatFileSize(collectionStats.totalSize)}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Orphaned</div>
+							<div className="text-lg font-semibold text-orange-600">{collectionStats.orphaned}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Orphaned Size</div>
+							<div className="text-lg font-semibold text-orange-600">{formatFileSize(collectionStats.orphanedSize)}</div>
+						</div>
+					</div>
 					{orphanedCollectionFiles.length > 0 ? (
 						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 							<ul className="space-y-1 text-sm">
@@ -343,9 +448,26 @@ export default async function SystemAnalyticsPage() {
 								d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
 							/>
 						</svg>
-						Orphaned Recipe Images
-						<span className="text-sm font-normal text-muted">({orphanedRecipeImages.length} found)</span>
+						Recipe Images
 					</h2>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+						<div>
+							<div className="text-sm text-muted">Total Files</div>
+							<div className="text-lg font-semibold">{imageStats.total}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Total Size</div>
+							<div className="text-lg font-semibold">{formatFileSize(imageStats.totalSize)}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Orphaned</div>
+							<div className="text-lg font-semibold text-orange-600">{imageStats.orphaned}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Orphaned Size</div>
+							<div className="text-lg font-semibold text-orange-600">{formatFileSize(imageStats.orphanedSize)}</div>
+						</div>
+					</div>
 					{orphanedRecipeImages.length > 0 ? (
 						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 							<ul className="space-y-1 text-sm">
@@ -372,9 +494,26 @@ export default async function SystemAnalyticsPage() {
 								d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
 							/>
 						</svg>
-						Orphaned Recipe PDFs
-						<span className="text-sm font-normal text-muted">({orphanedRecipePdfs.length} found)</span>
+						Recipe PDFs
 					</h2>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+						<div>
+							<div className="text-sm text-muted">Total Files</div>
+							<div className="text-lg font-semibold">{pdfStats.total}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Total Size</div>
+							<div className="text-lg font-semibold">{formatFileSize(pdfStats.totalSize)}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Orphaned</div>
+							<div className="text-lg font-semibold text-orange-600">{pdfStats.orphaned}</div>
+						</div>
+						<div>
+							<div className="text-sm text-muted">Orphaned Size</div>
+							<div className="text-lg font-semibold text-orange-600">{formatFileSize(pdfStats.orphanedSize)}</div>
+						</div>
+					</div>
 					{orphanedRecipePdfs.length > 0 ? (
 						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 							<ul className="space-y-1 text-sm">
@@ -474,7 +613,7 @@ export default async function SystemAnalyticsPage() {
 							<div className="text-sm text-muted">Recipes</div>
 						</div>
 					</div>
-					<div className="mt-4 pt-4 border-t border-custom">
+					<div className="mt-4 pt-4 border-t border-custom space-y-2">
 						<p className="text-sm text-muted">
 							Total orphaned assets:{' '}
 							<span className="font-semibold text-foreground">
@@ -484,6 +623,25 @@ export default async function SystemAnalyticsPage() {
 									orphanedIngredients.length +
 									orphanedRecipes.length}
 							</span>
+						</p>
+						<p className="text-sm text-muted">
+							Total storage usage:{' '}
+							<span className="font-semibold text-foreground">
+								{formatFileSize(collectionStats.totalSize + imageStats.totalSize + pdfStats.totalSize)}
+							</span>
+							{' '}across{' '}
+							<span className="font-semibold text-foreground">
+								{collectionStats.total + imageStats.total + pdfStats.total}
+							</span>
+							{' '}files
+						</p>
+						<p className="text-sm text-muted">
+							Orphaned storage:{' '}
+							<span className="font-semibold text-orange-600">
+								{formatFileSize(collectionStats.orphanedSize + imageStats.orphanedSize + pdfStats.orphanedSize)}
+							</span>
+							{' '}({Math.round(((collectionStats.orphanedSize + imageStats.orphanedSize + pdfStats.orphanedSize) / 
+								(collectionStats.totalSize + imageStats.totalSize + pdfStats.totalSize || 1)) * 100)}% of total)
 						</p>
 					</div>
 				</section>
