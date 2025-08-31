@@ -53,10 +53,10 @@ export async function POST(request: NextRequest) {
 			expiresAt: invitation.expiresAt,
 		});
 
-		// Check if email was actually sent or just simulated due to trial mode
+		// Check if email was actually sent or if there was an issue
 		const message =
-			emailResult.messageId === 'trial-mode-no-email'
-				? 'Done! Invitation is ready and waiting for them to login (no email sent - service still pending setup).'
+			emailResult.messageId === 'resend-error-no-email'
+				? 'Done! Invitation is ready and waiting for them to login (no email sent).'
 				: 'Invitation sent successfully';
 
 		return NextResponse.json({
