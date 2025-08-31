@@ -10,8 +10,8 @@ interface DbUser extends RowDataPacket {
 	first_name: string;
 	last_name: string;
 	household_id: number;
-	oauth_provider: string;
-	oauth_provider_id: string;
+	oauth_provider: string | null;
+	oauth_provider_id: string | null;
 	email_verified: boolean;
 	profile_image_url: string | null;
 	is_admin: boolean;
@@ -132,14 +132,14 @@ export function MySQLAdapter(): Adapter {
 				const firstName = nameParts[0] || '';
 				const lastName = nameParts.slice(1).join(' ') || '';
 
-				// For new users, we'll update oauth details when they're linked via linkAccount
+				// For new users, oauth details will be set when linkAccount is called
+				// oauth_provider and oauth_provider_id are left as NULL initially
 				const [userResult] = await connection.execute<ResultSetHeader>(
 					`INSERT INTO users (
             email, first_name, last_name, 
             household_id, email_verified, profile_image_url,
-            oauth_provider, oauth_provider_id,
             is_admin, is_active, date_joined
-          ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 1, NOW())`,
+          ) VALUES (?, ?, ?, ?, ?, ?, 0, 1, NOW())`,
 					[user.email, firstName, lastName, householdId, user.emailVerified ? 1 : 0, user.image]
 				);
 
