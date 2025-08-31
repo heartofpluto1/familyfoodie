@@ -90,9 +90,9 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
 				formData.append('subtitle', 'Test Subtitle');
-				formData.append('showOverlay', 'true');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
+				formData.append('show_overlay', 'true');
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('dark_image', createMockFile('dark.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -109,7 +109,7 @@ describe('/api/collections/create', () => {
 							success: true,
 							id: 123,
 							message: 'Collection created successfully',
-							filename: 'secure_filename_123',
+							filename: 'secure_filename_123.jpg',
 						});
 
 						// Verify database calls include household_id and show_overlay
@@ -136,7 +136,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Light Only Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -157,8 +157,8 @@ describe('/api/collections/create', () => {
 
 						// Both filename and filename_dark should be set to same value
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'), [
-							'secure_filename_123',
-							'secure_filename_123',
+							'secure_filename_123.jpg',
+							'secure_filename_123.jpg',
 							456,
 						]);
 					},
@@ -172,7 +172,7 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Default Images Collection');
 				formData.append('subtitle', 'No custom images');
-				formData.append('showOverlay', 'true');
+				formData.append('show_overlay', 'true');
 
 				await testApiHandler({
 					appHandler,
@@ -186,14 +186,14 @@ describe('/api/collections/create', () => {
 						const data = await response.json();
 
 						expect(data.success).toBe(true);
-						expect(data.filename).toBe('custom_collection_004');
+						expect(data.filename).toBe('custom_collection_004.jpg');
 
 						// Should use default filenames with household_id and show_overlay
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'Default Images Collection',
 							'No custom images',
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1, // household_id
 							1, // show_overlay (true = 1)
 						]);
@@ -210,7 +210,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'No Subtitle Collection');
-				formData.append('showOverlay', 'false');
+				formData.append('show_overlay', 'false');
 				// Don't append subtitle
 
 				await testApiHandler({
@@ -227,8 +227,8 @@ describe('/api/collections/create', () => {
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'No Subtitle Collection',
 							null,
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1,
 							0, // show_overlay (false = 0)
 						]);
@@ -258,8 +258,8 @@ describe('/api/collections/create', () => {
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'No Overlay Specified',
 							null,
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1,
 							0, // show_overlay should default to 0
 						]);
@@ -282,7 +282,7 @@ describe('/api/collections/create', () => {
 
 					const formData = new FormData();
 					formData.append('title', `Test ${testCase.input}`);
-					formData.append('showOverlay', testCase.input);
+					formData.append('show_overlay', testCase.input);
 
 					await testApiHandler({
 						appHandler,
@@ -315,8 +315,8 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Partial Upload Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('dark_image', createMockFile('dark.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -333,8 +333,8 @@ describe('/api/collections/create', () => {
 
 						// Should fallback to using light image for dark mode
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'), [
-							'secure_filename_123',
-							'secure_filename_123',
+							'secure_filename_123.jpg',
+							'secure_filename_123.jpg',
 							111,
 						]);
 
@@ -392,10 +392,10 @@ describe('/api/collections/create', () => {
 				});
 			});
 
-			it('should return 400 when light image is not JPG', async () => {
+			it('should return 400 when light image is not a valid type', async () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
-				formData.append('lightImage', createMockFile('image.png', 'image/png'));
+				formData.append('light_image', createMockFile('image.gif', 'image/gif'));
 
 				await testApiHandler({
 					appHandler,
@@ -408,7 +408,7 @@ describe('/api/collections/create', () => {
 						expect(response.status).toBe(400);
 						const data = await response.json();
 
-						expect(data.error).toBe('Light mode file must be a JPG image');
+						expect(data.error).toBe('Light mode file must be a JPG, PNG, or WebP image');
 					},
 				});
 			});
@@ -416,8 +416,8 @@ describe('/api/collections/create', () => {
 			it('should return 400 when dark image is not JPG', async () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-				formData.append('darkImage', createMockFile('dark.gif', 'image/gif'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('dark_image', createMockFile('dark.gif', 'image/gif'));
 
 				await testApiHandler({
 					appHandler,
@@ -430,7 +430,7 @@ describe('/api/collections/create', () => {
 						expect(response.status).toBe(400);
 						const data = await response.json();
 
-						expect(data.error).toBe('Dark mode file must be a JPG image');
+						expect(data.error).toBe('Dark mode file must be a JPG, PNG, or WebP image');
 					},
 				});
 			});
@@ -468,12 +468,13 @@ describe('/api/collections/create', () => {
 					.mockResolvedValueOnce([mockInsertResult, []]) // Initial insert
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // Cleanup delete
 
-				// Mock failed light image upload
+				// Mock failed light image upload - clear the default and set failure
+				mockUploadFile.mockReset();
 				mockUploadFile.mockResolvedValueOnce({ success: false, error: 'Upload failed' });
 
 				const formData = new FormData();
 				formData.append('title', 'Failed Upload Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -571,8 +572,8 @@ describe('/api/collections/create', () => {
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'Private Collection',
 							null,
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1,
 							0, // show_overlay defaults to 0
 						]);
@@ -593,7 +594,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Storage Test');
-				formData.append('lightImage', createMockFile('test.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('test.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -619,7 +620,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Upload Parameters Test');
-				formData.append('lightImage', createMockFile('test.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('test.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,

@@ -59,50 +59,53 @@ export function getRecipePdfUrl(filename: string | null): string {
 
 /**
  * Get the correct URL for a collection file (image)
- * Uses same logic as recipes but with collections directory
+ * Now expects filename to already include extension (like recipes)
  */
-export function getCollectionFileUrl(filename: string | null, extension: 'jpg' | 'png' | 'jpeg'): string {
+export function getCollectionFileUrl(filename: string | null): string {
 	// If no filename stored, return empty
 	if (!filename) {
 		return '';
 	}
 
-	// Check if the file appears to be migrated (32 char hex string, optionally with _dark suffix)
-	const isMigrated = /^[a-f0-9]{32}(?:_dark)?$/.test(filename);
+	// Extract base filename to check if migrated (similar to recipe logic)
+	const baseFilename = filename.includes('.') ? filename.split('.')[0] : filename;
+	const baseHash = baseFilename.includes('_v') ? baseFilename.split('_v')[0] : baseFilename;
+	// Check if the file appears to be migrated (32 char hex string)
+	const isMigrated = /^[a-f0-9]{32}(?:_dark)?$/.test(baseHash);
 
 	if (isGCSProduction && bucketName && isMigrated) {
 		// Production with GCS and migrated file - use GCS URL
-		return `https://storage.googleapis.com/${bucketName}/collections/${filename}.${extension}`;
+		return `https://storage.googleapis.com/${bucketName}/collections/${filename}`;
 	} else {
 		// Development or unmigrated files - use local collections path
-		return `/collections/${filename}.${extension}`;
+		return `/collections/${filename}`;
 	}
 }
 
 /**
  * Get image URL for a collection (light mode)
- * Client-safe version that defaults to .jpg extension
+ * Now expects filename to already include extension
  */
 export function getCollectionImageUrl(filename: string | null): string {
 	if (!filename) {
 		return '/collections/custom_collection_004.jpg'; // Default fallback
 	}
 
-	// Default to jpg extension for images
-	return getCollectionFileUrl(filename, 'jpg');
+	// Filename already includes extension
+	return getCollectionFileUrl(filename);
 }
 
 /**
  * Get dark mode image URL for a collection
- * Client-safe version that defaults to .jpg extension
+ * Now expects filename to already include extension
  */
 export function getCollectionDarkImageUrl(filename_dark: string | null): string {
 	if (!filename_dark) {
 		return '/collections/custom_collection_004_dark.jpg'; // Default dark fallback
 	}
 
-	// Default to jpg extension for images
-	return getCollectionFileUrl(filename_dark, 'jpg');
+	// Filename already includes extension
+	return getCollectionFileUrl(filename_dark);
 }
 
 // Legacy function for backwards compatibility
