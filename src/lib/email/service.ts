@@ -81,7 +81,7 @@ The Family Foodie Team
 	try {
 		// If no API key is configured, log the email instead (for development)
 		if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'development') {
-			console.log('📧 Email would be sent to:', params.recipientEmail);
+			console.log('📧 Email would be sent (development mode)');
 			console.log('Invitation URL:', inviteUrl);
 			return { success: true, messageId: 'dev-mode' };
 		}
@@ -89,14 +89,8 @@ The Family Foodie Team
 		// Initialize Resend with API key only when we have one
 		const resend = new Resend(process.env.RESEND_API_KEY);
 
-		// Use Resend's default email until domain is verified
-		const fromEmail = 'Family Foodie <onboarding@resend.dev>';
-
-		console.log('Attempting to send email:', {
-			from: fromEmail,
-			to: params.recipientEmail,
-			apiKeyLength: process.env.RESEND_API_KEY?.length || 0,
-		});
+		// Use configured from email (will need verified domain)
+		const fromEmail = process.env.RESEND_FROM_EMAIL || 'Family Foodie <onboarding@resend.dev>';
 
 		const response = await resend.emails.send({
 			from: fromEmail,
@@ -111,29 +105,29 @@ The Family Foodie Team
 			if (response.error) {
 				console.error('Resend API error:', response.error);
 
-				// Handle trial mode restriction specifically
-				// The error message contains the restriction info
+				// Log specific error types for monitoring
 				if (response.error.message?.includes('testing emails')) {
 					console.warn('⚠️ Resend is in trial mode - can only send to verified email address');
 					console.warn('To fix: Verify a domain at resend.com/domains or upgrade your Resend account');
-					console.log('📧 Invitation created but email not sent (trial mode):', params.recipientEmail);
-
-					// Return success since the invitation was created successfully
-					// The user can still accept the invitation if they know about it
-					return { success: true, messageId: 'trial-mode-no-email' };
+				} else {
+					console.warn('⚠️ Resend API error - invitation created but email not sent');
 				}
 
-				throw new Error(`Resend API error: ${response.error.message || response.error.name || 'Unknown error'}`);
+				// Always return success since the invitation was created successfully
+				// The user can still share the invite link manually
+				return { success: true, messageId: 'resend-error-no-email' };
 			}
-			throw new Error('Failed to send email - no response data');
+
+			// No response data and no error details
+			console.warn('⚠️ No response from Resend API - invitation created but email not sent');
+			return { success: true, messageId: 'resend-error-no-email' };
 		}
 
 		return { success: true, messageId: response.data.id };
 	} catch (error) {
 		console.error('Failed to send invitation email:', error);
-		if (error instanceof Error) {
-			throw error; // Re-throw with original message for better debugging
-		}
-		throw new Error('Failed to send invitation email');
+		// Return success even if email fails - invitation is still created
+		// This handles network errors, timeouts, etc.
+		return { success: true, messageId: 'resend-error-no-email' };
 	}
 }
