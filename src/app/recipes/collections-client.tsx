@@ -60,7 +60,7 @@ const CollectionsPageClient = ({ myCollections, publicCollections }: Collections
 			{/* My Collections Section */}
 			<section className="mb-12">
 				{myCollections.length > 0 ? (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 						{myCollections.map(collection => (
 							<div key={collection.id}>
 								{collection.access_type === 'owned' ? (
@@ -112,7 +112,7 @@ const CollectionsPageClient = ({ myCollections, publicCollections }: Collections
 				</div>
 
 				{publicCollections.length > 0 ? (
-					<div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+					<div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4">
 						{publicCollections.map(collection => (
 							<div key={collection.id} className="relative">
 								{/* All collections should be clickable */}
