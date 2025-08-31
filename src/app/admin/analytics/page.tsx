@@ -7,8 +7,21 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs/promises';
 import path from 'path';
+import { Storage } from '@google-cloud/storage';
 
 export const dynamic = 'force-dynamic';
+
+// Determine if we should use GCS based on environment
+const useGCS = process.env.NODE_ENV === 'production' && !!process.env.GCS_BUCKET_NAME;
+const bucketName = process.env.GCS_BUCKET_NAME;
+
+// Initialize Google Cloud Storage only if needed
+const storage = useGCS
+	? new Storage({
+			projectId: process.env.GOOGLE_CLOUD_PROJECT,
+		})
+	: null;
+const bucket = storage && bucketName ? storage.bucket(bucketName) : null;
 
 export const metadata: Metadata = {
 	title: 'System Analytics',
@@ -37,37 +50,72 @@ async function getOrphanedCollectionFiles(): Promise<OrphanedFile[]> {
 			if (row.filename_dark) dbFilenames.add(row.filename_dark);
 		});
 
-		// Check files in public/collections directory
-		const collectionsDir = path.join(process.cwd(), 'public', 'collections');
 		const orphaned: OrphanedFile[] = [];
 
-		try {
-			const files = await fs.readdir(collectionsDir);
+		if (useGCS && bucket) {
+			// Production: Check files in GCS bucket under collections/ prefix
+			try {
+				const [files] = await bucket.getFiles({ prefix: 'collections/' });
 
-			for (const file of files) {
-				// Skip overlay files and non-image files
-				if (file.includes('overlay') || !file.match(/\.(jpg|jpeg|png)$/i)) {
-					continue;
-				}
+				for (const file of files) {
+					const filename = file.name.replace('collections/', '');
+					
+					// Skip overlay files and non-image files
+					if (filename.includes('overlay') || !filename.match(/\.(jpg|jpeg|png)$/i)) {
+						continue;
+					}
 
-				// Remove extension for comparison
-				const filenameWithoutExt = file.replace(/\.(jpg|jpeg|png)$/i, '');
+					// Remove extension for comparison
+					const filenameWithoutExt = filename.replace(/\.(jpg|jpeg|png)$/i, '');
 
-				// Check if this file is referenced in the database
-				let isReferenced = false;
-				for (const dbFile of dbFilenames) {
-					if (dbFile.includes(filenameWithoutExt)) {
-						isReferenced = true;
-						break;
+					// Check if this file is referenced in the database
+					let isReferenced = false;
+					for (const dbFile of dbFilenames) {
+						if (dbFile.includes(filenameWithoutExt)) {
+							isReferenced = true;
+							break;
+						}
+					}
+
+					if (!isReferenced) {
+						orphaned.push({ filename: filename, type: 'collection' });
 					}
 				}
-
-				if (!isReferenced) {
-					orphaned.push({ filename: file, type: 'collection' });
-				}
+			} catch (error) {
+				console.error('Error reading GCS collections:', error);
 			}
-		} catch (error) {
-			console.error('Error reading collections directory:', error);
+		} else {
+			// Development: Check files in public/collections directory
+			const collectionsDir = path.join(process.cwd(), 'public', 'collections');
+
+			try {
+				const files = await fs.readdir(collectionsDir);
+
+				for (const file of files) {
+					// Skip overlay files and non-image files
+					if (file.includes('overlay') || !file.match(/\.(jpg|jpeg|png)$/i)) {
+						continue;
+					}
+
+					// Remove extension for comparison
+					const filenameWithoutExt = file.replace(/\.(jpg|jpeg|png)$/i, '');
+
+					// Check if this file is referenced in the database
+					let isReferenced = false;
+					for (const dbFile of dbFilenames) {
+						if (dbFile.includes(filenameWithoutExt)) {
+							isReferenced = true;
+							break;
+						}
+					}
+
+					if (!isReferenced) {
+						orphaned.push({ filename: file, type: 'collection' });
+					}
+				}
+			} catch (error) {
+				console.error('Error reading collections directory:', error);
+			}
 		}
 
 		return orphaned;
@@ -89,49 +137,97 @@ async function getOrphanedRecipeFiles(): Promise<{ images: OrphanedFile[]; pdfs:
 			if (row.pdf_filename) dbPdfFilenames.add(row.pdf_filename);
 		});
 
-		// Check files in public/static directory
-		const staticDir = path.join(process.cwd(), 'public', 'static');
 		const orphanedImages: OrphanedFile[] = [];
 		const orphanedPdfs: OrphanedFile[] = [];
 
-		try {
-			const files = await fs.readdir(staticDir);
+		if (useGCS && bucket) {
+			// Production: Check files in GCS bucket (recipe files are stored at root level)
+			try {
+				// Get all files in the bucket (excluding those with prefixes like 'collections/')
+				const [files] = await bucket.getFiles();
 
-			for (const file of files) {
-				if (file.match(/\.(jpg|jpeg|png)$/i)) {
-					// Check if this image is referenced in the database
-					const filenameWithoutExt = file.replace(/\.(jpg|jpeg|png)$/i, '');
-					let isReferenced = false;
+				for (const file of files) {
+					// Skip files in subdirectories (collections/, etc.)
+					if (file.name.includes('/')) continue;
 
-					for (const dbFile of dbImageFilenames) {
-						if (dbFile.includes(filenameWithoutExt)) {
-							isReferenced = true;
-							break;
+					if (file.name.match(/\.(jpg|jpeg|png)$/i)) {
+						// Check if this image is referenced in the database
+						const filenameWithoutExt = file.name.replace(/\.(jpg|jpeg|png)$/i, '');
+						let isReferenced = false;
+
+						for (const dbFile of dbImageFilenames) {
+							if (dbFile.includes(filenameWithoutExt)) {
+								isReferenced = true;
+								break;
+							}
 						}
-					}
 
-					if (!isReferenced) {
-						orphanedImages.push({ filename: file, type: 'recipe-image' });
-					}
-				} else if (file.endsWith('.pdf')) {
-					// Check if this PDF is referenced in the database
-					const filenameWithoutExt = file.replace(/\.pdf$/i, '');
-					let isReferenced = false;
-
-					for (const dbFile of dbPdfFilenames) {
-						if (dbFile.includes(filenameWithoutExt)) {
-							isReferenced = true;
-							break;
+						if (!isReferenced) {
+							orphanedImages.push({ filename: file.name, type: 'recipe-image' });
 						}
-					}
+					} else if (file.name.endsWith('.pdf')) {
+						// Check if this PDF is referenced in the database
+						const filenameWithoutExt = file.name.replace(/\.pdf$/i, '');
+						let isReferenced = false;
 
-					if (!isReferenced) {
-						orphanedPdfs.push({ filename: file, type: 'recipe-pdf' });
+						for (const dbFile of dbPdfFilenames) {
+							if (dbFile.includes(filenameWithoutExt)) {
+								isReferenced = true;
+								break;
+							}
+						}
+
+						if (!isReferenced) {
+							orphanedPdfs.push({ filename: file.name, type: 'recipe-pdf' });
+						}
 					}
 				}
+			} catch (error) {
+				console.error('Error reading GCS files:', error);
 			}
-		} catch (error) {
-			console.error('Error reading static directory:', error);
+		} else {
+			// Development: Check files in public/static directory
+			const staticDir = path.join(process.cwd(), 'public', 'static');
+
+			try {
+				const files = await fs.readdir(staticDir);
+
+				for (const file of files) {
+					if (file.match(/\.(jpg|jpeg|png)$/i)) {
+						// Check if this image is referenced in the database
+						const filenameWithoutExt = file.replace(/\.(jpg|jpeg|png)$/i, '');
+						let isReferenced = false;
+
+						for (const dbFile of dbImageFilenames) {
+							if (dbFile.includes(filenameWithoutExt)) {
+								isReferenced = true;
+								break;
+							}
+						}
+
+						if (!isReferenced) {
+							orphanedImages.push({ filename: file, type: 'recipe-image' });
+						}
+					} else if (file.endsWith('.pdf')) {
+						// Check if this PDF is referenced in the database
+						const filenameWithoutExt = file.replace(/\.pdf$/i, '');
+						let isReferenced = false;
+
+						for (const dbFile of dbPdfFilenames) {
+							if (dbFile.includes(filenameWithoutExt)) {
+								isReferenced = true;
+								break;
+							}
+						}
+
+						if (!isReferenced) {
+							orphanedPdfs.push({ filename: file, type: 'recipe-pdf' });
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Error reading static directory:', error);
+			}
 		}
 
 		return { images: orphanedImages, pdfs: orphanedPdfs };
@@ -226,7 +322,7 @@ export default async function SystemAnalyticsPage() {
 							<ul className="space-y-1 text-sm">
 								{orphanedCollectionFiles.map((file, index) => (
 									<li key={index} className="text-muted">
-										/collections/{file.filename}
+										{useGCS ? `gs://${bucketName}/collections/${file.filename}` : `/collections/${file.filename}`}
 									</li>
 								))}
 							</ul>
@@ -255,7 +351,7 @@ export default async function SystemAnalyticsPage() {
 							<ul className="space-y-1 text-sm">
 								{orphanedRecipeImages.map((file, index) => (
 									<li key={index} className="text-muted">
-										/static/{file.filename}
+										{useGCS ? `gs://${bucketName}/${file.filename}` : `/static/${file.filename}`}
 									</li>
 								))}
 							</ul>
@@ -284,7 +380,7 @@ export default async function SystemAnalyticsPage() {
 							<ul className="space-y-1 text-sm">
 								{orphanedRecipePdfs.map((file, index) => (
 									<li key={index} className="text-muted">
-										/static/{file.filename}
+										{useGCS ? `gs://${bucketName}/${file.filename}` : `/static/${file.filename}`}
 									</li>
 								))}
 							</ul>
@@ -355,7 +451,7 @@ export default async function SystemAnalyticsPage() {
 
 				{/* Summary Statistics */}
 				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground">Summary</h2>
+					<h2 className="text-xl font-semibold mb-4 text-foreground">Summary {useGCS && <span className="text-sm font-normal text-muted">(GCS: {bucketName})</span>}</h2>
 					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
 						<div className="text-center">
 							<div className="text-2xl font-bold text-blue-600">{orphanedCollectionFiles.length}</div>
