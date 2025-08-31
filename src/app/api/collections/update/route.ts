@@ -6,6 +6,7 @@ import { uploadFile } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import { generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
+import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -286,9 +287,19 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 					);
 				}
 
-				// Generate versioned filename for cache busting
-				const versionedFilename = generateVersionedFilename(collection.filename, 'jpg');
-				const baseFilename = versionedFilename.includes('.') ? versionedFilename.split('.')[0] : versionedFilename;
+				// Check if transitioning from default filename - generate new hash if so
+				let versionedFilename: string;
+				let baseFilename: string;
+
+				if (isDefaultImage(collection.filename)) {
+					// Transitioning from default to custom - generate new hash-based filename
+					baseFilename = generateCollectionSecureFilename(collectionIdNum, title as string);
+					versionedFilename = `${baseFilename}.jpg`;
+				} else {
+					// Already has custom filename - version it for cache busting
+					versionedFilename = generateVersionedFilename(collection.filename, 'jpg');
+					baseFilename = versionedFilename.includes('.') ? versionedFilename.split('.')[0] : versionedFilename;
+				}
 
 				// Upload with versioned filename
 				const uploadResult = await uploadFile(buffer, baseFilename, 'jpg', lightImageFile.type, 'collections');
@@ -383,9 +394,20 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 					);
 				}
 
-				// Generate versioned filename for dark image with cache busting
-				const versionedDarkFilename = generateVersionedFilename(collection.filename_dark, 'jpg');
-				const baseDarkFilename = versionedDarkFilename.includes('.') ? versionedDarkFilename.split('.')[0] : versionedDarkFilename;
+				// Check if transitioning from default filename - generate new hash if so
+				let versionedDarkFilename: string;
+				let baseDarkFilename: string;
+
+				if (isDefaultImage(collection.filename_dark)) {
+					// Transitioning from default to custom - generate new hash-based filename
+					const baseName = generateCollectionSecureFilename(collectionIdNum, title as string);
+					baseDarkFilename = `${baseName}_dark`;
+					versionedDarkFilename = `${baseDarkFilename}.jpg`;
+				} else {
+					// Already has custom filename - version it for cache busting
+					versionedDarkFilename = generateVersionedFilename(collection.filename_dark, 'jpg');
+					baseDarkFilename = versionedDarkFilename.includes('.') ? versionedDarkFilename.split('.')[0] : versionedDarkFilename;
+				}
 
 				// Upload with versioned filename
 				const uploadResult = await uploadFile(buffer, baseDarkFilename, 'jpg', darkImageFile.type, 'collections');

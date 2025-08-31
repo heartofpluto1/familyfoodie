@@ -49,6 +49,10 @@ jest.mock('@/lib/utils/secureFilename', () => ({
 	extractBaseHash: jest.fn(),
 }));
 
+jest.mock('@/lib/utils/secureFilename.collections', () => ({
+	generateCollectionSecureFilename: jest.fn(),
+}));
+
 jest.mock('@/lib/utils/secureFilename.server', () => ({
 	findAndDeleteHashFiles: jest.fn(),
 }));
@@ -975,6 +979,78 @@ describe('/api/collections/update', () => {
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledTimes(2);
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('light_v1.jpg', 'jpg');
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('dark_v1.jpg', 'jpg');
+				},
+			});
+		});
+
+		it('should generate hash-based filename when transitioning from default to custom image', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
+			const mockCollection = {
+				id: 1,
+				title: 'Test Collection',
+				subtitle: 'Subtitle',
+				filename: 'custom_collection_004.jpg',
+				filename_dark: 'custom_collection_004_dark.jpg',
+				show_overlay: true,
+				url_slug: '1-test-collection',
+			};
+
+			mockDatabase.execute
+				.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]) // Get current collection
+				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]) // Update query
+				.mockResolvedValueOnce([
+					[
+						{
+							...mockCollection,
+							filename: 'secure_hash_123.jpg',
+							filename_dark: 'secure_hash_123_dark.jpg',
+						},
+					] as RowDataPacket[],
+					[],
+				]); // Get updated collection
+
+			// Mock generateCollectionSecureFilename to return a hash
+			const mockGenerateCollectionSecureFilename = jest.mocked(jest.requireMock('@/lib/utils/secureFilename.collections').generateCollectionSecureFilename);
+			mockGenerateCollectionSecureFilename.mockReturnValue('secure_hash_123');
+
+			mockUploadFile.mockResolvedValue({
+				success: true,
+				url: '/uploads/collections/secure_hash_123.jpg',
+				filename: 'secure_hash_123.jpg',
+			});
+
+			await testApiHandler({
+				appHandler,
+				test: async ({ fetch }) => {
+					const lightFile = createMockFile('light.jpg', 'image/jpeg');
+					const darkFile = createMockFile('dark.jpg', 'image/jpeg');
+
+					const formData = new FormData();
+					formData.append('collection_id', '1');
+					formData.append('title', 'Test Collection');
+					formData.append('light_image', lightFile);
+					formData.append('dark_image', darkFile);
+
+					const response = await fetch({
+						method: 'PUT',
+						body: formData,
+					});
+
+					await response.json();
+					expect(response.status).toBe(200);
+
+					// Should generate new hash-based filenames, not version the default
+					expect(mockGenerateCollectionSecureFilename).toHaveBeenCalledWith(1, 'Test Collection');
+					expect(mockGenerateCollectionSecureFilename).toHaveBeenCalledTimes(2); // Once for light, once for dark
+
+					// Should not version the default filenames
+					expect(mockGenerateVersionedFilename).not.toHaveBeenCalledWith('custom_collection_004.jpg', 'jpg');
+					expect(mockGenerateVersionedFilename).not.toHaveBeenCalledWith('custom_collection_004_dark.jpg', 'jpg');
+
+					// Should upload with the new hash-based filenames
+					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'secure_hash_123', 'jpg', 'image/jpeg', 'collections');
+					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'secure_hash_123_dark', 'jpg', 'image/jpeg', 'collections');
 				},
 			});
 		});
