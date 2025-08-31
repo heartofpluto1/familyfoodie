@@ -575,8 +575,8 @@ export default async function SystemAnalyticsPage() {
 							<ul className="space-y-1 text-sm">
 								{orphanedCollections.map(collection => (
 									<li key={collection.id} className="text-muted">
-										<span className="font-mono text-xs text-gray-500">#{collection.id}</span> {collection.name}
-										<span className="font-mono text-xs text-gray-400 ml-2">(HH: {collection.household_id})</span>
+										<span className="font-mono text-xs text-gray-400">[HH:{collection.household_id}]</span>
+										<span className="font-mono text-xs text-gray-500 ml-2">#{collection.id}</span> {collection.name}
 									</li>
 								))}
 							</ul>
@@ -605,8 +605,8 @@ export default async function SystemAnalyticsPage() {
 							<ul className="space-y-1 text-sm">
 								{orphanedIngredients.map(ingredient => (
 									<li key={ingredient.id} className="text-muted">
-										<span className="font-mono text-xs text-gray-500">#{ingredient.id}</span> {ingredient.name}
-										<span className="font-mono text-xs text-gray-400 ml-2">(HH: {ingredient.household_id})</span>
+										<span className="font-mono text-xs text-gray-400">[HH:{ingredient.household_id}]</span>
+										<span className="font-mono text-xs text-gray-500 ml-2">#{ingredient.id}</span> {ingredient.name}
 									</li>
 								))}
 							</ul>
@@ -636,8 +636,8 @@ export default async function SystemAnalyticsPage() {
 							<ul className="space-y-1 text-sm">
 								{orphanedRecipes.map(recipe => (
 									<li key={recipe.id} className="text-muted">
-										<span className="font-mono text-xs text-gray-500">#{recipe.id}</span> {recipe.name}
-										<span className="font-mono text-xs text-gray-400 ml-2">(HH: {recipe.household_id})</span>
+										<span className="font-mono text-xs text-gray-400">[HH:{recipe.household_id}]</span>
+										<span className="font-mono text-xs text-gray-500 ml-2">#{recipe.id}</span> {recipe.name}
 									</li>
 								))}
 							</ul>
