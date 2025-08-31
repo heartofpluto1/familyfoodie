@@ -131,6 +131,7 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 						title={selectedCollection.title}
 						subtitle={selectedCollection.subtitle || undefined}
 						subscribed={true}
+						showOverlay={selectedCollection.show_overlay}
 					/>
 					<div className="flex-1">
 						<div className="flex items-start justify-between">
