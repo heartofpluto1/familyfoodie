@@ -39,7 +39,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 	const [formData, setFormData] = useState<CollectionFormData>({
 		title: collection?.title || '',
 		subtitle: collection?.subtitle || '',
-		showOverlay: collection?.show_overlay !== undefined ? collection.show_overlay : true,
+		showOverlay: collection?.show_overlay !== undefined ? Boolean(collection.show_overlay) : true,
 	});
 
 	// Image files for new uploads
