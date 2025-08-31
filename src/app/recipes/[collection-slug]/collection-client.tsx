@@ -2,13 +2,13 @@
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Recipe } from '@/types/menus';
 import { Collection } from '@/lib/queries/collections';
 import CollectionCardSmall from '@/app/components/CollectionCardSmall';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useToast } from '@/app/components/ToastProvider';
-import { TrashIcon, CursorClickIcon, CopyIcon, CancelIcon } from '@/app/components/Icons';
-// import { EditIcon } from '@/app/components/Icons'; // Uncomment when Edit functionality is implemented
+import { TrashIcon, CursorClickIcon, CopyIcon, CancelIcon, EditIcon } from '@/app/components/Icons';
 import RecipeList from '../components/RecipeList';
 import CopyRecipesModal from '../components/CopyRecipesModal';
 import { getCollectionImageUrl, getCollectionDarkImageUrl } from '@/lib/utils/secureFilename';
@@ -20,6 +20,7 @@ interface CollectionClientProps {
 }
 
 const CollectionClient = ({ recipes, collections, selectedCollection }: CollectionClientProps) => {
+	const router = useRouter();
 	const { showToast } = useToast();
 
 	// Use collection slug for import URL
@@ -173,18 +174,13 @@ const CollectionClient = ({ recipes, collections, selectedCollection }: Collecti
 										</button>
 										{selectedCollection.access_type === 'owned' && (
 											<>
-												{/* Edit button - commented out until implemented
 												<button
-													onClick={() => {
-														// TODO: Handle edit
-														console.log('Edit collection:', selectedCollection.id);
-													}}
+													onClick={() => router.push(`/recipes/collection-edit/${selectedCollection.id}`)}
 													className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
 													title="Edit Collection"
 												>
 													<EditIcon className="w-4 h-4" />
 												</button>
-												*/}
 												<button
 													onClick={() => handleDeleteClick(selectedCollection)}
 													className="btn-default inline-flex items-center justify-center w-10 h-10 rounded-full hover:shadow transition-all"
