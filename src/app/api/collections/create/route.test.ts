@@ -295,10 +295,7 @@ describe('/api/collections/create', () => {
 							expect(response.status).toBe(200);
 
 							// Verify the correct value is passed to database
-							expect(mockExecute).toHaveBeenCalledWith(
-								expect.stringContaining('INSERT INTO collections'),
-								expect.arrayContaining([testCase.expected])
-							);
+							expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), expect.arrayContaining([testCase.expected]));
 						},
 					});
 				}

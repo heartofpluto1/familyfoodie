@@ -12,6 +12,8 @@ interface ImageUploadSectionProps {
 	disabled?: boolean;
 	previewUrl?: string | null;
 	defaultBackgroundImage?: string;
+	showOverlay?: boolean;
+	overlayImage?: string;
 }
 
 const ImageUploadSection = ({
@@ -23,6 +25,8 @@ const ImageUploadSection = ({
 	disabled = false,
 	previewUrl = null,
 	defaultBackgroundImage,
+	showOverlay = false,
+	overlayImage,
 }: ImageUploadSectionProps) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isDragOver, setIsDragOver] = useState(false);
@@ -113,10 +117,15 @@ const ImageUploadSection = ({
 			>
 				<input ref={fileInputRef} type="file" className="hidden" accept={accept} onChange={handleFileInputChange} disabled={disabled} />
 
-				{/* Overlay for background image */}
-				{(previewUrl || (!selectedFile && defaultBackgroundImage)) && <div className="absolute inset-0 bg-black/70 rounded-lg" />}
+				{/* Texture overlay - shows when there's a background image and showOverlay is true */}
+				{showOverlay && overlayImage && (previewUrl || (!selectedFile && defaultBackgroundImage)) && (
+					<img src={overlayImage} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-lg" />
+				)}
 
-				<div className="relative z-10">
+				{/* Content container - positioned at bottom with background when image present */}
+				<div
+					className={`${previewUrl || (!selectedFile && defaultBackgroundImage) ? 'absolute bottom-4 left-4 right-4 bg-black/70 rounded-md p-6' : 'relative z-10'}`}
+				>
 					{selectedFile ? (
 						<div className="space-y-2">
 							<div className="text-green-400">

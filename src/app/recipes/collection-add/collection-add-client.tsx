@@ -182,6 +182,8 @@ const CollectionAddClient = () => {
 									previewUrl={lightImagePreview}
 									defaultBackgroundImage="/collections/custom_collection_004.jpg"
 									accept="image/jpeg,.jpg"
+									showOverlay={formData.showOverlay}
+									overlayImage="/collections/collection_overlay_light_mode.png"
 								/>
 
 								<ImageUploadSection
@@ -197,6 +199,8 @@ const CollectionAddClient = () => {
 									previewUrl={darkImagePreview}
 									defaultBackgroundImage="/collections/custom_collection_004_dark.jpg"
 									accept="image/jpeg,.jpg"
+									showOverlay={formData.showOverlay}
+									overlayImage="/collections/collection_overlay_dark_mode.png"
 								/>
 							</div>
 							{!lightModeImage && !darkModeImage && (
