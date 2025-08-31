@@ -262,10 +262,7 @@ describe('/api/collections/update', () => {
 			mockExecute
 				.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]) // Get current collection
 				.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]) // Update query
-				.mockResolvedValueOnce([
-					[{ ...mockCollection, title: 'New Title', url_slug: '1-new-title' }] as RowDataPacket[],
-					[],
-				]); // Get updated collection
+				.mockResolvedValueOnce([[{ ...mockCollection, title: 'New Title', url_slug: '1-new-title' }] as RowDataPacket[], []]); // Get updated collection
 
 			mockGenerateSlug.mockReturnValue('1-new-title');
 
@@ -570,9 +567,7 @@ describe('/api/collections/update', () => {
 				url_slug: '1-test-collection',
 			};
 
-			mockExecute
-				.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []])
-				.mockResolvedValueOnce([{ affectedRows: 0 } as ResultSetHeader, []]); // Update fails
+			mockExecute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]).mockResolvedValueOnce([{ affectedRows: 0 } as ResultSetHeader, []]); // Update fails
 
 			await testApiHandler({
 				appHandler,

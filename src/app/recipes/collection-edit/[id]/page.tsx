@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
-import { getSessionUserId, getSessionHouseholdId } from '@/lib/auth/session';
-import { pool } from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
+import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import CollectionEditClient from './collection-edit-client';
 
@@ -55,15 +56,12 @@ async function getCollection(collectionId: number, householdId: number): Promise
 
 export default async function CollectionEditPage({ params }: PageProps) {
 	// Check authentication
-	const userId = await getSessionUserId();
-	if (!userId) {
-		redirect('/auth/login');
+	const session = await getServerSession(authOptions);
+	if (!session || !session.user?.household_id) {
+		redirect('/auth/signin');
 	}
 
-	const householdId = await getSessionHouseholdId();
-	if (!householdId) {
-		redirect('/auth/login');
-	}
+	const householdId = session.user.household_id;
 
 	// Get collection ID from params
 	const { id } = await params;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/helpers';
 import { canEditResource } from '@/lib/permissions';
-import { pool } from '@/lib/db';
+import pool from '@/lib/db';
 import { uploadFile, deleteFile } from '@/lib/storage';
 import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
