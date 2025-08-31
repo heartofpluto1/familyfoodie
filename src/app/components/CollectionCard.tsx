@@ -79,8 +79,8 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 
 					{/* Texture overlay */}
 					<picture className="absolute inset-0 w-full h-full pointer-events-none">
-						<source media="(prefers-color-scheme: dark)" srcSet="/collection_overlay_dark_mode.png" />
-						<img src="/collection_overlay_light_mode.png" alt="" className="w-full h-full object-cover" />
+						<source media="(prefers-color-scheme: dark)" srcSet="/collections/collection_overlay_dark_mode.png" />
+						<img src="/collections/collection_overlay_light_mode.png" alt="" className="w-full h-full object-cover" />
 					</picture>
 
 					<div
