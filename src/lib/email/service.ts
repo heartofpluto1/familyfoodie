@@ -89,8 +89,17 @@ The Family Foodie Team
 		// Initialize Resend with API key only when we have one
 		const resend = new Resend(process.env.RESEND_API_KEY);
 
+		// Use Resend's default email until domain is verified
+		const fromEmail = 'Family Foodie <onboarding@resend.dev>';
+
+		console.log('Attempting to send email:', {
+			from: fromEmail,
+			to: params.recipientEmail,
+			apiKeyLength: process.env.RESEND_API_KEY?.length || 0,
+		});
+
 		const response = await resend.emails.send({
-			from: process.env.RESEND_FROM_EMAIL || 'Family Foodie <onboarding@resend.dev>',
+			from: fromEmail,
 			to: [params.recipientEmail],
 			subject: `${params.inviterName} invited you to join ${params.householdName} on Family Foodie`,
 			html,
@@ -98,12 +107,20 @@ The Family Foodie Team
 		});
 
 		if (!response.data) {
+			console.error('Resend API response:', response);
+			if (response.error) {
+				console.error('Resend API error:', response.error);
+				throw new Error(`Resend API error: ${response.error.message || response.error.name || 'Unknown error'}`);
+			}
 			throw new Error('Failed to send email - no response data');
 		}
 
 		return { success: true, messageId: response.data.id };
 	} catch (error) {
 		console.error('Failed to send invitation email:', error);
+		if (error instanceof Error) {
+			throw error; // Re-throw with original message for better debugging
+		}
 		throw new Error('Failed to send invitation email');
 	}
 }
