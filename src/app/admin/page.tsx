@@ -67,10 +67,14 @@ export default async function AdminPage() {
 					<p className="text-muted dark:text-gray-400 text-sm">Manage user accounts, permissions, and access levels for FamilyFoodie.</p>
 				</Link>
 
-				<div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-sm p-6 opacity-50">
+				{/* System Analytics Card */}
+				<Link
+					href="/admin/analytics"
+					className="block bg-surface dark:bg-gray-800 border border-custom dark:border-gray-700 rounded-sm shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all p-6 hover:border-accent dark:hover:border-purple-400"
+				>
 					<div className="flex items-center mb-4">
-						<div className="p-3 bg-gray-200 dark:bg-gray-700 rounded-sm">
-							<svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-sm">
+							<svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									strokeLinecap="round"
 									strokeLinejoin="round"
@@ -80,9 +84,9 @@ export default async function AdminPage() {
 							</svg>
 						</div>
 					</div>
-					<h3 className="text-lg font-semibold mb-2 text-gray-600 dark:text-gray-400">System Analytics</h3>
-					<p className="text-gray-500 dark:text-gray-500 text-sm">Coming soon: View system usage and performance metrics.</p>
-				</div>
+					<h3 className="text-lg font-semibold mb-2 text-foreground dark:text-gray-100">System Analytics</h3>
+					<p className="text-muted dark:text-gray-400 text-sm">Identify orphaned assets and monitor system resource usage.</p>
+				</Link>
 			</div>
 		</main>
 	);
