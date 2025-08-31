@@ -12,6 +12,9 @@ interface ImageUploadSectionProps {
 	disabled?: boolean;
 	previewUrl?: string | null;
 	defaultBackgroundImage?: string;
+	showOverlay?: boolean;
+	overlayImage?: string;
+	mode?: 'light' | 'dark';
 }
 
 const ImageUploadSection = ({
@@ -23,6 +26,9 @@ const ImageUploadSection = ({
 	disabled = false,
 	previewUrl = null,
 	defaultBackgroundImage,
+	showOverlay = false,
+	overlayImage,
+	mode = 'dark',
 }: ImageUploadSectionProps) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isDragOver, setIsDragOver] = useState(false);
@@ -113,31 +119,54 @@ const ImageUploadSection = ({
 			>
 				<input ref={fileInputRef} type="file" className="hidden" accept={accept} onChange={handleFileInputChange} disabled={disabled} />
 
-				{/* Overlay for background image */}
-				{(previewUrl || (!selectedFile && defaultBackgroundImage)) && <div className="absolute inset-0 bg-black/70 rounded-lg" />}
+				{/* Texture overlay - shows when there's a background image and showOverlay is true */}
+				{showOverlay && overlayImage && (previewUrl || (!selectedFile && defaultBackgroundImage)) && (
+					<img src={overlayImage} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-lg" />
+				)}
 
-				<div className="relative z-10">
+				{/* Content container - positioned at bottom with background when image present */}
+				<div
+					className={`${
+						previewUrl || (!selectedFile && defaultBackgroundImage)
+							? mode === 'light'
+								? 'absolute bottom-4 left-4 right-4 bg-white/85 rounded-md p-6'
+								: 'absolute bottom-4 left-4 right-4 bg-black/70 rounded-md p-6'
+							: 'relative z-10'
+					}`}
+				>
 					{selectedFile ? (
 						<div className="space-y-2">
 							<div className="text-green-400">
 								<UploadIcon className="w-8 h-8 mx-auto mb-2" />
 							</div>
-							<p className="font-medium text-white drop-shadow-md">{selectedFile.name}</p>
-							<p className="text-sm text-white/80 drop-shadow-md">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-							{!disabled && <p className="text-xs text-white/70 drop-shadow-md">Click to change file</p>}
+							<p className={`font-medium truncate ${mode === 'light' ? 'text-gray-700' : 'text-white drop-shadow-md'}`}>{selectedFile.name}</p>
+							<p className={`text-sm ${mode === 'light' ? 'text-gray-600' : 'text-white/80 drop-shadow-md'}`}>
+								{(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+							</p>
+							{!disabled && <p className={`text-xs ${mode === 'light' ? 'text-gray-500' : 'text-white/70 drop-shadow-md'}`}>Click to change file</p>}
 						</div>
 					) : (
 						<div className="space-y-2">
-							<div className={disabled ? 'text-gray-400' : previewUrl || defaultBackgroundImage ? 'text-white' : 'text-gray-400'}>
+							<div
+								className={
+									disabled
+										? 'text-gray-400'
+										: previewUrl || defaultBackgroundImage
+											? mode === 'light'
+												? 'text-gray-600'
+												: 'text-white'
+											: 'text-gray-400'
+								}
+							>
 								<UploadIcon className="w-8 h-8 mx-auto mb-2" />
 							</div>
 							<p
-								className={`font-medium ${disabled ? 'text-gray-400' : previewUrl || defaultBackgroundImage ? 'text-white drop-shadow-md' : 'text-foreground'}`}
+								className={`font-medium ${disabled ? 'text-gray-400' : previewUrl || defaultBackgroundImage ? (mode === 'light' ? 'text-gray-700' : 'text-white drop-shadow-md') : 'text-foreground'}`}
 							>
 								{disabled ? 'Upload disabled' : 'Drop JPG image here or click to browse'}
 							</p>
 							<p
-								className={`text-sm ${disabled ? 'text-gray-400' : previewUrl || defaultBackgroundImage ? 'text-white/80 drop-shadow-md' : 'text-muted'}`}
+								className={`text-sm ${disabled ? 'text-gray-400' : previewUrl || defaultBackgroundImage ? (mode === 'light' ? 'text-gray-600' : 'text-white/80 drop-shadow-md') : 'text-muted'}`}
 							>
 								JPG files only (Max 10MB)
 							</p>
