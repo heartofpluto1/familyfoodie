@@ -17,9 +17,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 		const title = formData.get('title') as string;
 		const subtitle = formData.get('subtitle') as string;
-		const showOverlay = formData.get('showOverlay') === 'true' ? 1 : 0;
-		const lightImage = formData.get('lightImage') as File;
-		const darkImage = formData.get('darkImage') as File;
+		const showOverlay = formData.get('show_overlay') === 'true' ? 1 : 0;
+		const lightImage = formData.get('light_image') as File;
+		const darkImage = formData.get('dark_image') as File;
 
 		// Validate required fields
 		if (!title) {
