@@ -5,7 +5,7 @@ import pool from '@/lib/db';
 import { uploadFile } from '@/lib/storage';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
 import { generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
-import { findAndDeleteHashFiles } from '@/lib/utils/fileCleanup';
+import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
