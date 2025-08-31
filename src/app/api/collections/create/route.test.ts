@@ -90,9 +90,9 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
 				formData.append('subtitle', 'Test Subtitle');
-				formData.append('showOverlay', 'true');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
+				formData.append('show_overlay', 'true');
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('dark_image', createMockFile('dark.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -136,7 +136,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Light Only Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -172,7 +172,7 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Default Images Collection');
 				formData.append('subtitle', 'No custom images');
-				formData.append('showOverlay', 'true');
+				formData.append('show_overlay', 'true');
 
 				await testApiHandler({
 					appHandler,
@@ -210,7 +210,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'No Subtitle Collection');
-				formData.append('showOverlay', 'false');
+				formData.append('show_overlay', 'false');
 				// Don't append subtitle
 
 				await testApiHandler({
@@ -282,7 +282,7 @@ describe('/api/collections/create', () => {
 
 					const formData = new FormData();
 					formData.append('title', `Test ${testCase.input}`);
-					formData.append('showOverlay', testCase.input);
+					formData.append('show_overlay', testCase.input);
 
 					await testApiHandler({
 						appHandler,
@@ -315,8 +315,8 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Partial Upload Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('dark_image', createMockFile('dark.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -392,10 +392,10 @@ describe('/api/collections/create', () => {
 				});
 			});
 
-			it('should return 400 when light image is not JPG', async () => {
+			it('should return 400 when light image is not a valid type', async () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
-				formData.append('lightImage', createMockFile('image.png', 'image/png'));
+				formData.append('light_image', createMockFile('image.gif', 'image/gif'));
 
 				await testApiHandler({
 					appHandler,
@@ -416,8 +416,8 @@ describe('/api/collections/create', () => {
 			it('should return 400 when dark image is not JPG', async () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
-				formData.append('darkImage', createMockFile('dark.gif', 'image/gif'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('dark_image', createMockFile('dark.gif', 'image/gif'));
 
 				await testApiHandler({
 					appHandler,
@@ -474,7 +474,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Failed Upload Collection');
-				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('light.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -594,7 +594,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Storage Test');
-				formData.append('lightImage', createMockFile('test.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('test.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
@@ -620,7 +620,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'Upload Parameters Test');
-				formData.append('lightImage', createMockFile('test.jpg', 'image/jpeg'));
+				formData.append('light_image', createMockFile('test.jpg', 'image/jpeg'));
 
 				await testApiHandler({
 					appHandler,
