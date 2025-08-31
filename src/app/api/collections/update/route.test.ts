@@ -19,12 +19,11 @@ jest.mock('@/lib/permissions', () => ({
 	canEditResource: jest.fn(),
 }));
 
-// Mock the database pool - the default export IS the pool object with execute method
+// Mock the database pool - needs default export
 jest.mock('@/lib/db.js', () => {
 	const mockPool = {
 		execute: jest.fn(),
 		getConnection: jest.fn(),
-		end: jest.fn(),
 	};
 	return {
 		__esModule: true,
@@ -59,9 +58,8 @@ import { uploadFile, deleteFile } from '@/lib/storage';
 import { generateVersionedFilename, extractBaseHash } from '@/lib/utils/secureFilename';
 import { findAndDeleteHashFiles } from '@/lib/utils/secureFilename.server';
 import { generateSlugFromTitle } from '@/lib/utils/urlHelpers';
-import { generateCollectionSecureFilename } from '@/lib/utils/secureFilename.collections';
 
-// Get the mocked database pool
+// Get the mocked database
 const mockDatabase = jest.mocked(jest.requireMock('@/lib/db.js').default);
 
 // Get mock functions
@@ -69,7 +67,6 @@ const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 const mockCanEditResource = canEditResource as jest.MockedFunction<typeof canEditResource>;
 const mockUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
-const mockGenerateFilename = generateCollectionSecureFilename as jest.MockedFunction<typeof generateCollectionSecureFilename>;
 const mockGenerateSlug = generateSlugFromTitle as jest.MockedFunction<typeof generateSlugFromTitle>;
 const mockGenerateVersionedFilename = generateVersionedFilename as jest.MockedFunction<typeof generateVersionedFilename>;
 const mockExtractBaseHash = extractBaseHash as jest.MockedFunction<typeof extractBaseHash>;
@@ -85,8 +82,9 @@ describe('/api/collections/update', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.resetAllMocks();
 		consoleMocks = setupConsoleMocks();
-		
+
 		// Setup default auth response
 		mockRequireAuth.mockResolvedValue({
 			authorized: true as const,
@@ -164,15 +162,6 @@ describe('/api/collections/update', () => {
 	});
 
 	describe('Input Validation', () => {
-		beforeEach(() => {
-			mockRequireAuth.mockResolvedValue({
-				authorized: true as const,
-				session: mockRegularSession,
-				household_id: mockRegularSession.user.household_id,
-				user_id: mockRegularSession.user.id,
-			});
-		});
-
 		it('should return 422 when collection_id is missing', async () => {
 			await testApiHandler({
 				appHandler,
@@ -256,16 +245,6 @@ describe('/api/collections/update', () => {
 	});
 
 	describe('Collection Updates', () => {
-		beforeEach(() => {
-			mockRequireAuth.mockResolvedValue({
-				authorized: true as const,
-				session: mockRegularSession,
-				household_id: mockRegularSession.user.household_id,
-				user_id: mockRegularSession.user.id,
-			});
-			mockCanEditResource.mockResolvedValue(true);
-		});
-
 		it('should return 404 when collection does not exist', async () => {
 			mockDatabase.execute.mockResolvedValueOnce([[], []]);
 
@@ -406,17 +385,9 @@ describe('/api/collections/update', () => {
 	});
 
 	describe('Image Handling', () => {
-		beforeEach(() => {
-			mockRequireAuth.mockResolvedValue({
-				authorized: true as const,
-				session: mockRegularSession,
-				household_id: mockRegularSession.user.household_id,
-				user_id: mockRegularSession.user.id,
-			});
-			mockCanEditResource.mockResolvedValue(true);
-		});
-
 		it('should successfully revert to default images and delete orphaned files', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -427,6 +398,13 @@ describe('/api/collections/update', () => {
 				url_slug: '1-test-collection',
 			};
 
+			mockExtractBaseHash.mockImplementation(filename => {
+				if (filename === 'hash123.jpg') return 'hash123';
+				if (filename === 'hash456.jpg') return 'hash456';
+				return '';
+			});
+			mockFindAndDeleteHashFiles.mockResolvedValue(['hash123.jpg', 'hash456.jpg']);
+
 			mockDatabase.execute
 				.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]) // Get current collection
 				.mockResolvedValueOnce([[{ count: 0 }] as RowDataPacket[], []]) // Check orphan for light image
@@ -436,8 +414,8 @@ describe('/api/collections/update', () => {
 					[
 						{
 							...mockCollection,
-							filename: 'custom_collection_004',
-							filename_dark: 'custom_collection_004_dark',
+							filename: 'custom_collection_004.jpg',
+							filename_dark: 'custom_collection_004_dark.jpg',
 						},
 					] as RowDataPacket[],
 					[],
@@ -458,10 +436,10 @@ describe('/api/collections/update', () => {
 
 					const data = await response.json();
 					expect(response.status).toBe(200);
-					expect(data.data.filename).toBe('custom_collection_004');
-					expect(data.data.filename_dark).toBe('custom_collection_004_dark');
-					expect(mockDeleteFile).toHaveBeenCalledWith('hash123', 'jpg', 'collections');
-					expect(mockDeleteFile).toHaveBeenCalledWith('hash456', 'jpg', 'collections');
+					expect(data.data.filename).toBe('custom_collection_004.jpg');
+					expect(data.data.filename_dark).toBe('custom_collection_004_dark.jpg');
+					expect(mockFindAndDeleteHashFiles).toHaveBeenCalledWith('hash123', 'image');
+					expect(mockFindAndDeleteHashFiles).toHaveBeenCalledWith('hash456', 'image');
 				},
 			});
 		});
@@ -486,8 +464,8 @@ describe('/api/collections/update', () => {
 					[
 						{
 							...mockCollection,
-							filename: 'custom_collection_004',
-							filename_dark: 'custom_collection_004_dark',
+							filename: 'custom_collection_004.jpg',
+							filename_dark: 'custom_collection_004_dark.jpg',
 						},
 					] as RowDataPacket[],
 					[],
@@ -587,17 +565,9 @@ describe('/api/collections/update', () => {
 	});
 
 	describe('Error Handling', () => {
-		beforeEach(() => {
-			mockRequireAuth.mockResolvedValue({
-				authorized: true as const,
-				session: mockRegularSession,
-				household_id: mockRegularSession.user.household_id,
-				user_id: mockRegularSession.user.id,
-			});
-			mockCanEditResource.mockResolvedValue(true);
-		});
-
 		it('should return 500 when database update fails', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -608,7 +578,9 @@ describe('/api/collections/update', () => {
 				url_slug: '1-test-collection',
 			};
 
-			mockDatabase.execute.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []]).mockResolvedValueOnce([{ affectedRows: 0 } as ResultSetHeader, []]); // Update fails
+			mockDatabase.execute
+				.mockResolvedValueOnce([[mockCollection] as RowDataPacket[], []])
+				.mockResolvedValueOnce([{ affectedRows: 0 } as ResultSetHeader, []]); // Update fails
 
 			await testApiHandler({
 				appHandler,
@@ -655,8 +627,9 @@ describe('/api/collections/update', () => {
 	});
 
 	describe('Filename Versioning and Cache Busting', () => {
-
 		it('should generate versioned filename for light image update', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -705,18 +678,14 @@ describe('/api/collections/update', () => {
 					expect(response.status).toBe(200);
 					expect(data.data.filename).toBe('abc123_v2.jpg');
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('abc123.jpg', 'jpg');
-					expect(mockUploadFile).toHaveBeenCalledWith(
-						expect.any(Buffer),
-						'abc123_v2',
-						'jpg',
-						'image/jpeg',
-						'collections'
-					);
+					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'abc123_v2', 'jpg', 'image/jpeg', 'collections');
 				},
 			});
 		});
 
 		it('should generate versioned filename for dark image update', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -765,18 +734,14 @@ describe('/api/collections/update', () => {
 					expect(response.status).toBe(200);
 					expect(data.data.filename_dark).toBe('abc123_dark_v2.jpg');
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('abc123_dark.jpg', 'jpg');
-					expect(mockUploadFile).toHaveBeenCalledWith(
-						expect.any(Buffer),
-						'abc123_dark_v2',
-						'jpg',
-						'image/jpeg',
-						'collections'
-					);
+					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'abc123_dark_v2', 'jpg', 'image/jpeg', 'collections');
 				},
 			});
 		});
 
 		it('should clean up old versions when updating image', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -828,12 +793,14 @@ describe('/api/collections/update', () => {
 					expect(response.status).toBe(200);
 					expect(data.data.filename).toBe('abc123_v3.jpg');
 					expect(mockExtractBaseHash).toHaveBeenCalledWith('abc123_v2.jpg');
-					expect(mockFindAndDeleteHashFiles).toHaveBeenCalledWith('abc123', 'collections');
+					expect(mockFindAndDeleteHashFiles).toHaveBeenCalledWith('abc123', 'image');
 				},
 			});
 		});
 
 		it('should handle multiple file formats with versioning', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -882,18 +849,14 @@ describe('/api/collections/update', () => {
 					expect(response.status).toBe(200);
 					expect(data.data.filename).toBe('abc123_v2.png');
 					expect(mockGenerateVersionedFilename).toHaveBeenCalledWith('abc123.png', 'jpg'); // Note: Currently hardcoded to jpg
-					expect(mockUploadFile).toHaveBeenCalledWith(
-						expect.any(Buffer),
-						'abc123_v2',
-						'jpg',
-						'image/png',
-						'collections'
-					);
+					expect(mockUploadFile).toHaveBeenCalledWith(expect.any(Buffer), 'abc123_v2', 'jpg', 'image/png', 'collections');
 				},
 			});
 		});
 
 		it('should not clean up files used by other collections', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -949,6 +912,8 @@ describe('/api/collections/update', () => {
 		});
 
 		it('should handle versioning for both light and dark images simultaneously', async () => {
+			mockCanEditResource.mockResolvedValue(true);
+
 			const mockCollection = {
 				id: 1,
 				title: 'Test Collection',
@@ -973,10 +938,8 @@ describe('/api/collections/update', () => {
 					[],
 				]);
 
-			mockGenerateVersionedFilename
-				.mockReturnValueOnce('light_v2.jpg')
-				.mockReturnValueOnce('dark_v2.jpg');
-			
+			mockGenerateVersionedFilename.mockReturnValueOnce('light_v2.jpg').mockReturnValueOnce('dark_v2.jpg');
+
 			mockUploadFile
 				.mockResolvedValueOnce({
 					success: true,

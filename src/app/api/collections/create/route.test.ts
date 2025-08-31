@@ -109,7 +109,7 @@ describe('/api/collections/create', () => {
 							success: true,
 							id: 123,
 							message: 'Collection created successfully',
-							filename: 'secure_filename_123',
+							filename: 'secure_filename_123.jpg',
 						});
 
 						// Verify database calls include household_id and show_overlay
@@ -157,8 +157,8 @@ describe('/api/collections/create', () => {
 
 						// Both filename and filename_dark should be set to same value
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'), [
-							'secure_filename_123',
-							'secure_filename_123',
+							'secure_filename_123.jpg',
+							'secure_filename_123.jpg',
 							456,
 						]);
 					},
@@ -186,14 +186,14 @@ describe('/api/collections/create', () => {
 						const data = await response.json();
 
 						expect(data.success).toBe(true);
-						expect(data.filename).toBe('custom_collection_004');
+						expect(data.filename).toBe('custom_collection_004.jpg');
 
 						// Should use default filenames with household_id and show_overlay
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'Default Images Collection',
 							'No custom images',
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1, // household_id
 							1, // show_overlay (true = 1)
 						]);
@@ -227,8 +227,8 @@ describe('/api/collections/create', () => {
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'No Subtitle Collection',
 							null,
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1,
 							0, // show_overlay (false = 0)
 						]);
@@ -258,8 +258,8 @@ describe('/api/collections/create', () => {
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'No Overlay Specified',
 							null,
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1,
 							0, // show_overlay should default to 0
 						]);
@@ -333,8 +333,8 @@ describe('/api/collections/create', () => {
 
 						// Should fallback to using light image for dark mode
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('UPDATE collections SET filename = ?, filename_dark = ?'), [
-							'secure_filename_123',
-							'secure_filename_123',
+							'secure_filename_123.jpg',
+							'secure_filename_123.jpg',
 							111,
 						]);
 
@@ -408,7 +408,7 @@ describe('/api/collections/create', () => {
 						expect(response.status).toBe(400);
 						const data = await response.json();
 
-						expect(data.error).toBe('Light mode file must be a JPG image');
+						expect(data.error).toBe('Light mode file must be a JPG, PNG, or WebP image');
 					},
 				});
 			});
@@ -430,7 +430,7 @@ describe('/api/collections/create', () => {
 						expect(response.status).toBe(400);
 						const data = await response.json();
 
-						expect(data.error).toBe('Dark mode file must be a JPG image');
+						expect(data.error).toBe('Dark mode file must be a JPG, PNG, or WebP image');
 					},
 				});
 			});
@@ -468,7 +468,8 @@ describe('/api/collections/create', () => {
 					.mockResolvedValueOnce([mockInsertResult, []]) // Initial insert
 					.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // Cleanup delete
 
-				// Mock failed light image upload
+				// Mock failed light image upload - clear the default and set failure
+				mockUploadFile.mockReset();
 				mockUploadFile.mockResolvedValueOnce({ success: false, error: 'Upload failed' });
 
 				const formData = new FormData();
@@ -571,8 +572,8 @@ describe('/api/collections/create', () => {
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'Private Collection',
 							null,
-							'custom_collection_004',
-							'custom_collection_004_dark',
+							'custom_collection_004.jpg',
+							'custom_collection_004_dark.jpg',
 							1,
 							0, // show_overlay defaults to 0
 						]);

@@ -179,7 +179,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		// Handle subtitle update
 		if (subtitle !== undefined) {
 			updates.push('subtitle = ?');
-			params.push(subtitle || null);
+			params.push((subtitle as string) || null);
 		}
 
 		// Handle show_overlay update
@@ -204,7 +204,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 					const isOrphaned = await checkImageIsOrphaned(collection.filename, collectionIdNum);
 					if (isOrphaned) {
 						// Clean up all versions of the file
-						const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+						const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
 						if (deletedFiles.length > 0) {
 							console.log(`Cleaned up ${deletedFiles.length} old collection image file(s): ${deletedFiles.join(', ')}`);
 						}
@@ -218,7 +218,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 					const isOrphaned = await checkImageIsOrphaned(collection.filename_dark, collectionIdNum);
 					if (isOrphaned) {
 						// Clean up all versions of the dark file
-						const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+						const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
 						if (deletedFiles.length > 0) {
 							console.log(`Cleaned up ${deletedFiles.length} old collection dark image file(s): ${deletedFiles.join(', ')}`);
 						}
@@ -314,7 +314,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 						const isOrphaned = await checkImageIsOrphaned(collection.filename, collectionIdNum);
 						if (isOrphaned) {
 							// Clean up all versions of the old file
-							const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+							const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
 							if (deletedFiles.length > 0) {
 								console.log(`Cleaned up ${deletedFiles.length} old collection image file(s): ${deletedFiles.join(', ')}`);
 							}
@@ -411,7 +411,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 						const isOrphaned = await checkImageIsOrphaned(collection.filename_dark, collectionIdNum);
 						if (isOrphaned) {
 							// Clean up all versions of the old dark file
-							const deletedFiles = await findAndDeleteHashFiles(baseHash, 'collections');
+							const deletedFiles = await findAndDeleteHashFiles(baseHash, 'image');
 							if (deletedFiles.length > 0) {
 								console.log(`Cleaned up ${deletedFiles.length} old collection dark image file(s): ${deletedFiles.join(', ')}`);
 							}

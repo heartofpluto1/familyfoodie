@@ -172,9 +172,10 @@ export const createMockFile = (name = 'test.jpg', type = 'image/jpeg', size = 10
 		switch (type) {
 			case 'image/jpeg':
 			case 'image/jpg':
-				// JPEG magic bytes: FF D8
+				// JPEG magic bytes: FF D8 FF (JPEG/JFIF header)
 				uint8Array[0] = 0xff;
 				uint8Array[1] = 0xd8;
+				uint8Array[2] = 0xff;
 				break;
 			case 'image/png':
 				// PNG magic bytes: 89 50 4E 47
@@ -195,10 +196,11 @@ export const createMockFile = (name = 'test.jpg', type = 'image/jpeg', size = 10
 				// Default to JPEG for other types
 				uint8Array[0] = 0xff;
 				uint8Array[1] = 0xd8;
+				uint8Array[2] = 0xff;
 		}
 
 		// Fill the rest with filler data if needed
-		for (let i = Math.max(8, type === 'image/webp' ? 12 : 2); i < size; i++) {
+		for (let i = Math.max(8, type === 'image/webp' ? 12 : 3); i < size; i++) {
 			uint8Array[i] = 0x78; // 'x' character
 		}
 

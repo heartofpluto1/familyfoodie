@@ -64,6 +64,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 				setDarkImagePreview(getCollectionDarkImageUrl(collection.filename_dark));
 			}
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [mode, collection]); // Remove file dependencies to only set on initial load
 
 	// Cleanup blob URLs on unmount or when files change

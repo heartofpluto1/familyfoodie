@@ -9,6 +9,20 @@ interface PageProps {
 	params: Promise<{ id: string }>;
 }
 
+interface CollectionRow extends RowDataPacket {
+	id: number;
+	title: string;
+	subtitle: string | null;
+	filename: string;
+	filename_dark: string;
+	show_overlay: number; // TINYINT from database
+	url_slug: string;
+	household_id: number;
+	created_at: Date;
+	updated_at: Date;
+	access_type?: string;
+}
+
 interface Collection {
 	id: number;
 	title: string;
@@ -24,7 +38,7 @@ interface Collection {
 async function getCollection(collectionId: number, householdId: number): Promise<Collection | null> {
 	try {
 		// Get collection with access type check
-		const [rows] = await pool.execute<RowDataPacket[]>(
+		const [rows] = await pool.execute<CollectionRow[]>(
 			`SELECT 
 				c.id,
 				c.title,
@@ -47,11 +61,18 @@ async function getCollection(collectionId: number, householdId: number): Promise
 			return null;
 		}
 
-		const collection = rows[0] as any;
+		const row = rows[0] as CollectionRow;
 		return {
-			...collection,
-			show_overlay: !!collection.show_overlay, // Convert TINYINT to boolean
-		} as Collection;
+			id: row.id,
+			title: row.title,
+			subtitle: row.subtitle,
+			filename: row.filename,
+			filename_dark: row.filename_dark,
+			show_overlay: !!row.show_overlay, // Convert TINYINT to boolean
+			url_slug: row.url_slug,
+			household_id: row.household_id,
+			access_type: row.access_type,
+		};
 	} catch (error) {
 		console.error('Error fetching collection:', error);
 		return null;
