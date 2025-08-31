@@ -149,28 +149,31 @@ const CollectionAddClient = () => {
 									disabled={isLoading}
 								/>
 							</div>
-
-							<div className="flex items-center">
-								<input
-									type="checkbox"
-									id="showOverlay"
-									checked={formData.showOverlay}
-									onChange={e => handleFieldChange('showOverlay', e.target.checked ? 'true' : 'false')}
-									className="h-4 w-4 text-accent focus:ring-accent border-gray-300 rounded"
-									disabled={isLoading}
-								/>
-								<label htmlFor="showOverlay" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-									Display texture overlay on collection card
-								</label>
-							</div>
 						</div>
 
 						{/* Image Uploads */}
 						<div className="space-y-3">
+							{/* Help text */}
+							<div className="text-sm text-muted">
+								<p>Don&apos;t have images handy? Use these defaults and change them later.</p>
+								<p>
+									You can edit and download them over at the{' '}
+									<a
+										href="https://www.canva.com/design/DAGxZ7Kn4CA/AH9vfwnm0BLwS9Z-KeQvHQ/view?utm_content=DAGxZ7Kn4CA&utm_campaign=designshare&utm_medium=link&utm_source=publishsharelink&mode=preview"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-blue-600 hover:text-blue-700 underline"
+									>
+										Canva template
+									</a>
+									.
+								</p>
+							</div>
+
 							{/* Side by side upload sections */}
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 								<ImageUploadSection
-									label="Light Mode Image (Optional)"
+									label="Light Mode Image *"
 									selectedFile={lightModeImage}
 									onFileSelect={file => {
 										setLightModeImage(file);
@@ -184,10 +187,11 @@ const CollectionAddClient = () => {
 									accept="image/jpeg,.jpg"
 									showOverlay={formData.showOverlay}
 									overlayImage="/collections/collection_overlay_light_mode.png"
+									mode="light"
 								/>
 
 								<ImageUploadSection
-									label="Dark Mode Image (Optional)"
+									label="Dark Mode Image *"
 									selectedFile={darkModeImage}
 									onFileSelect={file => {
 										setDarkModeImage(file);
@@ -201,22 +205,24 @@ const CollectionAddClient = () => {
 									accept="image/jpeg,.jpg"
 									showOverlay={formData.showOverlay}
 									overlayImage="/collections/collection_overlay_dark_mode.png"
+									mode="dark"
 								/>
 							</div>
-							{!lightModeImage && !darkModeImage && (
-								<p className="text-sm text-muted mt-2">
-									Don&apos;t have images handy? Use these defaults and change them later. They are available as a{' '}
-									<a
-										href="https://www.canva.com/design/DAGxZ7Kn4CA/AH9vfwnm0BLwS9Z-KeQvHQ/view?utm_content=DAGxZ7Kn4CA&utm_campaign=designshare&utm_medium=link&utm_source=publishsharelink&mode=preview"
-										target="_blank"
-										rel="noopener noreferrer"
-										className="text-blue-600 hover:text-blue-700 underline"
-									>
-										Canva template
-									</a>
-									.
-								</p>
-							)}
+
+							{/* Texture overlay checkbox */}
+							<div className="flex items-center mt-4">
+								<input
+									type="checkbox"
+									id="showOverlay"
+									checked={formData.showOverlay}
+									onChange={e => handleFieldChange('showOverlay', e.target.checked ? 'true' : 'false')}
+									className="h-4 w-4 text-accent focus:ring-accent border-gray-300 rounded"
+									disabled={isLoading}
+								/>
+								<label htmlFor="showOverlay" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+									Give it a 3D texture effect ✨
+								</label>
+							</div>
 						</div>
 
 						{/* Action Buttons */}
