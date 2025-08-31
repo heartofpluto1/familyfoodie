@@ -1040,7 +1040,7 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 							name: row.preperation_name,
 						}
 					: null,
-				quantityMeasure: row.measure_id
+				measure: row.measure_id
 					? {
 							id: row.measure_id,
 							name: row.measure_name,
