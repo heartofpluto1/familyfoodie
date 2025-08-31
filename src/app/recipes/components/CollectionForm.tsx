@@ -245,7 +245,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 								<>
 									<p>Don&apos;t have images handy? Use these defaults and change them later.</p>
 									<p>
-										You can edit and download them over at the{' '}
+										You can create your own over at the{' '}
 										<a
 											href="https://www.canva.com/design/DAGxZ7Kn4CA/AH9vfwnm0BLwS9Z-KeQvHQ/view?utm_content=DAGxZ7Kn4CA&utm_campaign=designshare&utm_medium=link&utm_source=publishsharelink&mode=preview"
 											target="_blank"
@@ -260,6 +260,18 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ mode, collection, onSuc
 							) : (
 								<>
 									<p>Upload new images to replace the existing ones, or keep the current images.</p>
+									<p>
+										You can create your own over at the{' '}
+										<a
+											href="https://www.canva.com/design/DAGxZ7Kn4CA/AH9vfwnm0BLwS9Z-KeQvHQ/view?utm_content=DAGxZ7Kn4CA&utm_campaign=designshare&utm_medium=link&utm_source=publishsharelink&mode=preview"
+											target="_blank"
+											rel="noopener noreferrer"
+											className="text-blue-600 hover:text-blue-700 underline"
+										>
+											Canva template
+										</a>
+										.
+									</p>
 									{mode === 'edit' && collection && !collection.filename.startsWith('custom_collection_00') && (
 										<button
 											type="button"
