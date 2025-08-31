@@ -38,6 +38,7 @@ interface OrphanedRecord {
 	id: number;
 	name: string;
 	type: string;
+	household_id?: number;
 }
 
 interface FileStats {
@@ -331,13 +332,14 @@ async function getOrphanedCollections(): Promise<OrphanedRecord[]> {
 			       (SELECT COUNT(*) FROM collection_recipes cr WHERE cr.collection_id = c.id) as recipe_count
 			FROM collections c
 			HAVING recipe_count = 0
-			ORDER BY c.title
+			ORDER BY c.household_id, c.title
 		`);
 
 		return rows.map(row => ({
 			id: row.id,
 			name: row.name,
 			type: 'collection',
+			household_id: row.household_id,
 		}));
 	} catch (error) {
 		console.error('Error getting orphaned collections:', error);
@@ -348,17 +350,18 @@ async function getOrphanedCollections(): Promise<OrphanedRecord[]> {
 async function getOrphanedIngredients(): Promise<OrphanedRecord[]> {
 	try {
 		const [rows] = await pool.execute<RowDataPacket[]>(`
-			SELECT i.id, i.name 
+			SELECT i.id, i.name, i.household_id
 			FROM ingredients i
 			LEFT JOIN recipe_ingredients ri ON i.id = ri.ingredient_id
 			WHERE ri.id IS NULL
-			ORDER BY i.name
+			ORDER BY i.household_id, i.name
 		`);
 
 		return rows.map(row => ({
 			id: row.id,
 			name: row.name,
 			type: 'ingredient',
+			household_id: row.household_id,
 		}));
 	} catch (error) {
 		console.error('Error getting orphaned ingredients:', error);
@@ -369,18 +372,19 @@ async function getOrphanedIngredients(): Promise<OrphanedRecord[]> {
 async function getOrphanedRecipes(): Promise<OrphanedRecord[]> {
 	try {
 		const [rows] = await pool.execute<RowDataPacket[]>(`
-			SELECT r.id, r.name 
+			SELECT r.id, r.name, r.household_id
 			FROM recipes r
 			LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id
 			LEFT JOIN plans p ON r.id = p.recipe_id
 			WHERE cr.id IS NULL AND p.id IS NULL
-			ORDER BY r.name
+			ORDER BY r.household_id, r.name
 		`);
 
 		return rows.map(row => ({
 			id: row.id,
 			name: row.name,
 			type: 'recipe',
+			household_id: row.household_id,
 		}));
 	} catch (error) {
 		console.error('Error getting orphaned recipes:', error);
@@ -572,6 +576,7 @@ export default async function SystemAnalyticsPage() {
 								{orphanedCollections.map(collection => (
 									<li key={collection.id} className="text-muted">
 										<span className="font-mono text-xs text-gray-500">#{collection.id}</span> {collection.name}
+										<span className="font-mono text-xs text-gray-400 ml-2">(HH: {collection.household_id})</span>
 									</li>
 								))}
 							</ul>
@@ -601,6 +606,7 @@ export default async function SystemAnalyticsPage() {
 								{orphanedIngredients.map(ingredient => (
 									<li key={ingredient.id} className="text-muted">
 										<span className="font-mono text-xs text-gray-500">#{ingredient.id}</span> {ingredient.name}
+										<span className="font-mono text-xs text-gray-400 ml-2">(HH: {ingredient.household_id})</span>
 									</li>
 								))}
 							</ul>
@@ -631,6 +637,7 @@ export default async function SystemAnalyticsPage() {
 								{orphanedRecipes.map(recipe => (
 									<li key={recipe.id} className="text-muted">
 										<span className="font-mono text-xs text-gray-500">#{recipe.id}</span> {recipe.name}
+										<span className="font-mono text-xs text-gray-400 ml-2">(HH: {recipe.household_id})</span>
 									</li>
 								))}
 							</ul>
