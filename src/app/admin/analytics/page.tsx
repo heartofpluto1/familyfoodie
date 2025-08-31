@@ -324,6 +324,27 @@ async function getRecipeFileStats(): Promise<{ orphanedImages: OrphanedFile[]; o
 	}
 }
 
+async function getOrphanedCollections(): Promise<OrphanedRecord[]> {
+	try {
+		const [rows] = await pool.execute<RowDataPacket[]>(`
+			SELECT c.id, c.title as name, c.household_id,
+			       (SELECT COUNT(*) FROM collection_recipes cr WHERE cr.collection_id = c.id) as recipe_count
+			FROM collections c
+			HAVING recipe_count = 0
+			ORDER BY c.title
+		`);
+
+		return rows.map(row => ({
+			id: row.id,
+			name: row.name,
+			type: 'collection',
+		}));
+	} catch (error) {
+		console.error('Error getting orphaned collections:', error);
+		return [];
+	}
+}
+
 async function getOrphanedIngredients(): Promise<OrphanedRecord[]> {
 	try {
 		const [rows] = await pool.execute<RowDataPacket[]>(`
@@ -374,9 +395,10 @@ export default async function SystemAnalyticsPage() {
 	}
 
 	// Fetch all orphaned data
-	const [collectionData, recipeData, orphanedIngredients, orphanedRecipes] = await Promise.all([
+	const [collectionData, recipeData, orphanedCollections, orphanedIngredients, orphanedRecipes] = await Promise.all([
 		getCollectionFileStats(),
 		getRecipeFileStats(),
+		getOrphanedCollections(),
 		getOrphanedIngredients(),
 		getOrphanedRecipes(),
 	]);
@@ -529,6 +551,36 @@ export default async function SystemAnalyticsPage() {
 					)}
 				</section>
 
+				{/* Orphaned Collections */}
+				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
+					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
+						<svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+							/>
+						</svg>
+						Empty Collections
+						<span className="text-sm font-normal text-muted">({orphanedCollections.length} found)</span>
+					</h2>
+					<p className="text-sm text-muted mb-2">Collections with no recipes</p>
+					{orphanedCollections.length > 0 ? (
+						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
+							<ul className="space-y-1 text-sm">
+								{orphanedCollections.map(collection => (
+									<li key={collection.id} className="text-muted">
+										<span className="font-mono text-xs text-gray-500">#{collection.id}</span> {collection.name}
+									</li>
+								))}
+							</ul>
+						</div>
+					) : (
+						<p className="text-muted">No empty collections found.</p>
+					)}
+				</section>
+
 				{/* Orphaned Ingredients */}
 				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
 					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
@@ -591,7 +643,7 @@ export default async function SystemAnalyticsPage() {
 				{/* Summary Statistics */}
 				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
 					<h2 className="text-xl font-semibold mb-4 text-foreground">Summary {useGCS && <span className="text-sm font-normal text-muted">(GCS: {bucketName})</span>}</h2>
-					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 						<div className="text-center">
 							<div className="text-2xl font-bold text-blue-600">{orphanedCollectionFiles.length}</div>
 							<div className="text-sm text-muted">Collection Files</div>
@@ -603,6 +655,10 @@ export default async function SystemAnalyticsPage() {
 						<div className="text-center">
 							<div className="text-2xl font-bold text-red-600">{orphanedRecipePdfs.length}</div>
 							<div className="text-sm text-muted">Recipe PDFs</div>
+						</div>
+						<div className="text-center">
+							<div className="text-2xl font-bold text-indigo-600">{orphanedCollections.length}</div>
+							<div className="text-sm text-muted">Empty Collections</div>
 						</div>
 						<div className="text-center">
 							<div className="text-2xl font-bold text-yellow-600">{orphanedIngredients.length}</div>
@@ -620,6 +676,7 @@ export default async function SystemAnalyticsPage() {
 								{orphanedCollectionFiles.length +
 									orphanedRecipeImages.length +
 									orphanedRecipePdfs.length +
+									orphanedCollections.length +
 									orphanedIngredients.length +
 									orphanedRecipes.length}
 							</span>
