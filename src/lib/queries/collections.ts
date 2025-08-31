@@ -6,6 +6,7 @@ export interface Collection {
 	subtitle: string | null;
 	filename: string | null;
 	filename_dark: string | null;
+	show_overlay?: boolean;
 	url_slug: string;
 	created_at: Date;
 	updated_at: Date;
@@ -29,6 +30,7 @@ export async function getAllCollections(): Promise<Collection[]> {
 			c.subtitle,
 			c.filename,
 			c.filename_dark,
+			c.show_overlay,
 			c.url_slug,
 			c.created_at,
 			c.updated_at,
@@ -36,7 +38,7 @@ export async function getAllCollections(): Promise<Collection[]> {
 		FROM collections c
 		LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
 		LEFT JOIN recipes r ON cr.recipe_id = r.id
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, c.created_at, c.updated_at
 		ORDER BY c.id ASC
 	`;
 
@@ -55,6 +57,7 @@ export async function getCollectionById(id: number): Promise<Collection | null> 
 			c.subtitle,
 			c.filename,
 			c.filename_dark,
+			c.show_overlay,
 			c.url_slug,
 			c.created_at,
 			c.updated_at,
@@ -63,7 +66,7 @@ export async function getCollectionById(id: number): Promise<Collection | null> 
 		LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
 		LEFT JOIN recipes r ON cr.recipe_id = r.id
 		WHERE c.id = ?
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, c.created_at, c.updated_at
 	`;
 
 	const [rows] = await pool.execute(query, [id]);
@@ -84,7 +87,7 @@ export async function getCollectionsForDisplay(): Promise<Collection[]> {
  */
 export async function getOwnedCollections(householdId: number): Promise<Collection[]> {
 	const query = `
-		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, 
+		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, 
 		       c.created_at, c.updated_at, h.name as household_name,
 		       'owned' as access_type,
 		       COUNT(CASE WHEN r.archived = 0 THEN cr.recipe_id END) as recipe_count,
@@ -96,7 +99,7 @@ export async function getOwnedCollections(householdId: number): Promise<Collecti
 		LEFT JOIN collection_recipes cr ON c.id = cr.collection_id
 		LEFT JOIN recipes r ON cr.recipe_id = r.id
 		WHERE c.household_id = ?
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id
 		ORDER BY c.title ASC
 	`;
 
@@ -110,7 +113,7 @@ export async function getOwnedCollections(householdId: number): Promise<Collecti
  */
 export async function getMyCollections(householdId: number): Promise<Collection[]> {
 	const query = `
-		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, 
+		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, 
 		       c.created_at, c.updated_at, h.name as household_name,
 		       CASE WHEN c.household_id = ? THEN 'owned' ELSE 'subscribed' END as access_type,
 		       COUNT(CASE WHEN r.archived = 0 THEN cr.recipe_id END) as recipe_count,
@@ -123,7 +126,7 @@ export async function getMyCollections(householdId: number): Promise<Collection[
 		LEFT JOIN recipes r ON cr.recipe_id = r.id
 		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 		WHERE c.household_id = ? OR cs.household_id IS NOT NULL
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id
 		ORDER BY access_type ASC, c.title ASC
 	`;
 
@@ -137,7 +140,7 @@ export async function getMyCollections(householdId: number): Promise<Collection[
  */
 export async function getPublicCollections(householdId: number): Promise<Collection[]> {
 	const query = `
-		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, 
+		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, 
 		       c.created_at, c.updated_at, h.name as household_name,
 		       CASE 
 		         WHEN c.household_id = ? THEN 'owned'
@@ -154,7 +157,7 @@ export async function getPublicCollections(householdId: number): Promise<Collect
 		LEFT JOIN recipes r ON cr.recipe_id = r.id
 		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 		WHERE c.public = 1
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id, cs.household_id
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id, cs.household_id
 		ORDER BY c.title ASC
 	`;
 
@@ -168,7 +171,7 @@ export async function getPublicCollections(householdId: number): Promise<Collect
  */
 export async function getCollectionByIdWithHousehold(id: number, householdId: number): Promise<Collection | null> {
 	const query = `
-		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, 
+		SELECT c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, 
 		       c.created_at, c.updated_at, h.name as household_name,
 		       CASE 
 		         WHEN c.household_id = ? THEN 'owned'
@@ -191,7 +194,7 @@ export async function getCollectionByIdWithHousehold(id: number, householdId: nu
 		  cs.household_id IS NOT NULL OR  -- User subscribed to collection
 		  c.public = 1                    -- Public collection
 		)
-		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id, cs.household_id
+		GROUP BY c.id, c.title, c.subtitle, c.filename, c.filename_dark, c.show_overlay, c.url_slug, c.created_at, c.updated_at, h.name, c.household_id, cs.household_id
 	`;
 
 	const [rows] = await pool.execute(query, [householdId, householdId, householdId, householdId, id, householdId]);

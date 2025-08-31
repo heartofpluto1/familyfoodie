@@ -9,6 +9,7 @@ interface CollectionCardSmallProps {
 	subtitle?: string;
 	subscribed: boolean;
 	recipeCount?: number;
+	showOverlay?: boolean;
 	onToggleSubscription?: () => void;
 	isLoading?: boolean;
 }
@@ -20,6 +21,7 @@ const CollectionCardSmall = ({
 	title,
 	subtitle,
 	recipeCount,
+	showOverlay = true,
 	onToggleSubscription,
 	isLoading,
 }: CollectionCardSmallProps) => {
@@ -85,6 +87,15 @@ const CollectionCardSmall = ({
 							}}
 						/>
 					</picture>
+
+					{/* Texture overlay */}
+					{showOverlay && (
+						<picture className="absolute inset-0 w-full h-full pointer-events-none">
+							<source media="(prefers-color-scheme: dark)" srcSet="/collections/collection_overlay_dark_mode.png" />
+							<img src="/collections/collection_overlay_light_mode.png" alt="" className="w-full h-full object-cover" />
+						</picture>
+					)}
+
 					<div
 						className="w-full h-full flex flex-col relative z-10"
 						style={{ background: 'radial-gradient(circle at var(--mouse-x) var(--mouse-y), transparent 0, rgba(0, 0, 0, 0.8) 75px)' }}

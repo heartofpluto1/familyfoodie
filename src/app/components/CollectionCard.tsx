@@ -9,11 +9,22 @@ interface CollectionCardProps {
 	subtitle?: string;
 	subscribed: boolean;
 	recipeCount?: number;
+	showOverlay?: boolean;
 	onToggleSubscription?: () => void;
 	isLoading?: boolean;
 }
 
-const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitle, recipeCount, onToggleSubscription, isLoading }: CollectionCardProps) => {
+const CollectionCard = ({
+	coverImage,
+	darkCoverImage,
+	subscribed,
+	title,
+	subtitle,
+	recipeCount,
+	showOverlay = true,
+	onToggleSubscription,
+	isLoading,
+}: CollectionCardProps) => {
 	// Peek card configurations
 	const peekCards = [
 		{ height: '380px', top: '10px', rotation: 3.6 },
@@ -76,6 +87,14 @@ const CollectionCard = ({ coverImage, darkCoverImage, subscribed, title, subtitl
 							}}
 						/>
 					</picture>
+
+					{/* Texture overlay */}
+					{showOverlay && (
+						<picture className="absolute inset-0 w-full h-full pointer-events-none">
+							<source media="(prefers-color-scheme: dark)" srcSet="/collections/collection_overlay_dark_mode.png" />
+							<img src="/collections/collection_overlay_light_mode.png" alt="" className="w-full h-full object-cover" />
+						</picture>
+					)}
 
 					<div
 						className="w-full h-full flex flex-col relative z-10"

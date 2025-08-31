@@ -17,6 +17,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 		const title = formData.get('title') as string;
 		const subtitle = formData.get('subtitle') as string;
+		const showOverlay = formData.get('showOverlay') === 'true' ? 1 : 0;
 		const lightImage = formData.get('lightImage') as File;
 		const darkImage = formData.get('darkImage') as File;
 
@@ -40,9 +41,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 		if (lightImage || darkImage) {
 			// User provided custom images, generate unique filename
 			const [result] = await pool.execute<ResultSetHeader>(
-				`INSERT INTO collections (title, subtitle, household_id, public, created_at, updated_at) 
-				 VALUES (?, ?, ?, 0, NOW(), NOW())`,
-				[title, subtitle || null, auth.household_id]
+				`INSERT INTO collections (title, subtitle, household_id, public, show_overlay, created_at, updated_at) 
+				 VALUES (?, ?, ?, 0, ?, NOW(), NOW())`,
+				[title, subtitle || null, auth.household_id, showOverlay]
 			);
 
 			collectionId = result.insertId;
@@ -90,9 +91,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 			// Insert collection with default filenames
 			const [result] = await pool.execute<ResultSetHeader>(
-				`INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, public, created_at, updated_at) 
-				 VALUES (?, ?, ?, ?, ?, 0, NOW(), NOW())`,
-				[title, subtitle || null, filename, darkFilename, auth.household_id]
+				`INSERT INTO collections (title, subtitle, filename, filename_dark, household_id, public, show_overlay, created_at, updated_at) 
+				 VALUES (?, ?, ?, ?, ?, 0, ?, NOW(), NOW())`,
+				[title, subtitle || null, filename, darkFilename, auth.household_id, showOverlay]
 			);
 
 			collectionId = result.insertId;

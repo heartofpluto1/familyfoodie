@@ -90,6 +90,7 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Test Collection');
 				formData.append('subtitle', 'Test Subtitle');
+				formData.append('showOverlay', 'true');
 				formData.append('lightImage', createMockFile('light.jpg', 'image/jpeg'));
 				formData.append('darkImage', createMockFile('dark.jpg', 'image/jpeg'));
 
@@ -111,10 +112,10 @@ describe('/api/collections/create', () => {
 							filename: 'secure_filename_123',
 						});
 
-						// Verify database calls include household_id
+						// Verify database calls include household_id and show_overlay
 						expect(mockExecute).toHaveBeenCalledWith(
 							expect.stringContaining('INSERT INTO collections'),
-							['Test Collection', 'Test Subtitle', 1] // household_id should be included
+							['Test Collection', 'Test Subtitle', 1, 1] // household_id and show_overlay should be included
 						);
 
 						// Verify file uploads were called
@@ -171,6 +172,7 @@ describe('/api/collections/create', () => {
 				const formData = new FormData();
 				formData.append('title', 'Default Images Collection');
 				formData.append('subtitle', 'No custom images');
+				formData.append('showOverlay', 'true');
 
 				await testApiHandler({
 					appHandler,
@@ -186,13 +188,14 @@ describe('/api/collections/create', () => {
 						expect(data.success).toBe(true);
 						expect(data.filename).toBe('custom_collection_004');
 
-						// Should use default filenames with household_id
+						// Should use default filenames with household_id and show_overlay
 						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
 							'Default Images Collection',
 							'No custom images',
 							'custom_collection_004',
 							'custom_collection_004_dark',
 							1, // household_id
+							1, // show_overlay (true = 1)
 						]);
 
 						// No file uploads should occur
@@ -207,6 +210,7 @@ describe('/api/collections/create', () => {
 
 				const formData = new FormData();
 				formData.append('title', 'No Subtitle Collection');
+				formData.append('showOverlay', 'false');
 				// Don't append subtitle
 
 				await testApiHandler({
@@ -226,9 +230,75 @@ describe('/api/collections/create', () => {
 							'custom_collection_004',
 							'custom_collection_004_dark',
 							1,
+							0, // show_overlay (false = 0)
 						]);
 					},
 				});
+			});
+
+			it('should default show_overlay to false when not provided', async () => {
+				const mockInsertResult = { insertId: 222, affectedRows: 1 };
+				mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+				const formData = new FormData();
+				formData.append('title', 'No Overlay Specified');
+				// Don't append showOverlay - should default to false (0)
+
+				await testApiHandler({
+					appHandler,
+					test: async ({ fetch }) => {
+						const response = await fetch({
+							method: 'POST',
+							body: formData,
+						});
+
+						expect(response.status).toBe(200);
+
+						// Verify show_overlay defaults to 0 (false) when not provided
+						expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), [
+							'No Overlay Specified',
+							null,
+							'custom_collection_004',
+							'custom_collection_004_dark',
+							1,
+							0, // show_overlay should default to 0
+						]);
+					},
+				});
+			});
+
+			it('should handle show_overlay values correctly', async () => {
+				const testCases = [
+					{ input: 'true', expected: 1 },
+					{ input: 'false', expected: 0 },
+					{ input: 'invalid', expected: 0 },
+					{ input: '', expected: 0 },
+				];
+
+				for (const testCase of testCases) {
+					jest.clearAllMocks();
+					const mockInsertResult = { insertId: 333, affectedRows: 1 };
+					mockExecute.mockResolvedValueOnce([mockInsertResult, []]).mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+					const formData = new FormData();
+					formData.append('title', `Test ${testCase.input}`);
+					formData.append('showOverlay', testCase.input);
+
+					await testApiHandler({
+						appHandler,
+						test: async ({ fetch }) => {
+							const response = await fetch({
+								method: 'POST',
+								body: formData,
+							});
+
+							expect(response.status).toBe(200);
+
+							// Verify the correct value is passed to database
+							expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collections'), expect.arrayContaining([testCase.expected]));
+						},
+					});
+				}
 			});
 
 			it('should handle dark image upload failure gracefully', async () => {
@@ -504,6 +574,7 @@ describe('/api/collections/create', () => {
 							'custom_collection_004',
 							'custom_collection_004_dark',
 							1,
+							0, // show_overlay defaults to 0
 						]);
 					},
 				});
