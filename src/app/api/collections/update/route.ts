@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		}
 
 		// Handle show_overlay update
-		if (showOverlay !== null && showOverlay !== undefined) {
+		if (showOverlay !== null) {
 			updates.push('show_overlay = ?');
 			params.push(showOverlay === 'true' ? 1 : 0);
 		}
