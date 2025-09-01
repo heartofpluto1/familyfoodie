@@ -13,10 +13,6 @@ const nextConfig: NextConfig = {
         protocol: 'https', 
         hostname: 'storage.googleapis.com',
       },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
     ],
   },
   // Ensure API routes are always dynamic and add security headers
@@ -25,7 +21,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Allow inline scripts for Next.js
       "style-src 'self' 'unsafe-inline'", // Allow inline styles for Tailwind
-      "img-src 'self' data: blob: https://storage.googleapis.com https://lh3.googleusercontent.com https://images.unsplash.com", // Allow images from GCS, Google profiles, Unsplash, and local
+      "img-src 'self' data: blob: https://storage.googleapis.com https://lh3.googleusercontent.com", // Allow images from GCS, Google profiles, and local
       "font-src 'self' data:",
       "connect-src 'self' https://api.openai.com", // Allow API calls to OpenAI
       "media-src 'self' https://storage.googleapis.com", // Allow media from GCS
