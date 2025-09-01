@@ -18,6 +18,7 @@ export async function getPopularRecipes(limit: number = 3): Promise<PopularRecip
 	const currentWeek = Math.ceil((now.getTime() - new Date(currentYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
 	const fourWeeksAgo = currentWeek - 4;
 
+	// Simplified query that matches the pattern used in menus.ts
 	const query = `
 		SELECT 
 			r.id,
@@ -26,21 +27,17 @@ export async function getPopularRecipes(limit: number = 3): Promise<PopularRecip
 			r.image_filename,
 			r.cookTime,
 			r.prepTime,
-			COUNT(p.id) as plan_count
+			COUNT(*) as plan_count
 		FROM recipes r
 		INNER JOIN plans p ON r.id = p.recipe_id
 		WHERE r.public = 1
-			AND p.year >= ?
-			AND (
-				p.year > ? 
-				OR (p.year = ? AND p.week >= ?)
-			)
-		GROUP BY r.id, r.name, r.url_slug, r.image_filename, r.cookTime, r.prepTime
+			AND ((p.year = ? AND p.week >= ?) OR p.year > ?)
+		GROUP BY r.id
 		ORDER BY plan_count DESC, r.name ASC
 		LIMIT ?
 	`;
 
-	const [rows] = await pool.execute<RowDataPacket[]>(query, [currentYear, currentYear, currentYear, fourWeeksAgo, limit]);
+	const [rows] = await pool.execute<RowDataPacket[]>(query, [currentYear, fourWeeksAgo, currentYear, limit]);
 
 	return rows as PopularRecipe[];
 }
