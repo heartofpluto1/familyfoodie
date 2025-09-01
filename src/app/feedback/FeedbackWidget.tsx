@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useFeedback } from './FeedbackProvider';
 import FeedbackForm from './components/FeedbackForm';
 import FeedbackSuccess from './components/FeedbackSuccess';
@@ -9,6 +10,7 @@ import { FeedbackCategory } from '@/types/feedback';
 import { FeedbackIcon, CloseIcon } from '@/app/components/Icons';
 
 export default function FeedbackWidget() {
+	const { data: session, status } = useSession();
 	const { isOpen, openFeedback, closeFeedback, submitFeedback, isSubmitting } = useFeedback();
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -49,6 +51,16 @@ export default function FeedbackWidget() {
 		}, 300);
 	};
 
+	// Don't render during loading or if not authenticated
+	if (status === 'loading') {
+		return null;
+	}
+
+	if (!session) {
+		return null;
+	}
+
+	// Don't show on auth or admin pages
 	const shouldShow = pathname && !pathname.includes('/auth/') && !pathname.includes('/admin/');
 
 	if (!shouldShow) {
@@ -94,7 +106,17 @@ export default function FeedbackWidget() {
 							{showSuccess ? (
 								<FeedbackSuccess onClose={handleClose} />
 							) : (
-								<FeedbackForm onSubmit={handleSubmit} onCancel={handleClose} isSubmitting={isSubmitting} />
+								<>
+									{session?.user && (
+										<div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-sm">
+											<p className="text-sm text-gray-600 dark:text-gray-400">
+												Submitting as{' '}
+												<span className="font-medium text-gray-900 dark:text-gray-100">{session.user.name || session.user.email}</span>
+											</p>
+										</div>
+									)}
+									<FeedbackForm onSubmit={handleSubmit} onCancel={handleClose} isSubmitting={isSubmitting} />
+								</>
 							)}
 						</div>
 					</div>
