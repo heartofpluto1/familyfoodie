@@ -16,11 +16,11 @@ export async function getPopularRecipes(limit: number = 3): Promise<PopularRecip
 	const now = new Date();
 	const currentYear = now.getFullYear();
 	const currentWeek = Math.ceil((now.getTime() - new Date(currentYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-	
+
 	// Handle year boundary - if we're in the first 4 weeks, look at the previous year
 	let startYear = currentYear;
 	let startWeek = currentWeek - 4;
-	
+
 	if (startWeek < 1) {
 		startYear = currentYear - 1;
 		startWeek = 52 + startWeek; // Wrap around to previous year
@@ -56,11 +56,11 @@ export async function getRecentlyPlannedCount(): Promise<number> {
 	const now = new Date();
 	const currentYear = now.getFullYear();
 	const currentWeek = Math.ceil((now.getTime() - new Date(currentYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-	
+
 	// Handle year boundary - if we're in the first 4 weeks, look at the previous year
 	let startYear = currentYear;
 	let startWeek = currentWeek - 4;
-	
+
 	if (startWeek < 1) {
 		startYear = currentYear - 1;
 		startWeek = 52 + startWeek; // Wrap around to previous year

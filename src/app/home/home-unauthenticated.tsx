@@ -11,22 +11,22 @@ interface HomeUnauthenticatedProps {
 	activeHouseholds: number;
 }
 
-export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }: HomeUnauthenticatedProps) {
+export default function HomeUnauthenticated({ popularRecipes }: HomeUnauthenticatedProps) {
 	return (
 		<div className="min-h-screen bg-background">
 			{/* Hero Section */}
-			<div 
+			<div
 				className="relative border-b border-custom"
 				style={{
 					backgroundImage: "url('/hero5.jpg')",
 					backgroundSize: 'cover',
 					backgroundPosition: 'center',
-					backgroundRepeat: 'no-repeat'
+					backgroundRepeat: 'no-repeat',
 				}}
 			>
 				{/* Gradient overlay for text readability */}
 				<div className="absolute inset-0 bg-gradient-to-b from-white/85 via-white/80 to-white/85 dark:from-black/85 dark:via-black/80 dark:to-black/85"></div>
-				
+
 				{/* Content */}
 				<div className="relative z-10 container mx-auto px-4 py-12">
 					<div className="max-w-4xl mx-auto text-center">
@@ -34,9 +34,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 							<SparklesIcon className="w-12 h-12 text-black dark:text-white" />
 						</div>
 						<h1 className="text-4xl md:text-5xl text-foreground mb-4">Meal Planning That Actually Works</h1>
-						<p className="text-xl text-secondary mb-8">
-							Plan your week in 2 minutes, shop once, cook happy
-						</p>
+						<p className="text-xl text-secondary mb-8">Plan your week in 2 minutes, shop once, cook happy</p>
 
 						<Link
 							href="/auth/signin"
@@ -61,7 +59,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
 							<div>
 								<h3 className="text-lg font-semibold text-foreground mb-2">That 5pm panic?</h3>
-								<p className="text-secondary text-sm">Know what's for dinner all week long</p>
+								<p className="text-secondary text-sm">Know what&apos;s for dinner all week long</p>
 							</div>
 							<div>
 								<h3 className="text-lg font-semibold text-foreground mb-2">Three trips for one recipe?</h3>
@@ -81,7 +79,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 				<div className="container mx-auto px-4 py-12">
 					<div className="max-w-6xl mx-auto">
 						<div className="text-center mb-8">
-							<h2 className="text-3xl text-foreground mb-2">What's Cooking This Week</h2>
+							<h2 className="text-3xl text-foreground mb-2">What&apos;s Cooking This Week</h2>
 							<p className="text-secondary">Fresh ideas from real kitchens</p>
 						</div>
 
@@ -100,7 +98,10 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 						</div>
 
 						<div className="text-center">
-							<Link href="/auth/signin" className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 font-semibold underline transition-colors">
+							<Link
+								href="/auth/signin"
+								className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 font-semibold underline transition-colors"
+							>
 								View All Recipes
 								<ArrowRightIcon className="w-4 h-4" />
 							</Link>
@@ -149,9 +150,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 				<div className="max-w-2xl mx-auto text-center">
 					<div className="bg-surface border border-custom rounded-sm p-8">
 						<h2 className="text-2xl text-foreground mb-4">Dinner sorted, life simplified.</h2>
-						<p className="text-secondary mb-6">
-							We can't help with all the mental load of life, but at least we can help with this.
-						</p>
+						<p className="text-secondary mb-6">We can&apos;t help with all the mental load of life, but at least we can help with this.</p>
 						<Link
 							href="/auth/signin"
 							className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-sm transition-colors"
