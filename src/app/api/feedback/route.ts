@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
 		}
 
 		const searchParams = request.nextUrl.searchParams;
-		
+
 		// Parse and validate numeric parameters
 		const limitParam = searchParams.get('limit');
 		const offsetParam = searchParams.get('offset');
 		const ratingParam = searchParams.get('rating');
 		const userIdParam = searchParams.get('userId');
-		
+
 		const query: FeedbackQuery = {
 			status: (searchParams.get('status') as FeedbackStatus) || undefined,
 			category: (searchParams.get('category') as FeedbackCategory) || undefined,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 			limit: limitParam ? parseInt(limitParam) : 50,
 			offset: offsetParam ? parseInt(offsetParam) : 0,
 		};
-		
+
 		// Validate numeric values aren't NaN
 		if (query.limit !== undefined && isNaN(query.limit)) query.limit = 50;
 		if (query.offset !== undefined && isNaN(query.offset)) query.offset = 0;

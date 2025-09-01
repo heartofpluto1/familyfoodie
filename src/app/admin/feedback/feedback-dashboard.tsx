@@ -148,9 +148,7 @@ export default function FeedbackDashboard() {
 					</div>
 					<div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-sm p-4">
 						<div className="text-sm text-purple-700 dark:text-purple-400 mb-1">Avg Rating</div>
-						<div className="text-2xl text-purple-800 dark:text-purple-300">
-							{stats.averageRating ? `${stats.averageRating.toFixed(1)} ★` : 'N/A'}
-						</div>
+						<div className="text-2xl text-purple-800 dark:text-purple-300">{stats.averageRating ? `${stats.averageRating.toFixed(1)} ★` : 'N/A'}</div>
 					</div>
 				</div>
 			)}

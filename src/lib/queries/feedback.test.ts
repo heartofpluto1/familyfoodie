@@ -1,12 +1,4 @@
-import {
-	createFeedback,
-	getFeedback,
-	getFeedbackById,
-	updateFeedback,
-	getFeedbackStats,
-	addFeedbackResponse,
-	deleteFeedback,
-} from './feedback';
+import { createFeedback, getFeedback, getFeedbackById, updateFeedback, getFeedbackStats, addFeedbackResponse, deleteFeedback } from './feedback';
 import pool from '@/lib/db.js';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
@@ -32,14 +24,21 @@ describe('Feedback Queries', () => {
 				metadata: {
 					browserInfo: 'Mozilla/5.0',
 					lastActions: ['viewed', 'clicked'],
+					timestamp: Date.now(),
 				},
 			});
 
 			expect(result).toBe(123);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('INSERT INTO feedback'),
-				[1, 2, 5, 'general', 'Great app!', '/dashboard', 'Mozilla/5.0', expect.any(String)]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO feedback'), [
+				1,
+				2,
+				5,
+				'general',
+				'Great app!',
+				'/dashboard',
+				'Mozilla/5.0',
+				expect.any(String),
+			]);
 		});
 
 		it('should handle null optional fields', async () => {
@@ -51,10 +50,7 @@ describe('Feedback Queries', () => {
 			});
 
 			expect(result).toBe(124);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('INSERT INTO feedback'),
-				[1, null, null, 'general', null, '/home', null, '{}']
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO feedback'), [1, null, null, 'general', null, '/home', null, '{}']);
 		});
 	});
 
@@ -83,14 +79,8 @@ describe('Feedback Queries', () => {
 			});
 
 			expect(result).toEqual(mockFeedback);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('AND f.status = ?'),
-				['new']
-			);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('LIMIT 10'),
-				expect.any(Array)
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND f.status = ?'), ['new']);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('LIMIT 10'), expect.any(Array));
 		});
 
 		it('should handle all filter parameters', async () => {
@@ -118,10 +108,7 @@ describe('Feedback Queries', () => {
 
 			await getFeedback({});
 
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('ORDER BY f.created_at DESC'),
-				[]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY f.created_at DESC'), []);
 		});
 	});
 
@@ -145,10 +132,7 @@ describe('Feedback Queries', () => {
 			const result = await getFeedbackById(1);
 
 			expect(result).toEqual(mockFeedback);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('WHERE f.id = ?'),
-				[1]
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('WHERE f.id = ?'), [1]);
 		});
 
 		it('should return null when feedback not found', async () => {
@@ -186,10 +170,7 @@ describe('Feedback Queries', () => {
 			});
 
 			expect(result).toBe(true);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('status = ?'),
-				expect.arrayContaining(['actioned', 10, 1])
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('status = ?'), expect.arrayContaining(['actioned', 10, 1]));
 		});
 
 		it('should return false when no fields to update', async () => {
@@ -230,9 +211,7 @@ describe('Feedback Queries', () => {
 				{ category: 'feature_request', count: 20 },
 			];
 
-			mockPool.execute
-				.mockResolvedValueOnce([mockStats as RowDataPacket[], []])
-				.mockResolvedValueOnce([mockCategories as RowDataPacket[], []]);
+			mockPool.execute.mockResolvedValueOnce([mockStats as RowDataPacket[], []]).mockResolvedValueOnce([mockCategories as RowDataPacket[], []]);
 
 			const result = await getFeedbackStats();
 
@@ -263,9 +242,7 @@ describe('Feedback Queries', () => {
 				},
 			];
 
-			mockPool.execute
-				.mockResolvedValueOnce([mockStats as RowDataPacket[], []])
-				.mockResolvedValueOnce([[] as RowDataPacket[], []]);
+			mockPool.execute.mockResolvedValueOnce([mockStats as RowDataPacket[], []]).mockResolvedValueOnce([[] as RowDataPacket[], []]);
 
 			const result = await getFeedbackStats();
 
@@ -289,10 +266,7 @@ describe('Feedback Queries', () => {
 			const result = await addFeedbackResponse(1, 10, 'We are looking into this issue');
 
 			expect(result).toBe(456);
-			expect(mockPool.execute).toHaveBeenCalledWith(
-				expect.stringContaining('INSERT INTO feedback_responses'),
-				[1, 10, 'We are looking into this issue']
-			);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO feedback_responses'), [1, 10, 'We are looking into this issue']);
 		});
 	});
 

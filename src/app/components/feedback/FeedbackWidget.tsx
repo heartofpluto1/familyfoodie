@@ -76,7 +76,11 @@ export default function FeedbackWidget() {
 						<div className="p-6">
 							<div className="flex justify-between items-center mb-4">
 								<h2 className="text-xl text-gray-900 dark:text-gray-100">Share Your Feedback</h2>
-								<button onClick={handleClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300" aria-label="Close feedback form">
+								<button
+									onClick={handleClose}
+									className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+									aria-label="Close feedback form"
+								>
 									<CloseIcon className="w-6 h-6" />
 								</button>
 							</div>

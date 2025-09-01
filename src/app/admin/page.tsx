@@ -79,7 +79,9 @@ export default async function AdminPage() {
 						</div>
 					</div>
 					<h3 className="text-lg mb-2 text-foreground dark:text-gray-100">Feedback Dashboard</h3>
-					<p className="text-muted dark:text-gray-400 text-sm">Review and manage user feedback, track satisfaction ratings, and identify improvement areas.</p>
+					<p className="text-muted dark:text-gray-400 text-sm">
+						Review and manage user feedback, track satisfaction ratings, and identify improvement areas.
+					</p>
 				</Link>
 
 				{/* System Analytics Card */}
