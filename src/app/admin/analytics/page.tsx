@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
+import AnalyticsContent from './AnalyticsContent';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs/promises';
@@ -46,14 +47,6 @@ interface FileStats {
 	totalSize: number;
 	orphaned: number;
 	orphanedSize: number;
-}
-
-function formatFileSize(bytes: number): string {
-	if (bytes === 0) return '0 Bytes';
-	const k = 1024;
-	const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 async function getCollectionFileStats(): Promise<{ orphaned: OrphanedFile[]; stats: FileStats }> {
@@ -426,306 +419,27 @@ export default async function SystemAnalyticsPage() {
 	const { orphaned: orphanedCollectionFiles, stats: collectionStats } = collectionData;
 	const { orphanedImages: orphanedRecipeImages, orphanedPdfs: orphanedRecipePdfs, imageStats, pdfStats } = recipeData;
 
+	const analyticsData = {
+		orphanedCollectionFiles,
+		collectionStats,
+		orphanedRecipeImages,
+		orphanedRecipePdfs,
+		imageStats,
+		pdfStats,
+		orphanedCollections,
+		orphanedIngredients,
+		orphanedRecipes,
+		useGCS,
+		bucketName,
+	};
+
 	return (
 		<main className="container mx-auto px-4 py-8">
 			<div className="mb-8">
 				<HeaderPage title="System Analytics" subtitle="Monitor system resources and identify orphaned assets" />
 			</div>
 
-			<div className="space-y-8">
-				{/* Orphaned Collection Files */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-						<svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-							/>
-						</svg>
-						Collection Files
-					</h2>
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-						<div>
-							<div className="text-sm text-muted">Total Files</div>
-							<div className="text-lg font-semibold">{collectionStats.total}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Total Size</div>
-							<div className="text-lg font-semibold">{formatFileSize(collectionStats.totalSize)}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Orphaned</div>
-							<div className="text-lg font-semibold text-orange-600">{collectionStats.orphaned}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Orphaned Size</div>
-							<div className="text-lg font-semibold text-orange-600">{formatFileSize(collectionStats.orphanedSize)}</div>
-						</div>
-					</div>
-					{orphanedCollectionFiles.length > 0 ? (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
-							<ul className="space-y-1 text-sm">
-								{orphanedCollectionFiles.map((file, index) => (
-									<li key={index} className="text-muted">
-										{useGCS ? `gs://${bucketName}/collections/${file.filename}` : `/collections/${file.filename}`}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<p className="text-muted">No orphaned collection files found.</p>
-					)}
-				</section>
-
-				{/* Orphaned Recipe Images */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-						<svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-							/>
-						</svg>
-						Recipe Images
-					</h2>
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-						<div>
-							<div className="text-sm text-muted">Total Files</div>
-							<div className="text-lg font-semibold">{imageStats.total}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Total Size</div>
-							<div className="text-lg font-semibold">{formatFileSize(imageStats.totalSize)}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Orphaned</div>
-							<div className="text-lg font-semibold text-orange-600">{imageStats.orphaned}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Orphaned Size</div>
-							<div className="text-lg font-semibold text-orange-600">{formatFileSize(imageStats.orphanedSize)}</div>
-						</div>
-					</div>
-					{orphanedRecipeImages.length > 0 ? (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
-							<ul className="space-y-1 text-sm">
-								{orphanedRecipeImages.map((file, index) => (
-									<li key={index} className="text-muted">
-										{useGCS ? `gs://${bucketName}/${file.filename}` : `/static/${file.filename}`}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<p className="text-muted">No orphaned recipe images found.</p>
-					)}
-				</section>
-
-				{/* Orphaned Recipe PDFs */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-						<svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-							/>
-						</svg>
-						Recipe PDFs
-					</h2>
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-						<div>
-							<div className="text-sm text-muted">Total Files</div>
-							<div className="text-lg font-semibold">{pdfStats.total}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Total Size</div>
-							<div className="text-lg font-semibold">{formatFileSize(pdfStats.totalSize)}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Orphaned</div>
-							<div className="text-lg font-semibold text-orange-600">{pdfStats.orphaned}</div>
-						</div>
-						<div>
-							<div className="text-sm text-muted">Orphaned Size</div>
-							<div className="text-lg font-semibold text-orange-600">{formatFileSize(pdfStats.orphanedSize)}</div>
-						</div>
-					</div>
-					{orphanedRecipePdfs.length > 0 ? (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
-							<ul className="space-y-1 text-sm">
-								{orphanedRecipePdfs.map((file, index) => (
-									<li key={index} className="text-muted">
-										{useGCS ? `gs://${bucketName}/${file.filename}` : `/static/${file.filename}`}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<p className="text-muted">No orphaned recipe PDFs found.</p>
-					)}
-				</section>
-
-				{/* Orphaned Collections */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-						<svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-							/>
-						</svg>
-						Empty Collections
-						<span className="text-sm font-normal text-muted">({orphanedCollections.length} found)</span>
-					</h2>
-					<p className="text-sm text-muted mb-2">Collections with no recipes</p>
-					{orphanedCollections.length > 0 ? (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
-							<ul className="space-y-1 text-sm">
-								{orphanedCollections.map(collection => (
-									<li key={collection.id} className="text-muted">
-										<span className="font-mono text-xs text-gray-400">[HH:{collection.household_id}]</span>
-										<span className="font-mono text-xs text-gray-500 ml-2">#{collection.id}</span> {collection.name}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<p className="text-muted">No empty collections found.</p>
-					)}
-				</section>
-
-				{/* Orphaned Ingredients */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-						<svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-							/>
-						</svg>
-						Orphaned Ingredients
-						<span className="text-sm font-normal text-muted">({orphanedIngredients.length} found)</span>
-					</h2>
-					{orphanedIngredients.length > 0 ? (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
-							<ul className="space-y-1 text-sm">
-								{orphanedIngredients.map(ingredient => (
-									<li key={ingredient.id} className="text-muted">
-										<span className="font-mono text-xs text-gray-400">[HH:{ingredient.household_id}]</span>
-										<span className="font-mono text-xs text-gray-500 ml-2">#{ingredient.id}</span> {ingredient.name}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<p className="text-muted">No orphaned ingredients found.</p>
-					)}
-				</section>
-
-				{/* Orphaned Recipes */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground flex items-center gap-2">
-						<svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-							/>
-						</svg>
-						Orphaned Recipes
-						<span className="text-sm font-normal text-muted">({orphanedRecipes.length} found)</span>
-					</h2>
-					<p className="text-sm text-muted mb-2">Recipes not referenced in any collection or meal plan</p>
-					{orphanedRecipes.length > 0 ? (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
-							<ul className="space-y-1 text-sm">
-								{orphanedRecipes.map(recipe => (
-									<li key={recipe.id} className="text-muted">
-										<span className="font-mono text-xs text-gray-400">[HH:{recipe.household_id}]</span>
-										<span className="font-mono text-xs text-gray-500 ml-2">#{recipe.id}</span> {recipe.name}
-									</li>
-								))}
-							</ul>
-						</div>
-					) : (
-						<p className="text-muted">No orphaned recipes found.</p>
-					)}
-				</section>
-
-				{/* Summary Statistics */}
-				<section className="bg-surface border border-custom rounded-sm shadow-sm p-6">
-					<h2 className="text-xl font-semibold mb-4 text-foreground">Summary {useGCS && <span className="text-sm font-normal text-muted">(GCS: {bucketName})</span>}</h2>
-					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-						<div className="text-center">
-							<div className="text-2xl font-bold text-blue-600">{orphanedCollectionFiles.length}</div>
-							<div className="text-sm text-muted">Collection Files</div>
-						</div>
-						<div className="text-center">
-							<div className="text-2xl font-bold text-green-600">{orphanedRecipeImages.length}</div>
-							<div className="text-sm text-muted">Recipe Images</div>
-						</div>
-						<div className="text-center">
-							<div className="text-2xl font-bold text-red-600">{orphanedRecipePdfs.length}</div>
-							<div className="text-sm text-muted">Recipe PDFs</div>
-						</div>
-						<div className="text-center">
-							<div className="text-2xl font-bold text-indigo-600">{orphanedCollections.length}</div>
-							<div className="text-sm text-muted">Empty Collections</div>
-						</div>
-						<div className="text-center">
-							<div className="text-2xl font-bold text-yellow-600">{orphanedIngredients.length}</div>
-							<div className="text-sm text-muted">Ingredients</div>
-						</div>
-						<div className="text-center">
-							<div className="text-2xl font-bold text-purple-600">{orphanedRecipes.length}</div>
-							<div className="text-sm text-muted">Recipes</div>
-						</div>
-					</div>
-					<div className="mt-4 pt-4 border-t border-custom space-y-2">
-						<p className="text-sm text-muted">
-							Total orphaned assets:{' '}
-							<span className="font-semibold text-foreground">
-								{orphanedCollectionFiles.length +
-									orphanedRecipeImages.length +
-									orphanedRecipePdfs.length +
-									orphanedCollections.length +
-									orphanedIngredients.length +
-									orphanedRecipes.length}
-							</span>
-						</p>
-						<p className="text-sm text-muted">
-							Total storage usage:{' '}
-							<span className="font-semibold text-foreground">
-								{formatFileSize(collectionStats.totalSize + imageStats.totalSize + pdfStats.totalSize)}
-							</span>
-							{' '}across{' '}
-							<span className="font-semibold text-foreground">
-								{collectionStats.total + imageStats.total + pdfStats.total}
-							</span>
-							{' '}files
-						</p>
-						<p className="text-sm text-muted">
-							Orphaned storage:{' '}
-							<span className="font-semibold text-orange-600">
-								{formatFileSize(collectionStats.orphanedSize + imageStats.orphanedSize + pdfStats.orphanedSize)}
-							</span>
-							{' '}({Math.round(((collectionStats.orphanedSize + imageStats.orphanedSize + pdfStats.orphanedSize) / 
-								(collectionStats.totalSize + imageStats.totalSize + pdfStats.totalSize || 1)) * 100)}% of total)
-						</p>
-					</div>
-				</section>
-			</div>
+			<AnalyticsContent data={analyticsData} />
 		</main>
 	);
 }
