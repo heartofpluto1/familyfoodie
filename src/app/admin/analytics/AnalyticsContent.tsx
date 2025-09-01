@@ -133,7 +133,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 						<ul className="space-y-1 text-sm">
 							{visibleCollectionFiles.map((file, index) => (
-								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors">
+								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
 									<span>{data.useGCS ? `gs://${data.bucketName}/collections/${file.filename}` : `/collections/${file.filename}`}</span>
 									<button
 										onClick={() => handleDelete('collection-file', undefined, file.filename)}
@@ -190,7 +190,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 						<ul className="space-y-1 text-sm">
 							{visibleRecipeImages.map((file, index) => (
-								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors">
+								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
 									<span>{data.useGCS ? `gs://${data.bucketName}/${file.filename}` : `/static/${file.filename}`}</span>
 									<button
 										onClick={() => handleDelete('recipe-image', undefined, file.filename)}
@@ -245,7 +245,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 						<ul className="space-y-1 text-sm">
 							{visibleRecipePdfs.map((file, index) => (
-								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors">
+								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
 									<span>{data.useGCS ? `gs://${data.bucketName}/${file.filename}` : `/static/${file.filename}`}</span>
 									<button
 										onClick={() => handleDelete('recipe-pdf', undefined, file.filename)}
@@ -282,7 +282,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 						<ul className="space-y-1 text-sm">
 							{visibleCollections.map(collection => (
-								<li key={collection.id} className="text-muted flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors">
+								<li key={collection.id} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
 									<span>
 										<span className="font-mono text-xs text-gray-400">[HH:{collection.household_id}]</span>
 										<span className="font-mono text-xs text-gray-500 ml-2">#{collection.id}</span> {collection.name}
@@ -321,7 +321,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 						<ul className="space-y-1 text-sm">
 							{visibleIngredients.map(ingredient => (
-								<li key={ingredient.id} className="text-muted flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors">
+								<li key={ingredient.id} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
 									<span>
 										<span className="font-mono text-xs text-gray-400">[HH:{ingredient.household_id}]</span>
 										<span className="font-mono text-xs text-gray-500 ml-2">#{ingredient.id}</span> {ingredient.name}
@@ -361,7 +361,7 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					<div className="bg-gray-50 dark:bg-gray-800 rounded p-4 max-h-64 overflow-y-auto">
 						<ul className="space-y-1 text-sm">
 							{visibleRecipes.map(recipe => (
-								<li key={recipe.id} className="text-muted flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors">
+								<li key={recipe.id} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
 									<span>
 										<span className="font-mono text-xs text-gray-400">[HH:{recipe.household_id}]</span>
 										<span className="font-mono text-xs text-gray-500 ml-2">#{recipe.id}</span> {recipe.name}
