@@ -164,7 +164,7 @@ export async function getFeedbackStats(): Promise<FeedbackStats> {
 		reviewed: stats.reviewed || 0,
 		actioned: stats.actioned || 0,
 		closed: stats.closed || 0,
-		averageRating: stats.averageRating,
+		averageRating: stats.averageRating ? parseFloat(stats.averageRating) : null,
 		byCategory,
 	};
 }
