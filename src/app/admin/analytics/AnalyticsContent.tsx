@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TrashIcon } from '@/app/components/Icons';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 interface OrphanedFile {
 	filename: string;
@@ -48,39 +49,70 @@ function formatFileSize(bytes: number): string {
 export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 	const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
 	const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
+	const [confirmDialog, setConfirmDialog] = useState<{
+		isOpen: boolean;
+		title: string;
+		message: string;
+		onConfirm: () => void;
+	}>({
+		isOpen: false,
+		title: '',
+		message: '',
+		onConfirm: () => {},
+	});
 
 	const handleDelete = async (type: string, id?: number, filename?: string) => {
 		const itemKey = `${type}-${id || filename}`;
 		
-		if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-			return;
+		// Determine the item description for the confirm dialog
+		let itemDescription = '';
+		if (type === 'collection-file') {
+			itemDescription = `collection file "${filename}"`;
+		} else if (type === 'recipe-image') {
+			itemDescription = `recipe image "${filename}"`;
+		} else if (type === 'recipe-pdf') {
+			itemDescription = `recipe PDF "${filename}"`;
+		} else if (type === 'collection') {
+			itemDescription = 'this empty collection';
+		} else if (type === 'ingredient') {
+			itemDescription = 'this orphaned ingredient';
+		} else if (type === 'recipe') {
+			itemDescription = 'this orphaned recipe';
 		}
 
-		setDeletingItems(prev => new Set(prev).add(itemKey));
+		setConfirmDialog({
+			isOpen: true,
+			title: 'Confirm Deletion',
+			message: `Are you sure you want to delete ${itemDescription}? This action cannot be undone.`,
+			onConfirm: async () => {
+				setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+				setDeletingItems(prev => new Set(prev).add(itemKey));
 
-		try {
-			const response = await fetch('/api/admin/delete-orphaned', {
-				method: 'DELETE',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ type, id, filename }),
-			});
+				try {
+					const response = await fetch('/api/admin/delete-orphaned', {
+						method: 'DELETE',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ type, id, filename }),
+					});
 
-			if (!response.ok) {
-				throw new Error('Failed to delete');
-			}
+					if (!response.ok) {
+						throw new Error('Failed to delete');
+					}
 
-			// Hide the item after successful deletion
-			setHiddenItems(prev => new Set(prev).add(itemKey));
-		} catch (error) {
-			console.error('Error deleting item:', error);
-			alert('Failed to delete item. Please try again.');
-		} finally {
-			setDeletingItems(prev => {
-				const newSet = new Set(prev);
-				newSet.delete(itemKey);
-				return newSet;
-			});
-		}
+					// Hide the item after successful deletion
+					setHiddenItems(prev => new Set(prev).add(itemKey));
+				} catch (error) {
+					console.error('Error deleting item:', error);
+					alert('Failed to delete item. Please try again.');
+				} finally {
+					setDeletingItems(prev => {
+						const newSet = new Set(prev);
+						newSet.delete(itemKey);
+						return newSet;
+					});
+				}
+			},
+		});
 	};
 
 	const isHidden = (type: string, id?: number, filename?: string) => {
@@ -455,6 +487,17 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 					</p>
 				</div>
 			</section>
+
+			{/* Confirm Dialog */}
+			<ConfirmDialog
+				isOpen={confirmDialog.isOpen}
+				title={confirmDialog.title}
+				message={confirmDialog.message}
+				confirmText="Delete"
+				cancelText="Cancel"
+				onConfirm={confirmDialog.onConfirm}
+				onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+			/>
 		</div>
 	);
 }
