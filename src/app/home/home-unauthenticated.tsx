@@ -15,20 +15,32 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 	return (
 		<div className="min-h-screen bg-background">
 			{/* Hero Section */}
-			<div className="bg-gradient-to-b from-surface to-background border-b border-custom">
-				<div className="container mx-auto px-4 py-12">
+			<div 
+				className="relative border-b border-custom"
+				style={{
+					backgroundImage: `url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?q=80&w=2940')`,
+					backgroundSize: 'cover',
+					backgroundPosition: 'center',
+					backgroundRepeat: 'no-repeat'
+				}}
+			>
+				{/* Gradient overlay for text readability */}
+				<div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/60 to-white/70 dark:from-black/70 dark:via-black/60 dark:to-black/70"></div>
+				
+				{/* Content */}
+				<div className="relative z-10 container mx-auto px-4 py-12">
 					<div className="max-w-4xl mx-auto text-center">
 						<div className="flex justify-center mb-4">
-							<SparklesIcon className="w-12 h-12 text-accent" />
+							<SparklesIcon className="w-12 h-12 text-black dark:text-white" />
 						</div>
-						<h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">See What Families Are Cooking This Week</h1>
+						<h1 className="text-4xl md:text-5xl text-foreground mb-4">See What Families Are Cooking This Week</h1>
 						<p className="text-xl text-secondary mb-8">
-							Join {activeHouseholds > 0 ? `${activeHouseholds}+` : 'hundreds of'} families planning delicious, stress-free meals
+							Join our families planning delicious, stress-free meals
 						</p>
 
 						<Link
-							href="/login"
-							className="inline-flex items-center gap-2 bg-accent hover:bg-accent/90 text-white font-semibold px-8 py-4 rounded-sm text-lg transition-colors"
+							href="/auth/signin"
+							className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-sm text-lg transition-colors"
 						>
 							Start Planning Your Meals
 							<ArrowRightIcon className="w-5 h-5" />
@@ -47,13 +59,13 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 				<div className="container mx-auto px-4 py-12">
 					<div className="max-w-6xl mx-auto">
 						<div className="text-center mb-8">
-							<h2 className="text-3xl font-bold text-foreground mb-2">This Month&apos;s Most Popular Dinners</h2>
+							<h2 className="text-3xl text-foreground mb-2">This Month&apos;s Most Popular Dinners</h2>
 							<p className="text-secondary">Real recipes from real families • Updated daily</p>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 							{popularRecipes.map(recipe => (
-								<Link key={recipe.id} href="/login">
+								<Link key={recipe.id} href="/auth/signin">
 									<PopularRecipeCard
 										name={recipe.name}
 										imageFilename={recipe.image_filename}
@@ -66,7 +78,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 						</div>
 
 						<div className="text-center">
-							<Link href="/login" className="inline-flex items-center gap-2 text-accent hover:text-accent/80 font-semibold transition-colors">
+							<Link href="/auth/signin" className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 font-semibold underline transition-colors">
 								View All Recipes
 								<ArrowRightIcon className="w-4 h-4" />
 							</Link>
@@ -79,11 +91,11 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 			<div className="bg-surface border-y border-custom">
 				<div className="container mx-auto px-4 py-12">
 					<div className="max-w-4xl mx-auto">
-						<h2 className="text-2xl font-bold text-center text-foreground mb-8">Everything You Need for Meal Planning Success</h2>
+						<h2 className="text-2xl text-center text-foreground mb-8">Everything You Need for Meal Planning Success</h2>
 
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 							<div className="text-center">
-								<div className="text-accent mb-3 flex justify-center">
+								<div className="text-black dark:text-white mb-3 flex justify-center">
 									<IntroPlanIcon />
 								</div>
 								<h3 className="text-foreground font-semibold mb-2">Weekly Meal Plans</h3>
@@ -91,7 +103,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 							</div>
 
 							<div className="text-center">
-								<div className="text-accent mb-3 flex justify-center">
+								<div className="text-black dark:text-white mb-3 flex justify-center">
 									<IntroShoppingCartIcon />
 								</div>
 								<h3 className="text-foreground font-semibold mb-2">Smart Shopping Lists</h3>
@@ -99,7 +111,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 							</div>
 
 							<div className="text-center">
-								<div className="text-accent mb-3 flex justify-center">
+								<div className="text-black dark:text-white mb-3 flex justify-center">
 									<IntroStatsIcon />
 								</div>
 								<h3 className="text-foreground font-semibold mb-2">Meal History & Stats</h3>
@@ -114,13 +126,13 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 			<div className="container mx-auto px-4 py-12">
 				<div className="max-w-2xl mx-auto text-center">
 					<div className="bg-surface border border-custom rounded-sm p-8">
-						<h2 className="text-2xl font-bold text-foreground mb-4">Ready to Simplify Dinner Time?</h2>
+						<h2 className="text-2xl text-foreground mb-4">Ready to Simplify Dinner Time?</h2>
 						<p className="text-secondary mb-6">
 							Join our community of meal planners and make &ldquo;what&apos;s for dinner?&rdquo; the easiest question of your day.
 						</p>
 						<Link
-							href="/login"
-							className="inline-flex items-center gap-2 bg-accent hover:bg-accent/90 text-white font-semibold px-6 py-3 rounded-sm transition-colors"
+							href="/auth/signin"
+							className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-sm transition-colors"
 						>
 							Get Started Free
 							<ArrowRightIcon className="w-4 h-4" />

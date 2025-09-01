@@ -1,5 +1,6 @@
-import Image from 'next/image';
-import { ClockIcon, FireIcon } from '@heroicons/react/24/outline';
+import { TimeIcon } from '@/app/components/Icons';
+import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
+import { FireIcon } from '@heroicons/react/24/outline';
 
 interface PopularRecipeCardProps {
 	name: string;
@@ -11,45 +12,62 @@ interface PopularRecipeCardProps {
 
 export default function PopularRecipeCard({ name, imageFilename, cookTime, prepTime, planCount }: PopularRecipeCardProps) {
 	const totalTime = cookTime + (prepTime || 0);
-	const imagePath = imageFilename ? `/static/recipes/${imageFilename}` : '/static/recipes/default-recipe.jpg';
+
+	const formatTime = (minutes: number): string => {
+		if (minutes >= 60) {
+			const hours = Math.floor(minutes / 60);
+			const remainingMinutes = minutes % 60;
+			if (remainingMinutes === 0) {
+				return `${hours}h`;
+			}
+			return `${hours}h ${remainingMinutes}m`;
+		}
+		return `${minutes} min`;
+	};
 
 	return (
-		<div className="group relative bg-surface border border-custom rounded-sm overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer">
-			{/* Image Container */}
-			<div className="relative h-48 w-full overflow-hidden bg-gray-100">
-				<Image
-					src={imagePath}
-					alt={name}
-					fill
-					className="object-cover group-hover:scale-105 transition-transform duration-300"
-					sizes="(max-width: 768px) 100vw, 33vw"
+		<article className="relative bg-surface border border-custom rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 max-w-[310px] w-full flex flex-col group cursor-pointer">
+			{/* Image - matching RecipeCard aspect-square style */}
+			<div className="block">
+				<img
+					className="w-full aspect-square object-cover"
+					alt={`${name} recipe`}
+					src={getRecipeImageUrl(imageFilename)}
+					onError={e => {
+						e.currentTarget.src = '/onerror_recipe.png';
+					}}
 				/>
-				{/* Popularity Badge */}
-				<div className="absolute top-2 right-2 bg-accent text-white px-2 py-1 rounded-sm text-xs font-semibold flex items-center gap-1">
-					<FireIcon className="w-3 h-3" />
-					{planCount} this month
+			</div>
+
+			{/* Content - matching RecipeCard padding and structure */}
+			<div className="p-4 flex flex-col flex-grow">
+				<h3 className="text-lg text-foreground mb-2">{name}</h3>
+
+				{/* Only show popularity badge if count is meaningful (>5) */}
+				{planCount > 5 && (
+					<div className="inline-block bg-blue-600 text-white text-xs px-2 py-1 rounded-full mb-2 w-fit flex items-center gap-1">
+						<FireIcon className="w-3 h-3" />
+						{planCount} families this month
+					</div>
+				)}
+
+				<div className="mt-auto">
+					{totalTime > 0 && (
+						<p className="text-sm text-muted flex items-center">
+							<TimeIcon />
+							{formatTime(totalTime)}
+						</p>
+					)}
 				</div>
 			</div>
 
-			{/* Content */}
-			<div className="p-4">
-				<h3 className="text-foreground font-semibold text-lg mb-2 line-clamp-2">{name}</h3>
-
-				<div className="flex items-center gap-4 text-secondary text-sm">
-					<div className="flex items-center gap-1">
-						<ClockIcon className="w-4 h-4" />
-						<span>{totalTime} min</span>
-					</div>
-				</div>
-
-				{/* CTA Overlay on Hover */}
-				<div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-					<div className="text-center text-white p-4">
-						<p className="text-lg font-semibold mb-2">Sign in to view recipe</p>
-						<p className="text-sm opacity-90">Join hundreds of families planning meals</p>
-					</div>
+			{/* CTA Overlay on Hover */}
+			<div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+				<div className="text-center text-white p-4">
+					<p className="text-lg font-semibold mb-2">Sign in to view recipe</p>
+					<p className="text-sm opacity-90">Join hundreds of families planning meals</p>
 				</div>
 			</div>
-		</div>
+		</article>
 	);
 }

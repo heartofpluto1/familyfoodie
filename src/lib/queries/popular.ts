@@ -16,9 +16,18 @@ export async function getPopularRecipes(limit: number = 3): Promise<PopularRecip
 	const now = new Date();
 	const currentYear = now.getFullYear();
 	const currentWeek = Math.ceil((now.getTime() - new Date(currentYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-	const fourWeeksAgo = currentWeek - 4;
+	
+	// Handle year boundary - if we're in the first 4 weeks, look at the previous year
+	let startYear = currentYear;
+	let startWeek = currentWeek - 4;
+	
+	if (startWeek < 1) {
+		startYear = currentYear - 1;
+		startWeek = 52 + startWeek; // Wrap around to previous year
+	}
 
 	// Simplified query that matches the pattern used in menus.ts
+	// Note: LIMIT must be hardcoded as MySQL doesn't support parameterized LIMIT in prepared statements
 	const query = `
 		SELECT 
 			r.id,
@@ -34,10 +43,10 @@ export async function getPopularRecipes(limit: number = 3): Promise<PopularRecip
 			AND ((p.year = ? AND p.week >= ?) OR p.year > ?)
 		GROUP BY r.id
 		ORDER BY plan_count DESC, r.name ASC
-		LIMIT ?
+		LIMIT ${Math.min(limit, 10)}
 	`;
 
-	const [rows] = await pool.execute<RowDataPacket[]>(query, [currentYear, fourWeeksAgo, currentYear, limit]);
+	const [rows] = await pool.execute<RowDataPacket[]>(query, [startYear, startWeek, startYear]);
 
 	return rows as PopularRecipe[];
 }
@@ -47,15 +56,22 @@ export async function getRecentlyPlannedCount(): Promise<number> {
 	const now = new Date();
 	const currentYear = now.getFullYear();
 	const currentWeek = Math.ceil((now.getTime() - new Date(currentYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-	const fourWeeksAgo = currentWeek - 4;
+	
+	// Handle year boundary - if we're in the first 4 weeks, look at the previous year
+	let startYear = currentYear;
+	let startWeek = currentWeek - 4;
+	
+	if (startWeek < 1) {
+		startYear = currentYear - 1;
+		startWeek = 52 + startWeek; // Wrap around to previous year
+	}
 
 	const query = `
 		SELECT COUNT(DISTINCT household_id) as active_households
 		FROM plans
-		WHERE year = ?
-			AND week >= ?
+		WHERE (year = ? AND week >= ?) OR year > ?
 	`;
 
-	const [rows] = await pool.execute<RowDataPacket[]>(query, [currentYear, fourWeeksAgo]);
+	const [rows] = await pool.execute<RowDataPacket[]>(query, [startYear, startWeek, startYear]);
 	return rows[0]?.active_households || 0;
 }
