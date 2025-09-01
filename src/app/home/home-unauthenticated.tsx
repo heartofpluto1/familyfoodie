@@ -18,7 +18,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 			<div 
 				className="relative border-b border-custom"
 				style={{
-					backgroundImage: `url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?q=80&w=2940')`,
+					backgroundImage: "url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?q=80&w=2940')",
 					backgroundSize: 'cover',
 					backgroundPosition: 'center',
 					backgroundRepeat: 'no-repeat'
