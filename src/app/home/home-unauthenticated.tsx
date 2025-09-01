@@ -1,6 +1,6 @@
 'use client';
 
-import { IntroPlanIcon, IntroStatsIcon, IntroShoppingCartIcon } from '@/app/components/Icons';
+import { IntroPlanIcon, IntroCookIcon, IntroShoppingCartIcon } from '@/app/components/Icons';
 import PopularRecipeCard from '@/app/components/PopularRecipeCard';
 import { PopularRecipe } from '@/lib/queries/popular';
 import Link from 'next/link';
@@ -18,14 +18,14 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 			<div 
 				className="relative border-b border-custom"
 				style={{
-					backgroundImage: "url('https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=2940')",
+					backgroundImage: "url('/hero5.jpg')",
 					backgroundSize: 'cover',
 					backgroundPosition: 'center',
 					backgroundRepeat: 'no-repeat'
 				}}
 			>
 				{/* Gradient overlay for text readability */}
-				<div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/60 to-white/70 dark:from-black/70 dark:via-black/60 dark:to-black/70"></div>
+				<div className="absolute inset-0 bg-gradient-to-b from-white/85 via-white/80 to-white/85 dark:from-black/85 dark:via-black/80 dark:to-black/85"></div>
 				
 				{/* Content */}
 				<div className="relative z-10 container mx-auto px-4 py-12">
@@ -121,7 +121,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 									<IntroPlanIcon />
 								</div>
 								<h3 className="text-foreground font-semibold mb-2">1. Pick Your Meals</h3>
-								<p className="text-secondary text-sm">Drag, drop, done. Planning a whole week takes 2 minutes.</p>
+								<p className="text-secondary text-sm">Click, click, done. Planning a whole week takes 2 minutes.</p>
 							</div>
 
 							<div className="text-center">
@@ -134,7 +134,7 @@ export default function HomeUnauthenticated({ popularRecipes, activeHouseholds }
 
 							<div className="text-center">
 								<div className="text-black dark:text-white mb-3 flex justify-center">
-									<IntroStatsIcon />
+									<IntroCookIcon />
 								</div>
 								<h3 className="text-foreground font-semibold mb-2">3. Cook & Enjoy</h3>
 								<p className="text-secondary text-sm">No more dinner stress. Just good food with your people.</p>
