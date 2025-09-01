@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
-import AnalyticsContent from './AnalyticsContent';
+import AnalyticsContent from './analytics-client';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs/promises';

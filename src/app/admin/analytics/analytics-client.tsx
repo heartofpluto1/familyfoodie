@@ -166,7 +166,20 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 						<ul className="space-y-1 text-sm">
 							{visibleCollectionFiles.map((file, index) => (
 								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
-									<span>{data.useGCS ? `gs://${data.bucketName}/collections/${file.filename}` : `/collections/${file.filename}`}</span>
+									{data.useGCS ? (
+										<span className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+											{`gs://${data.bucketName}/collections/${file.filename}`}
+										</span>
+									) : (
+										<a 
+											href={`/collections/${file.filename}`} 
+											target="_blank" 
+											rel="noopener noreferrer"
+											className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+										>
+											{`/collections/${file.filename}`}
+										</a>
+									)}
 									<button
 										onClick={() => handleDelete('collection-file', undefined, file.filename)}
 										disabled={isDeleting('collection-file', undefined, file.filename)}
@@ -223,7 +236,20 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 						<ul className="space-y-1 text-sm">
 							{visibleRecipeImages.map((file, index) => (
 								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
-									<span>{data.useGCS ? `gs://${data.bucketName}/${file.filename}` : `/static/${file.filename}`}</span>
+									{data.useGCS ? (
+										<span className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+											{`gs://${data.bucketName}/${file.filename}`}
+										</span>
+									) : (
+										<a 
+											href={`/static/${file.filename}`} 
+											target="_blank" 
+											rel="noopener noreferrer"
+											className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+										>
+											{`/static/${file.filename}`}
+										</a>
+									)}
 									<button
 										onClick={() => handleDelete('recipe-image', undefined, file.filename)}
 										disabled={isDeleting('recipe-image', undefined, file.filename)}
@@ -278,7 +304,20 @@ export default function AnalyticsContent({ data }: { data: AnalyticsData }) {
 						<ul className="space-y-1 text-sm">
 							{visibleRecipePdfs.map((file, index) => (
 								<li key={index} className="text-muted flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-900 px-2 py-1 rounded transition-colors">
-									<span>{data.useGCS ? `gs://${data.bucketName}/${file.filename}` : `/static/${file.filename}`}</span>
+									{data.useGCS ? (
+										<span className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+											{`gs://${data.bucketName}/${file.filename}`}
+										</span>
+									) : (
+										<a 
+											href={`/static/${file.filename}`} 
+											target="_blank" 
+											rel="noopener noreferrer"
+											className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+										>
+											{`/static/${file.filename}`}
+										</a>
+									)}
 									<button
 										onClick={() => handleDelete('recipe-pdf', undefined, file.filename)}
 										disabled={isDeleting('recipe-pdf', undefined, file.filename)}
