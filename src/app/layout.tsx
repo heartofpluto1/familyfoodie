@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Source_Serif_4 } from 'next/font/google';
 import HeaderLogo from './components/HeaderLogo';
-import { ToastProvider } from './components/ToastProvider';
 import { Providers } from './providers';
+import FeedbackWidget from './components/feedback/FeedbackWidget';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 
@@ -30,10 +30,9 @@ export default async function RootLayout({
 		<html lang="en">
 			<body className={`${sourceSerif4.variable} antialiased`}>
 				<Providers>
-					<ToastProvider>
-						<HeaderLogo session={session} />
-						{children}
-					</ToastProvider>
+					<HeaderLogo session={session} />
+					{children}
+					<FeedbackWidget />
 				</Providers>
 			</body>
 		</html>
