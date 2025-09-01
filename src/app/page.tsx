@@ -4,20 +4,25 @@ import { authOptions } from '@/lib/auth/config';
 import HomeAuthenticated from './home/home-authenticated';
 import HomeUnauthenticated from './home/home-unauthenticated';
 import { getRecipeWeeks } from '@/lib/queries/menus';
+import { getPopularRecipes, getRecentlyPlannedCount } from '@/lib/queries/popular';
 
 export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
-		title: 'Family Foodie - Meal Planning Hub',
-		description: 'Your personalized meal planning hub with weekly stats and meal history',
+		title: 'Family Foodie - Meal Planning Made Simple',
+		description:
+			'Simplify meal planning with smart tools. Create weekly plans in minutes, auto-generate shopping lists, and discover new recipes. Free to start.',
 	};
 }
 
 export default async function HomePage() {
 	const session = await getServerSession(authOptions);
 	if (!session || !session.user?.household_id) {
-		return <HomeUnauthenticated />;
+		// Fetch popular recipes for unauthenticated users
+		const popularRecipes = await getPopularRecipes(3);
+		const activeHouseholds = await getRecentlyPlannedCount();
+		return <HomeUnauthenticated popularRecipes={popularRecipes} activeHouseholds={activeHouseholds} />;
 	}
 
 	// Fetch data for authenticated users - using existing getRecipeWeeks function

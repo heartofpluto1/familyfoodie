@@ -45,7 +45,10 @@ const HeaderLogo = ({ session }: HeaderLogoProps) => {
 				<div className="flex items-center justify-between">
 					{/* Title Section */}
 					<div className="min-w-0 flex-shrink">
-						<h1 className="text-xl sm:text-2xl md:text-3xl text-foreground tracking-wide">Family Foodie</h1>
+						<h1 className="text-xl sm:text-2xl md:text-3xl text-foreground tracking-wide flex items-center gap-2">
+							Family Foodie
+							<span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-sm font-medium font-sans">BETA</span>
+						</h1>
 						<p className="text-sm text-muted font-light italic">What the fork is for dinner?</p>
 					</div>
 
