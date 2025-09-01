@@ -177,3 +177,8 @@ export async function addFeedbackResponse(feedbackId: number, adminId: number, r
 	);
 	return result.insertId;
 }
+
+export async function deleteFeedback(feedbackId: number): Promise<boolean> {
+	const [result] = await pool.execute<ResultSetHeader>('DELETE FROM feedback WHERE id = ?', [feedbackId]);
+	return result.affectedRows > 0;
+}

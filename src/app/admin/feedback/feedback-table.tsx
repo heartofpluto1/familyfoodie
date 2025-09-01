@@ -2,15 +2,21 @@
 
 import { useState } from 'react';
 import { Feedback, FeedbackStatus } from '@/types/feedback';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 interface FeedbackTableProps {
 	feedback: Feedback[];
 	onStatusUpdate: (id: number, status: FeedbackStatus) => void;
+	onDelete: (id: number) => void;
 }
 
-export default function FeedbackTable({ feedback, onStatusUpdate }: FeedbackTableProps) {
+export default function FeedbackTable({ feedback, onStatusUpdate, onDelete }: FeedbackTableProps) {
 	const [expandedId, setExpandedId] = useState<number | null>(null);
 	const [editingNotes, setEditingNotes] = useState<{ id: number; notes: string } | null>(null);
+	const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; feedbackId: number | null }>({
+		isOpen: false,
+		feedbackId: null,
+	});
 
 	const getCategoryColor = (category: string) => {
 		switch (category) {
@@ -139,12 +145,20 @@ export default function FeedbackTable({ feedback, onStatusUpdate }: FeedbackTabl
 									</select>
 								</td>
 								<td className="px-6 py-4 whitespace-nowrap text-sm">
-									<button
-										onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-										className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-									>
-										Details
-									</button>
+									<div className="flex gap-3">
+										<button
+											onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+											className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+										>
+											Details
+										</button>
+										<button
+											onClick={() => setDeleteConfirm({ isOpen: true, feedbackId: item.id })}
+											className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+										>
+											Delete
+										</button>
+									</div>
 								</td>
 							</tr>
 						))}
@@ -227,6 +241,22 @@ export default function FeedbackTable({ feedback, onStatusUpdate }: FeedbackTabl
 						))}
 				</div>
 			)}
+
+			{/* Delete Confirmation Dialog */}
+			<ConfirmDialog
+				isOpen={deleteConfirm.isOpen}
+				title="Delete Feedback"
+				message="Are you sure you want to delete this feedback? This action cannot be undone."
+				confirmText="Delete"
+				cancelText="Cancel"
+				onConfirm={() => {
+					if (deleteConfirm.feedbackId) {
+						onDelete(deleteConfirm.feedbackId);
+						setDeleteConfirm({ isOpen: false, feedbackId: null });
+					}
+				}}
+				onCancel={() => setDeleteConfirm({ isOpen: false, feedbackId: null })}
+			/>
 		</div>
 	);
 }

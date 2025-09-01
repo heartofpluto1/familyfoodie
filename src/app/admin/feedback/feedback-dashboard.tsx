@@ -75,6 +75,23 @@ export default function FeedbackDashboard() {
 		}
 	};
 
+	const handleDelete = async (id: number) => {
+		try {
+			const response = await fetch(`/api/feedback/${id}`, {
+				method: 'DELETE',
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to delete feedback');
+			}
+
+			showToast('success', 'Success', 'Feedback deleted successfully');
+			fetchFeedback();
+		} catch (error) {
+			showToast('error', 'Error', error instanceof Error ? error.message : 'Failed to delete feedback');
+		}
+	};
+
 	const handleExport = () => {
 		const csv = [
 			['Date', 'User', 'Rating', 'Category', 'Message', 'Page', 'Status'],
@@ -146,7 +163,7 @@ export default function FeedbackDashboard() {
 						<select
 							value={selectedStatus}
 							onChange={e => setSelectedStatus(e.target.value as FeedbackStatus | 'all')}
-							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100"
+							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
 						>
 							<option value="all">All</option>
 							<option value="new">New</option>
@@ -161,7 +178,7 @@ export default function FeedbackDashboard() {
 						<select
 							value={selectedCategory}
 							onChange={e => setSelectedCategory(e.target.value as FeedbackCategory | 'all')}
-							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100"
+							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
 						>
 							<option value="all">All</option>
 							<option value="general">General</option>
@@ -176,7 +193,7 @@ export default function FeedbackDashboard() {
 						<select
 							value={selectedRating}
 							onChange={e => setSelectedRating(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100"
+							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
 						>
 							<option value="all">All</option>
 							<option value="5">5 Stars</option>
@@ -193,7 +210,7 @@ export default function FeedbackDashboard() {
 							type="date"
 							value={dateRange.start}
 							onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
-							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100"
+							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
 						/>
 					</div>
 
@@ -203,7 +220,7 @@ export default function FeedbackDashboard() {
 							type="date"
 							value={dateRange.end}
 							onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
-							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100"
+							className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]"
 						/>
 					</div>
 				</div>
@@ -222,7 +239,7 @@ export default function FeedbackDashboard() {
 							setSelectedRating('all');
 							setDateRange({ start: '', end: '' });
 						}}
-						className="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-sm hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+						className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
 					>
 						Clear Filters
 					</button>
@@ -238,7 +255,7 @@ export default function FeedbackDashboard() {
 			</div>
 
 			{/* Feedback Table */}
-			<FeedbackTable feedback={feedback} onStatusUpdate={handleStatusUpdate} />
+			<FeedbackTable feedback={feedback} onStatusUpdate={handleStatusUpdate} onDelete={handleDelete} />
 		</div>
 	);
 }

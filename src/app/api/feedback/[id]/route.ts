@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
-import { getFeedbackById, updateFeedback, addFeedbackResponse } from '@/lib/queries/feedback';
+import { getFeedbackById, updateFeedback, addFeedbackResponse, deleteFeedback } from '@/lib/queries/feedback';
 import { FeedbackUpdate } from '@/types/feedback';
 
 // GET /api/feedback/[id] - Get single feedback item
@@ -67,6 +67,37 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
 	} catch (error) {
 		console.error('Error updating feedback:', error);
 		return NextResponse.json({ error: 'Failed to update feedback' }, { status: 500 });
+	}
+}
+
+// DELETE /api/feedback/[id] - Delete feedback
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+	try {
+		const session = await getServerSession(authOptions);
+		if (!session?.user?.is_admin) {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const params = await props.params;
+		const feedbackId = parseInt(params.id);
+
+		if (isNaN(feedbackId)) {
+			return NextResponse.json({ error: 'Invalid feedback ID' }, { status: 400 });
+		}
+
+		const deleted = await deleteFeedback(feedbackId);
+
+		if (!deleted) {
+			return NextResponse.json({ error: 'Feedback not found or already deleted' }, { status: 404 });
+		}
+
+		return NextResponse.json({
+			success: true,
+			message: 'Feedback deleted successfully',
+		});
+	} catch (error) {
+		console.error('Error deleting feedback:', error);
+		return NextResponse.json({ error: 'Failed to delete feedback' }, { status: 500 });
 	}
 }
 
