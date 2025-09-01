@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'; // Important for authenticated pages
 export async function generateMetadata(): Promise<Metadata> {
 	return {
 		title: 'Family Foodie - Meal Planning Made Simple',
-		description: 'Join hundreds of families planning delicious meals every week. See what everyone is cooking!',
+		description: 'Simplify meal planning with smart tools. Create weekly plans in minutes, auto-generate shopping lists, and discover new recipes. Free to start.',
 	};
 }
 
