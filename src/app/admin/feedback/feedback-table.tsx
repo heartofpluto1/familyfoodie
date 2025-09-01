@@ -60,7 +60,7 @@ export default function FeedbackTable({ feedback, onStatusUpdate, onDelete }: Fe
 		if (!editingNotes) return;
 
 		try {
-			const response = await fetch(`/api/feedback/${id}`, {
+			const response = await fetch(`/api/admin/feedback/${id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ adminNotes: editingNotes.notes }),

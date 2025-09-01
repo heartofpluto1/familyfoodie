@@ -37,7 +37,7 @@ export default function FeedbackDashboard() {
 				params.append('endDate', dateRange.end);
 			}
 
-			const response = await fetch(`/api/feedback?${params}`);
+			const response = await fetch(`/api/admin/feedback?${params}`);
 			if (!response.ok) {
 				throw new Error('Failed to fetch feedback');
 			}
@@ -58,7 +58,7 @@ export default function FeedbackDashboard() {
 
 	const handleStatusUpdate = async (id: number, status: FeedbackStatus) => {
 		try {
-			const response = await fetch(`/api/feedback/${id}`, {
+			const response = await fetch(`/api/admin/feedback/${id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ status }),
@@ -77,7 +77,7 @@ export default function FeedbackDashboard() {
 
 	const handleDelete = async (id: number) => {
 		try {
-			const response = await fetch(`/api/feedback/${id}`, {
+			const response = await fetch(`/api/admin/feedback/${id}`, {
 				method: 'DELETE',
 			});
 

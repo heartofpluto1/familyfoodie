@@ -47,7 +47,7 @@ const mockFeedback: Feedback = {
 	user_name: 'John Doe',
 };
 
-describe('/api/feedback/[id]', () => {
+describe('/api/admin/feedback/[id]', () => {
 	let consoleMocks: ReturnType<typeof setupConsoleMocks>;
 
 	beforeEach(() => {
@@ -59,7 +59,7 @@ describe('/api/feedback/[id]', () => {
 		consoleMocks.cleanup();
 	});
 
-	describe('GET /api/feedback/[id]', () => {
+	describe('GET /api/admin/feedback/[id]', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
 				mockGetServerSession.mockResolvedValue(null);
@@ -175,7 +175,7 @@ describe('/api/feedback/[id]', () => {
 		});
 	});
 
-	describe('PATCH /api/feedback/[id]', () => {
+	describe('PATCH /api/admin/feedback/[id]', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
 				mockGetServerSession.mockResolvedValue(null);
@@ -386,7 +386,7 @@ describe('/api/feedback/[id]', () => {
 		});
 	});
 
-	describe('DELETE /api/feedback/[id]', () => {
+	describe('DELETE /api/admin/feedback/[id]', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
 				mockGetServerSession.mockResolvedValue(null);
@@ -507,7 +507,7 @@ describe('/api/feedback/[id]', () => {
 		});
 	});
 
-	describe('POST /api/feedback/[id]/response', () => {
+	describe('POST /api/admin/feedback/[id]/response', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
 				mockGetServerSession.mockResolvedValue(null);
