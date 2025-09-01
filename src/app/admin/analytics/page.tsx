@@ -72,7 +72,7 @@ async function getCollectionFileStats(): Promise<{ orphaned: OrphanedFile[]; sta
 
 				for (const file of files) {
 					const filename = file.name.replace('collections/', '');
-					
+
 					// Skip overlay files and non-image files
 					if (filename.includes('overlay') || !filename.match(/\.(jpg|jpeg|png)$/i)) {
 						continue;
@@ -112,7 +112,7 @@ async function getCollectionFileStats(): Promise<{ orphaned: OrphanedFile[]; sta
 				try {
 					await fs.access(collectionsDir);
 					files = await fs.readdir(collectionsDir);
-				} catch (err) {
+				} catch {
 					// Directory doesn't exist, use empty array
 					console.log('Collections directory does not exist:', collectionsDir);
 				}
@@ -157,8 +157,8 @@ async function getCollectionFileStats(): Promise<{ orphaned: OrphanedFile[]; sta
 				total: totalFiles,
 				totalSize,
 				orphaned: orphaned.length,
-				orphanedSize
-			}
+				orphanedSize,
+			},
 		};
 	} catch (error) {
 		console.error('Error getting collection file stats:', error);
@@ -252,7 +252,7 @@ async function getRecipeFileStats(): Promise<{ orphanedImages: OrphanedFile[]; o
 				try {
 					await fs.access(staticDir);
 					files = await fs.readdir(staticDir);
-				} catch (err) {
+				} catch {
 					// Directory doesn't exist, use empty array
 					console.log('Static directory does not exist:', staticDir);
 				}
@@ -314,14 +314,14 @@ async function getRecipeFileStats(): Promise<{ orphanedImages: OrphanedFile[]; o
 				total: totalImages,
 				totalSize: totalImageSize,
 				orphaned: orphanedImages.length,
-				orphanedSize: orphanedImageSize
+				orphanedSize: orphanedImageSize,
 			},
 			pdfStats: {
 				total: totalPdfs,
 				totalSize: totalPdfSize,
 				orphaned: orphanedPdfs.length,
-				orphanedSize: orphanedPdfSize
-			}
+				orphanedSize: orphanedPdfSize,
+			},
 		};
 	} catch (error) {
 		console.error('Error getting recipe file stats:', error);
@@ -329,7 +329,7 @@ async function getRecipeFileStats(): Promise<{ orphanedImages: OrphanedFile[]; o
 			orphanedImages: [],
 			orphanedPdfs: [],
 			imageStats: { total: 0, totalSize: 0, orphaned: 0, orphanedSize: 0 },
-			pdfStats: { total: 0, totalSize: 0, orphaned: 0, orphanedSize: 0 }
+			pdfStats: { total: 0, totalSize: 0, orphaned: 0, orphanedSize: 0 },
 		};
 	}
 }

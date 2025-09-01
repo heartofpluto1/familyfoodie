@@ -3,21 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import pool from '@/lib/db';
 import { deleteFile } from '@/lib/storage';
-import fs from 'fs/promises';
-import path from 'path';
-import { Storage } from '@google-cloud/storage';
-
-// Determine if we should use GCS based on environment
-const useGCS = process.env.NODE_ENV === 'production' && !!process.env.GCS_BUCKET_NAME;
-const bucketName = process.env.GCS_BUCKET_NAME;
-
-// Initialize Google Cloud Storage only if needed
-const storage = useGCS
-	? new Storage({
-			projectId: process.env.GOOGLE_CLOUD_PROJECT,
-		})
-	: null;
-const bucket = storage && bucketName ? storage.bucket(bucketName) : null;
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
 	const session = await getServerSession(authOptions);
@@ -30,25 +15,27 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
 		switch (type) {
 			case 'collection-file':
-				// Delete collection file
-				if (useGCS && bucket) {
-					const file = bucket.file(`collections/${filename}`);
-					await file.delete();
-				} else {
-					const filePath = path.join(process.cwd(), 'public', 'collections', filename);
-					await fs.unlink(filePath);
+				// Delete collection file - extract name and extension
+				const collectionParts = filename.split('.');
+				const collectionExt = collectionParts.pop() || '';
+				const collectionName = collectionParts.join('.');
+
+				const collectionDeleted = await deleteFile(collectionName, collectionExt, 'collections');
+				if (!collectionDeleted) {
+					return NextResponse.json({ error: 'Failed to delete collection file' }, { status: 500 });
 				}
 				return NextResponse.json({ success: true, message: 'Collection file deleted' });
 
 			case 'recipe-image':
 			case 'recipe-pdf':
-				// Delete recipe file
-				if (useGCS && bucket) {
-					const file = bucket.file(filename);
-					await file.delete();
-				} else {
-					const filePath = path.join(process.cwd(), 'public', 'static', filename);
-					await fs.unlink(filePath);
+				// Delete recipe file - extract name and extension
+				const recipeParts = filename.split('.');
+				const recipeExt = recipeParts.pop() || '';
+				const recipeName = recipeParts.join('.');
+
+				const recipeDeleted = await deleteFile(recipeName, recipeExt);
+				if (!recipeDeleted) {
+					return NextResponse.json({ error: 'Failed to delete recipe file' }, { status: 500 });
 				}
 				return NextResponse.json({ success: true, message: `Recipe ${type === 'recipe-image' ? 'image' : 'PDF'} deleted` });
 
