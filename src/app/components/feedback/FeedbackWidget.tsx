@@ -72,7 +72,7 @@ export default function FeedbackWidget() {
 					<div className="fixed bottom-20 right-6 w-[90vw] max-w-[400px] bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50">
 						<div className="p-6">
 							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-xl font-semibold text-foreground dark:text-gray-100">Share Your Feedback</h2>
+								<h2 className="text-xl text-foreground dark:text-gray-100">Share Your Feedback</h2>
 								<button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close feedback form">
 									<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -42,7 +42,7 @@ export default async function AdminPage() {
 							</svg>
 						</div>
 					</div>
-					<h3 className="text-lg font-semibold mb-2 text-foreground dark:text-gray-100">Database Migrations</h3>
+					<h3 className="text-lg mb-2 text-foreground dark:text-gray-100">Database Migrations</h3>
 					<p className="text-muted dark:text-gray-400 text-sm">View migration history, check pending migrations, and manually run database updates.</p>
 				</Link>
 
@@ -63,7 +63,7 @@ export default async function AdminPage() {
 							</svg>
 						</div>
 					</div>
-					<h3 className="text-lg font-semibold mb-2 text-foreground dark:text-gray-100">User Management</h3>
+					<h3 className="text-lg mb-2 text-foreground dark:text-gray-100">User Management</h3>
 					<p className="text-muted dark:text-gray-400 text-sm">Manage user accounts, permissions, and access levels for FamilyFoodie.</p>
 				</Link>
 
@@ -84,7 +84,7 @@ export default async function AdminPage() {
 							</svg>
 						</div>
 					</div>
-					<h3 className="text-lg font-semibold mb-2 text-foreground dark:text-gray-100">Feedback Dashboard</h3>
+					<h3 className="text-lg mb-2 text-foreground dark:text-gray-100">Feedback Dashboard</h3>
 					<p className="text-muted dark:text-gray-400 text-sm">Review and manage user feedback, track satisfaction ratings, and identify improvement areas.</p>
 				</Link>
 
@@ -105,7 +105,7 @@ export default async function AdminPage() {
 							</svg>
 						</div>
 					</div>
-					<h3 className="text-lg font-semibold mb-2 text-foreground dark:text-gray-100">System Analytics</h3>
+					<h3 className="text-lg mb-2 text-foreground dark:text-gray-100">System Analytics</h3>
 					<p className="text-muted dark:text-gray-400 text-sm">Identify orphaned assets and monitor system resource usage.</p>
 				</Link>
 			</div>

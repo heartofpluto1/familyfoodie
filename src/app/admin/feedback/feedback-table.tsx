@@ -161,11 +161,11 @@ export default function FeedbackTable({ feedback, onStatusUpdate }: FeedbackTabl
 							<div key={item.id} className="p-6 bg-gray-50 dark:bg-gray-900/50">
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 									<div>
-										<h4 className="font-semibold text-foreground dark:text-gray-200 mb-2">Full Message</h4>
+										<h4 className="text-foreground dark:text-gray-200 mb-2">Full Message</h4>
 										<p className="text-sm text-foreground dark:text-gray-300 whitespace-pre-wrap">{item.message || 'No message provided'}</p>
 									</div>
 									<div>
-										<h4 className="font-semibold text-foreground dark:text-gray-200 mb-2">Context</h4>
+										<h4 className="text-foreground dark:text-gray-200 mb-2">Context</h4>
 										<div className="space-y-2 text-sm">
 											<div>
 												<span className="text-muted dark:text-gray-400">Page:</span>{' '}
@@ -187,7 +187,7 @@ export default function FeedbackTable({ feedback, onStatusUpdate }: FeedbackTabl
 
 								{/* Admin Notes */}
 								<div className="mt-4">
-									<h4 className="font-semibold text-foreground dark:text-gray-200 mb-2">Admin Notes</h4>
+									<h4 className="text-foreground dark:text-gray-200 mb-2">Admin Notes</h4>
 									{editingNotes?.id === item.id ? (
 										<div>
 											<textarea

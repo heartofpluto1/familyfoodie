@@ -115,23 +115,23 @@ export default function FeedbackDashboard() {
 				<div className="grid grid-cols-1 md:grid-cols-5 gap-4">
 					<div className="bg-surface dark:bg-gray-800 border border-custom dark:border-gray-700 rounded-sm p-4">
 						<div className="text-sm text-muted dark:text-gray-400 mb-1">Total Feedback</div>
-						<div className="text-2xl font-semibold text-foreground dark:text-gray-100">{stats.total}</div>
+						<div className="text-2xl text-foreground dark:text-gray-100">{stats.total}</div>
 					</div>
 					<div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-sm p-4">
 						<div className="text-sm text-yellow-700 dark:text-yellow-400 mb-1">New</div>
-						<div className="text-2xl font-semibold text-yellow-800 dark:text-yellow-300">{stats.new}</div>
+						<div className="text-2xl text-yellow-800 dark:text-yellow-300">{stats.new}</div>
 					</div>
 					<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-sm p-4">
 						<div className="text-sm text-blue-700 dark:text-blue-400 mb-1">Reviewed</div>
-						<div className="text-2xl font-semibold text-blue-800 dark:text-blue-300">{stats.reviewed}</div>
+						<div className="text-2xl text-blue-800 dark:text-blue-300">{stats.reviewed}</div>
 					</div>
 					<div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-sm p-4">
 						<div className="text-sm text-green-700 dark:text-green-400 mb-1">Actioned</div>
-						<div className="text-2xl font-semibold text-green-800 dark:text-green-300">{stats.actioned}</div>
+						<div className="text-2xl text-green-800 dark:text-green-300">{stats.actioned}</div>
 					</div>
 					<div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-sm p-4">
 						<div className="text-sm text-purple-700 dark:text-purple-400 mb-1">Avg Rating</div>
-						<div className="text-2xl font-semibold text-purple-800 dark:text-purple-300">
+						<div className="text-2xl text-purple-800 dark:text-purple-300">
 							{stats.averageRating ? `${stats.averageRating.toFixed(1)} ★` : 'N/A'}
 						</div>
 					</div>
