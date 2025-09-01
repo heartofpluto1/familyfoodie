@@ -1,5 +1,5 @@
 import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import pool from '@/lib/db';
+import pool from '@/lib/db.js';
 import { Feedback, FeedbackSubmission, FeedbackQuery, FeedbackStats } from '@/types/feedback';
 
 interface FeedbackRow extends RowDataPacket, Feedback {}
@@ -34,7 +34,7 @@ export async function getFeedback(query: FeedbackQuery): Promise<Feedback[]> {
     LEFT JOIN users u ON f.user_id = u.id
     WHERE 1=1
   `;
-	const params: (string | number | undefined)[] = [];
+	const params: (string | number)[] = [];
 
 	if (query.status) {
 		sql += ' AND f.status = ?';
@@ -68,12 +68,13 @@ export async function getFeedback(query: FeedbackQuery): Promise<Feedback[]> {
 
 	sql += ' ORDER BY f.created_at DESC';
 
-	if (query.limit) {
-		sql += ' LIMIT ?';
-		params.push(query.limit);
-		if (query.offset) {
-			sql += ' OFFSET ?';
-			params.push(query.offset);
+	// Use string interpolation for LIMIT/OFFSET as MySQL has issues with prepared statements for these clauses
+	// The values are already validated as numbers in the API route
+	if (query.limit !== undefined && query.limit > 0) {
+		if (query.offset !== undefined && query.offset > 0) {
+			sql += ` LIMIT ${query.offset}, ${query.limit}`;
+		} else {
+			sql += ` LIMIT ${query.limit}`;
 		}
 	}
 

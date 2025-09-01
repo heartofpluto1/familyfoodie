@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
+import HeaderPage from '@/app/components/HeaderPage';
 import FeedbackDashboard from './feedback-dashboard';
 
 export const metadata: Metadata = {
@@ -17,12 +18,11 @@ export default async function AdminFeedbackPage() {
 	}
 
 	return (
-		<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		<main className="container mx-auto px-4 py-8">
 			<div className="mb-8">
-				<h1 className="text-3xl text-foreground dark:text-gray-100">Feedback Dashboard</h1>
-				<p className="mt-2 text-muted dark:text-gray-400">Review and manage user feedback to improve the platform</p>
+				<HeaderPage title="Feedback Dashboard" subtitle="Review and manage user feedback to improve the platform" />
 			</div>
 			<FeedbackDashboard />
-		</div>
+		</main>
 	);
 }

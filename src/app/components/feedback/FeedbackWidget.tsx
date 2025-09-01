@@ -6,6 +6,7 @@ import { useFeedback } from '@/app/components/providers/FeedbackProvider';
 import FeedbackForm from './FeedbackForm';
 import FeedbackSuccess from './FeedbackSuccess';
 import { FeedbackCategory } from '@/types/feedback';
+import { FeedbackIcon, CloseIcon } from '@/app/components/Icons';
 
 export default function FeedbackWidget() {
 	const { isOpen, openFeedback, closeFeedback, submitFeedback, isSubmitting } = useFeedback();
@@ -33,10 +34,19 @@ export default function FeedbackWidget() {
 		}
 	};
 
-	const handleClose = () => {
+	const handleOpen = () => {
 		setShowSuccess(false);
 		setError(null);
+		openFeedback();
+	};
+
+	const handleClose = () => {
 		closeFeedback();
+		// Reset state after a delay to allow the closing animation
+		setTimeout(() => {
+			setShowSuccess(false);
+			setError(null);
+		}, 300);
 	};
 
 	const shouldShow = pathname && !pathname.includes('/auth/') && !pathname.includes('/admin/');
@@ -50,18 +60,11 @@ export default function FeedbackWidget() {
 			{/* Floating Action Button */}
 			{!isOpen && (
 				<button
-					onClick={() => openFeedback()}
-					className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-accent/90 dark:bg-accent/80 text-white shadow-lg hover:bg-accent dark:hover:bg-accent/70 hover:scale-110 transition-all z-40 flex items-center justify-center"
+					onClick={handleOpen}
+					className="btn-default fixed bottom-4 right-4 w-12 h-12 rounded-full hover:scale-110 transition-all z-40 flex items-center justify-center"
 					aria-label="Open feedback form"
 				>
-					<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-						/>
-					</svg>
+					<FeedbackIcon />
 				</button>
 			)}
 
@@ -69,14 +72,12 @@ export default function FeedbackWidget() {
 			{isOpen && (
 				<>
 					<div className="fixed inset-0 bg-black/50 z-40" onClick={handleClose} />
-					<div className="fixed bottom-20 right-6 w-[90vw] max-w-[400px] bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50">
+					<div className="fixed bottom-20 right-6 w-[90vw] max-w-[400px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-sm shadow-xl z-50">
 						<div className="p-6">
 							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-xl text-foreground dark:text-gray-100">Share Your Feedback</h2>
-								<button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close feedback form">
-									<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-									</svg>
+								<h2 className="text-xl text-gray-900 dark:text-gray-100">Share Your Feedback</h2>
+								<button onClick={handleClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300" aria-label="Close feedback form">
+									<CloseIcon className="w-6 h-6" />
 								</button>
 							</div>
 

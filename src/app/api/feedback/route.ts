@@ -61,16 +61,29 @@ export async function GET(request: NextRequest) {
 		}
 
 		const searchParams = request.nextUrl.searchParams;
+		
+		// Parse and validate numeric parameters
+		const limitParam = searchParams.get('limit');
+		const offsetParam = searchParams.get('offset');
+		const ratingParam = searchParams.get('rating');
+		const userIdParam = searchParams.get('userId');
+		
 		const query: FeedbackQuery = {
 			status: (searchParams.get('status') as FeedbackStatus) || undefined,
 			category: (searchParams.get('category') as FeedbackCategory) || undefined,
-			rating: searchParams.get('rating') ? parseInt(searchParams.get('rating')!) : undefined,
-			userId: searchParams.get('userId') ? parseInt(searchParams.get('userId')!) : undefined,
+			rating: ratingParam ? parseInt(ratingParam) : undefined,
+			userId: userIdParam ? parseInt(userIdParam) : undefined,
 			startDate: searchParams.get('startDate') || undefined,
 			endDate: searchParams.get('endDate') || undefined,
-			limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50,
-			offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0,
+			limit: limitParam ? parseInt(limitParam) : 50,
+			offset: offsetParam ? parseInt(offsetParam) : 0,
 		};
+		
+		// Validate numeric values aren't NaN
+		if (query.limit !== undefined && isNaN(query.limit)) query.limit = 50;
+		if (query.offset !== undefined && isNaN(query.offset)) query.offset = 0;
+		if (query.rating !== undefined && isNaN(query.rating)) query.rating = undefined;
+		if (query.userId !== undefined && isNaN(query.userId)) query.userId = undefined;
 
 		const feedback = await getFeedback(query);
 

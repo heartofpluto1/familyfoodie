@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
+import { FeedbackIcon } from '@/app/components/Icons';
 
 export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
@@ -74,14 +75,7 @@ export default async function AdminPage() {
 				>
 					<div className="flex items-center mb-4">
 						<div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-sm">
-							<svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-								/>
-							</svg>
+							<FeedbackIcon className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
 						</div>
 					</div>
 					<h3 className="text-lg mb-2 text-foreground dark:text-gray-100">Feedback Dashboard</h3>

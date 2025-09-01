@@ -112,7 +112,7 @@ export default function FeedbackDashboard() {
 		<div className="space-y-6">
 			{/* Stats Overview */}
 			{stats && (
-				<div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 					<div className="bg-surface dark:bg-gray-800 border border-custom dark:border-gray-700 rounded-sm p-4">
 						<div className="text-sm text-muted dark:text-gray-400 mb-1">Total Feedback</div>
 						<div className="text-2xl text-foreground dark:text-gray-100">{stats.total}</div>
@@ -140,7 +140,7 @@ export default function FeedbackDashboard() {
 
 			{/* Filters */}
 			<div className="bg-surface dark:bg-gray-800 border border-custom dark:border-gray-700 rounded-sm p-4">
-				<div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 					<div>
 						<label className="block text-sm font-medium text-muted dark:text-gray-400 mb-1">Status</label>
 						<select

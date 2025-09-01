@@ -77,12 +77,12 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 				}
 
 				setLastSubmissionTime(now);
-				closeFeedback();
+				// Don't close here - let the widget handle showing success message first
 			} finally {
 				setIsSubmitting(false);
 			}
 		},
-		[lastActions, lastSubmissionTime, closeFeedback]
+		[lastActions, lastSubmissionTime]
 	);
 
 	return (

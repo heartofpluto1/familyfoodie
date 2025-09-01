@@ -28,14 +28,14 @@ export default function FeedbackForm({ onSubmit, onCancel, isSubmitting = false,
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<div>
-				<label className="block text-sm font-medium text-foreground dark:text-gray-200 mb-2">How would you rate your experience?</label>
+				<label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">How would you rate your experience?</label>
 				<div className="flex justify-center">
 					<RatingStars rating={rating} onChange={setRating} disabled={isSubmitting} />
 				</div>
 			</div>
 
 			<div>
-				<label htmlFor="category" className="block text-sm font-medium text-foreground dark:text-gray-200 mb-2">
+				<label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
 					Category
 				</label>
 				<select
@@ -43,7 +43,7 @@ export default function FeedbackForm({ onSubmit, onCancel, isSubmitting = false,
 					value={category}
 					onChange={e => setCategory(e.target.value as FeedbackCategory)}
 					disabled={isSubmitting}
-					className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 disabled:opacity-50"
+					className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50 focus:ring-2 focus:ring-accent/20 focus:border-accent"
 				>
 					<option value="general">General Feedback</option>
 					<option value="bug">Bug Report</option>
@@ -53,7 +53,7 @@ export default function FeedbackForm({ onSubmit, onCancel, isSubmitting = false,
 			</div>
 
 			<div>
-				<label htmlFor="message" className="block text-sm font-medium text-foreground dark:text-gray-200 mb-2">
+				<label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
 					Your feedback (optional)
 				</label>
 				<textarea
@@ -64,9 +64,9 @@ export default function FeedbackForm({ onSubmit, onCancel, isSubmitting = false,
 					rows={4}
 					maxLength={5000}
 					placeholder="Tell us more about your experience..."
-					className="w-full px-3 py-2 border border-custom dark:border-gray-600 rounded-sm bg-surface dark:bg-gray-700 text-foreground dark:text-gray-100 placeholder-muted dark:placeholder-gray-400 disabled:opacity-50"
+					className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 disabled:opacity-50 focus:ring-2 focus:ring-accent/20 focus:border-accent"
 				/>
-				<div className="text-xs text-muted dark:text-gray-400 mt-1">{message.length}/5000 characters</div>
+				<div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{message.length}/5000 characters</div>
 			</div>
 
 			<div className="flex gap-3 justify-end">
@@ -74,14 +74,14 @@ export default function FeedbackForm({ onSubmit, onCancel, isSubmitting = false,
 					type="button"
 					onClick={onCancel}
 					disabled={isSubmitting}
-					className="px-4 py-2 text-sm font-medium text-foreground dark:text-gray-300 bg-surface dark:bg-gray-700 border border-custom dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+					className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
 				>
 					Cancel
 				</button>
 				<button
 					type="submit"
 					disabled={isSubmitting}
-					className="px-4 py-2 text-sm font-medium text-white bg-accent dark:bg-accent hover:bg-accent/90 dark:hover:bg-accent/80 rounded-sm disabled:opacity-50 transition-colors"
+					className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-sm disabled:opacity-50 transition-colors"
 				>
 					{isSubmitting ? 'Submitting...' : 'Submit Feedback'}
 				</button>
