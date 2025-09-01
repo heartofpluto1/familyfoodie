@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { useFeedback } from '@/app/components/providers/FeedbackProvider';
-import FeedbackForm from './FeedbackForm';
-import FeedbackSuccess from './FeedbackSuccess';
+import { useFeedback } from './FeedbackProvider';
+import FeedbackForm from './components/FeedbackForm';
+import FeedbackSuccess from './components/FeedbackSuccess';
 import { FeedbackCategory } from '@/types/feedback';
 import { FeedbackIcon, CloseIcon } from '@/app/components/Icons';
 

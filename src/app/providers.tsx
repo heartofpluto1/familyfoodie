@@ -2,7 +2,7 @@
 
 import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from './components/ToastProvider';
-import { FeedbackProvider } from './components/providers/FeedbackProvider';
+import { FeedbackProvider } from './feedback/FeedbackProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
 	return (

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Source_Serif_4 } from 'next/font/google';
 import HeaderLogo from './components/HeaderLogo';
 import { Providers } from './providers';
-import FeedbackWidget from './components/feedback/FeedbackWidget';
+import FeedbackWidget from './feedback/FeedbackWidget';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 
