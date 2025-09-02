@@ -16,9 +16,7 @@ export default function Footer() {
 							Contact Us
 						</a>
 					</div>
-					<div>
-						© 2025 Family Foodie
-					</div>
+					<div>© 2025 Family Foodie</div>
 				</div>
 			</div>
 		</footer>
