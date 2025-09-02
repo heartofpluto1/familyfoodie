@@ -34,7 +34,7 @@ export default function HomeUnauthenticated({ popularRecipes }: HomeUnauthentica
 							<SparklesIcon className="w-12 h-12 text-black dark:text-white" />
 						</div>
 						<h1 className="text-4xl md:text-5xl text-foreground mb-4">Meal Planning That Actually Works</h1>
-						<p className="text-xl text-secondary mb-8">Plan your week in 2 minutes, shop once, cook happy</p>
+						<p className="text-xl text-secondary mb-8">Plan your week in minutes, shop once, cook with ease</p>
 
 						<Link
 							href="/auth/signin"
@@ -117,23 +117,21 @@ export default function HomeUnauthenticated({ popularRecipes }: HomeUnauthentica
 						<h2 className="text-2xl text-foreground mb-6 text-center">Built by a Busy Mum Who Gets It</h2>
 						<div className="bg-white dark:bg-gray-900 rounded-sm p-8 shadow-sm border border-custom">
 							<p className="text-foreground mb-4 text-lg leading-relaxed">
-								&ldquo;I used to lose 4 hours every Sunday just figuring out dinner for the week. Choosing meals, working through the ingredients, 
+								&ldquo;I used to lose 4 hours every Sunday just figuring out dinner for the week. Choosing meals, working through the ingredients,
 								hand-writing shopping lists, running to the shops… it was exhausting.&rdquo;
 							</p>
 							<p className="text-foreground mb-4 text-lg leading-relaxed">
-								&ldquo;And on the weeks I wasn&apos;t prepared? The constant &lsquo;Mum, what&apos;s for dinner?&rsquo; and last-minute shopping trips 
+								&ldquo;And on the weeks I wasn&apos;t prepared? The constant &lsquo;Mum, what&apos;s for dinner?&rsquo; and last-minute shopping trips
 								made everything worse.&rdquo;
 							</p>
 							<p className="text-foreground mb-4 text-lg leading-relaxed">
-								&ldquo;So I built Family Foodie to take the mental load off my plate. Now I can plan a week of meals in minutes, 
-								get an instant shopping list, and spend my time on things that actually matter.&rdquo;
+								&ldquo;So I built Family Foodie to take the mental load off my plate. Now I can plan a week of meals in minutes, get an instant shopping
+								list, and spend my time on things that actually matter.&rdquo;
 							</p>
 							<p className="text-foreground mb-6 text-lg leading-relaxed">
 								&ldquo;It&apos;s been a game-changer for me and my family — and I&apos;d love it to do the same for yours.&rdquo;
 							</p>
-							<p className="text-secondary italic">
-								— Sarah, Founder
-							</p>
+							<p className="text-secondary italic">— Sarah, Founder</p>
 						</div>
 					</div>
 				</div>
