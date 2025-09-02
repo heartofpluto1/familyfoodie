@@ -74,6 +74,22 @@ export default function HomeUnauthenticated({ popularRecipes }: HomeUnauthentica
 				</div>
 			</div>
 
+			{/* Beta Explanation Section */}
+			<div className="bg-blue-50 dark:bg-blue-950/30 border-y border-blue-200 dark:border-blue-800">
+				<div className="container mx-auto px-4 py-12">
+					<div className="max-w-3xl mx-auto text-center">
+						<h2 className="text-2xl text-foreground mb-4">We&apos;re in Beta (and We&apos;re Listening!)</h2>
+						<div className="space-y-4 text-foreground">
+							<p>
+								Family Foodie is in beta, which means we&apos;re actively building and improving based on what you tell us. Every piece of feedback
+								helps us make this better for busy families like yours.
+							</p>
+							<p>When you sign in, there&apos;s a little feedback button in the bottom right corner. Use it liberally!</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			{/* Popular Recipes Section */}
 			{popularRecipes.length > 0 && (
 				<div className="container mx-auto px-4 py-12">
@@ -129,9 +145,9 @@ export default function HomeUnauthenticated({ popularRecipes }: HomeUnauthentica
 								list, and spend my time on things that actually matter.&rdquo;
 							</p>
 							<p className="text-foreground mb-6 text-lg leading-relaxed">
-								&ldquo;It&apos;s been a game-changer for me and my family — and I&apos;d love it to do the same for yours.&rdquo;
+								&ldquo;It&apos;s been a game-changer for me and my family. I&apos;d love it to do the same for yours.&rdquo;
 							</p>
-							<p className="text-secondary italic">— Sarah, Founder</p>
+							<p className="text-secondary italic">- Sarah, Founder</p>
 						</div>
 					</div>
 				</div>
