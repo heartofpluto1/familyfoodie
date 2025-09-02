@@ -46,7 +46,7 @@ export default function HomeUnauthenticated({ popularRecipes }: HomeUnauthentica
 
 						<div className="flex items-center justify-center gap-2 mt-4 text-sm text-secondary">
 							<UsersIcon className="w-4 h-4" />
-							<span>Free to use • No credit card required</span>
+							<span>Beta testing now • No credit card required</span>
 						</div>
 					</div>
 				</div>
