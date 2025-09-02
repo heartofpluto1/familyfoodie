@@ -5,7 +5,7 @@ import { FcGoogle } from 'react-icons/fc';
 
 export default function SignIn() {
 	return (
-		<div className="flex items-center justify-center px-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
+		<div className="flex flex-1 items-center justify-center px-4 py-8">
 			<div className="max-w-md w-full">
 				<div className="bg-surface border border-custom rounded-sm p-8">
 					<div className="text-center mb-8">
@@ -34,7 +34,16 @@ export default function SignIn() {
 					</div>
 
 					<div className="mt-8 text-center">
-						<p className="text-xs text-muted">By signing in, you agree to our Terms of Service and Privacy Policy</p>
+						<p className="text-xs text-muted">
+							By signing in, you agree to our{' '}
+							<a href="/terms" className="underline hover:text-foreground">
+								Terms of Service
+							</a>{' '}
+							and{' '}
+							<a href="/privacy" className="underline hover:text-foreground">
+								Privacy Policy
+							</a>
+						</p>
 					</div>
 				</div>
 			</div>
