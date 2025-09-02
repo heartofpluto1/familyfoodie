@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Source_Serif_4 } from 'next/font/google';
 import HeaderLogo from './components/HeaderLogo';
+import Footer from './components/Footer';
 import { Providers } from './providers';
 import FeedbackWidget from './feedback/FeedbackWidget';
 import { getServerSession } from 'next-auth';
@@ -28,10 +29,13 @@ export default async function RootLayout({
 
 	return (
 		<html lang="en">
-			<body className={`${sourceSerif4.variable} antialiased`}>
+			<body className={`${sourceSerif4.variable} antialiased min-h-screen flex flex-col`}>
 				<Providers>
 					<HeaderLogo session={session} />
-					{children}
+					<main className="flex-grow">
+						{children}
+					</main>
+					<Footer />
 					<FeedbackWidget />
 				</Providers>
 			</body>

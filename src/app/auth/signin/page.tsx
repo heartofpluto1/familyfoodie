@@ -35,7 +35,11 @@ export default function SignIn() {
 
 					<div className="mt-8 text-center">
 						<p className="text-xs text-muted">
-							By signing in, you agree to our Terms of Service and{' '}
+							By signing in, you agree to our{' '}
+							<a href="/terms" className="underline hover:text-foreground">
+								Terms of Service
+							</a>{' '}
+							and{' '}
 							<a href="/privacy" className="underline hover:text-foreground">
 								Privacy Policy
 							</a>
