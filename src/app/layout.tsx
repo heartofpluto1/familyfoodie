@@ -32,7 +32,7 @@ export default async function RootLayout({
 			<body className={`${sourceSerif4.variable} antialiased min-h-screen flex flex-col`}>
 				<Providers>
 					<HeaderLogo session={session} />
-					<main className="flex-grow">
+					<main className="flex-grow flex flex-col">
 						{children}
 					</main>
 					<Footer />
