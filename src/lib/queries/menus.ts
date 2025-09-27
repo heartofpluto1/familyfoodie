@@ -886,7 +886,7 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 
 	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime,
 		r.description, r.url_slug, r.household_id, r.primaryType_id, r.secondaryType_id,
-		r.season_id, r.archived, r.parent_id, r.created_at, r.updated_at, s.name
+		r.season_id, r.archived, r.parent_id, r.public, s.name
 		ORDER BY status ASC, r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);
