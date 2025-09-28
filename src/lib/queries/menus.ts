@@ -146,7 +146,7 @@ export async function getAllRecipes(collectionId?: number): Promise<Recipe[]> {
 
 interface RecipeRow {
 	id: number;
-	name: string; // NOT NULL in database
+	name: string;
 	image_filename: string;
 	pdf_filename: string;
 	prepTime?: number;
@@ -154,62 +154,11 @@ interface RecipeRow {
 	description?: string;
 	url_slug?: string;
 	collection_id: number;
-	collection_title: string; // NOT NULL in database
+	collection_title: string;
 	collection_url_slug?: string;
 	seasonName?: string;
 	ingredients?: string;
 	household_id: number;
-}
-
-/**
- * Get all recipes with related season and ingredient data for search functionality
- * Optionally filtered by collection
- */
-export async function getAllRecipesWithDetails(collectionId?: number): Promise<Recipe[]> {
-	let query = `
-		SELECT DISTINCT
-			r.id,
-			r.name,
-			r.image_filename,
-			r.pdf_filename,
-			r.prepTime,
-			r.cookTime,
-			r.description,
-			r.url_slug,
-			r.household_id,
-			cr.collection_id,
-			c.title as collection_title,
-			c.url_slug as collection_url_slug,
-			s.name as seasonName,
-			GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
-		FROM recipes r
-		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
-		INNER JOIN collections c ON cr.collection_id = c.id
-		LEFT JOIN seasons s ON r.season_id = s.id
-		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		WHERE r.archived = 0
-	`;
-
-	const params: (string | number)[] = [];
-
-	if (collectionId) {
-		query += ` AND cr.collection_id = ?`;
-		params.push(collectionId);
-	}
-
-	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name
-		ORDER BY r.name ASC`;
-
-	const [rows] = await pool.execute(query, params);
-	const recipes = rows as RecipeRow[];
-
-	return recipes.map(row => ({
-		...row,
-		url_slug: row.url_slug || `${row.id}-fallback`,
-		collection_url_slug: row.collection_url_slug || `${row.collection_id}-fallback`,
-		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
-	}));
 }
 
 interface RecipeDetailRow {
@@ -912,51 +861,57 @@ export async function getMyRecipes(householdId: number): Promise<Recipe[]> {
 }
 
 /**
- * Get all recipes with details and household precedence for search (Agent 2)
- * Enhanced for search with household precedence
+ * Get all recipes with details and household filtering
+ * Based on getAllRecipesWithDetails but with household access control
  */
 export async function getAllRecipesWithDetailsHousehold(householdId: number, collectionId?: number): Promise<Recipe[]> {
 	let query = `
-		SELECT DISTINCT r.*,
-		       CASE WHEN r.household_id = ? THEN 'customized'
-		            WHEN EXISTS (SELECT 1 FROM collections c WHERE c.id = cr.collection_id AND c.household_id = r.household_id) THEN 'original'
-		            ELSE 'referenced' END as status,
-		       GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') as collections,
-		       r.household_id = ? as can_edit,
-		       s.name as seasonName,
-		       GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
+		SELECT DISTINCT
+			r.id,
+			r.name,
+			r.image_filename,
+			r.pdf_filename,
+			r.prepTime,
+			r.cookTime,
+			r.description,
+			r.url_slug,
+			r.household_id,
+			cr.collection_id,
+			c.title as collection_title,
+			c.url_slug as collection_url_slug,
+			s.name as seasonName,
+			GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
 		FROM recipes r
-		LEFT JOIN collection_recipes cr ON r.id = cr.recipe_id  
-		LEFT JOIN collections c ON cr.collection_id = c.id
+		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
+		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 		LEFT JOIN seasons s ON r.season_id = s.id
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		WHERE r.archived = 0 AND (
-		  r.household_id = ? OR  -- Household's own recipes
-		  c.public = 1 OR        -- Recipes in public collections  
-		  cs.household_id IS NOT NULL  -- Recipes in subscribed collections
-		)
-		AND NOT EXISTS (
-		  SELECT 1 FROM recipes r2 
-		  WHERE r2.household_id = ? 
-		  AND r2.parent_id = r.id
-		  AND r.household_id != ?
+		WHERE r.archived = 0
+		AND (
+			c.household_id = ? OR  -- Recipes in collections we own (regardless of recipe owner)
+			(c.public = 1 AND cs.household_id IS NOT NULL)  -- Recipes in public collections we've subscribed to
 		)
 	`;
 
-	const params = [householdId, householdId, householdId, householdId, householdId, householdId];
+	const params: (string | number)[] = [householdId, householdId];
 
 	if (collectionId) {
 		query += ` AND cr.collection_id = ?`;
 		params.push(collectionId);
 	}
 
-	query += ` GROUP BY r.id ORDER BY status ASC, r.name ASC`;
+	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name
+		ORDER BY r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);
-	return (rows as any[]).map(row => ({
+	const recipes = rows as RecipeRow[];
+
+	return recipes.map(row => ({
 		...row,
+		url_slug: row.url_slug || `${row.id}-fallback`,
+		collection_url_slug: row.collection_url_slug || `${row.collection_id}-fallback`,
 		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
 	}));
 }

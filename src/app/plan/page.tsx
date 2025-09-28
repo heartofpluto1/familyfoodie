@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
-import { getCurrentAndPlannedWeeks, getAllRecipesWithDetails, getCurrentWeek, getRecipesForRandomization } from '@/lib/queries/menus';
+import { getCurrentAndPlannedWeeks, getAllRecipesWithDetailsHousehold, getCurrentWeek, getRecipesForRandomization } from '@/lib/queries/menus';
 import MultiWeekPlanClient from './plan-client-multiweek';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { WeekPlan } from '@/types/plan';
@@ -64,7 +64,7 @@ export default async function PlanPage() {
 	const household_id = session.user.household_id;
 
 	const plannedWeeks = await getCurrentAndPlannedWeeks(household_id);
-	const allRecipes = await getAllRecipesWithDetails(household_id);
+	const allRecipes = await getAllRecipesWithDetailsHousehold(household_id);
 	const { week: currentWeek, year: currentYear } = getCurrentWeek();
 
 	// Convert database results to WeekPlan format

@@ -152,7 +152,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].ingredients).toEqual(['tomato', 'basil', 'olive oil']);
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY status ASC, r.name ASC'), [1, 1, 1, 1, 1, 1]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('ORDER BY r.name ASC'), [1, 1]);
 		});
 
 		it('should filter by collection when provided', async () => {
@@ -160,7 +160,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getAllRecipesWithDetailsHousehold(1, 10);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND cr.collection_id = ?'), [1, 1, 1, 1, 1, 1, 10]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('AND cr.collection_id = ?'), [1, 1, 10]);
 		});
 
 		it('should include public and subscribed collections', async () => {
@@ -168,7 +168,7 @@ describe('Household-Aware Recipe Queries', () => {
 
 			await getAllRecipesWithDetailsHousehold(1);
 
-			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.public = 1 OR        -- Recipes in public collections'), [1, 1, 1, 1, 1, 1]);
+			expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.public = 1 AND cs.household_id IS NOT NULL'), [1, 1]);
 		});
 	});
 
