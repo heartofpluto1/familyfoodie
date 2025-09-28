@@ -890,13 +890,12 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		WHERE r.archived = 0
 		AND (
-			r.household_id = ? OR  -- Household's own recipes
-			c.household_id = ? OR  -- Recipes in household's own collections
-			(c.public = 1 AND cs.household_id IS NOT NULL)  -- Recipes in public collections that household has subscribed to
+			c.household_id = ? OR  -- Recipes in collections we own (regardless of recipe owner)
+			(c.public = 1 AND cs.household_id IS NOT NULL)  -- Recipes in public collections we've subscribed to
 		)
 	`;
 
-	const params: (string | number)[] = [householdId, householdId, householdId];
+	const params: (string | number)[] = [householdId, householdId];
 
 	if (collectionId) {
 		query += ` AND cr.collection_id = ?`;
