@@ -88,7 +88,7 @@ export function RecipeSearch({ recipes, onAddRecipe, excludeIds }: RecipeSearchP
 				<div className={styles.searchResults} role="listbox" aria-label="Recipe search results">
 					{filteredRecipes.map(recipe => (
 						<div
-							key={recipe.id}
+							key={`${recipe.collection_id || 0}-${recipe.id}`}
 							className={styles.searchResultItem}
 							onClick={() => handleRecipeSelect(recipe)}
 							tabIndex={0}
@@ -101,8 +101,11 @@ export function RecipeSearch({ recipes, onAddRecipe, excludeIds }: RecipeSearchP
 						>
 							<div className="flex items-center space-x-3">
 								<img src={getRecipeImageUrl(recipe.image_filename)} alt={recipe.name} className="w-12 h-12 rounded object-cover" />
-								<div>
-									<div className="font-medium text-gray-900 dark:text-gray-100">{recipe.name}</div>
+								<div className="flex-1">
+									<div className="font-medium text-gray-900 dark:text-gray-100">
+										{recipe.name}
+										{recipe.collection_title && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">({recipe.collection_title})</span>}
+									</div>
 									{recipe.description && <div className="text-sm text-gray-600 dark:text-gray-400">{recipe.description.substring(0, 60)}...</div>}
 								</div>
 							</div>
