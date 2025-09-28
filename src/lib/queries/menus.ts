@@ -891,12 +891,12 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 		WHERE r.archived = 0
 		AND (
 			r.household_id = ? OR  -- Household's own recipes
-			c.public = 1 OR        -- Recipes in public collections
-			cs.household_id IS NOT NULL  -- Recipes in subscribed collections
+			c.household_id = ? OR  -- Recipes in household's own collections
+			(c.public = 1 AND cs.household_id IS NOT NULL)  -- Recipes in public collections that household has subscribed to
 		)
 	`;
 
-	const params: (string | number)[] = [householdId, householdId];
+	const params: (string | number)[] = [householdId, householdId, householdId];
 
 	if (collectionId) {
 		query += ` AND cr.collection_id = ?`;
