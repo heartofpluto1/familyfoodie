@@ -23,13 +23,16 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 			);
 		}
 
-		const { id } = body;
+		const { id, ids } = body;
 
-		if (id === null || id === undefined || id === '') {
+		// Handle both single ID and multiple IDs for backward compatibility
+		const itemIds = ids || (id ? [id] : null);
+
+		if (!itemIds || itemIds.length === 0) {
 			return NextResponse.json(
 				{
 					success: false,
-					error: 'Item ID is required',
+					error: 'Item ID(s) required',
 					code: 'VALIDATION_ERROR',
 				},
 				{ status: 400 }
@@ -41,8 +44,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 		try {
 			await connection.beginTransaction();
 
-			// Delete the shopping list item (household-scoped for security)
-			const [result] = await connection.execute('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [id, auth.household_id]);
+			// Delete all shopping list items (household-scoped for security)
+			const placeholders = itemIds.map(() => '?').join(',');
+			const [result] = await connection.execute(`DELETE FROM shopping_lists WHERE id IN (${placeholders}) AND household_id = ?`, [
+				...itemIds,
+				auth.household_id,
+			]);
 
 			const deleteResult = result as { affectedRows: number };
 
@@ -51,7 +58,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 				return NextResponse.json(
 					{
 						success: false,
-						error: 'Item not found',
+						error: 'Item(s) not found',
 						code: 'RESOURCE_NOT_FOUND',
 					},
 					{ status: 404 }
