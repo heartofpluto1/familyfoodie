@@ -117,7 +117,7 @@ describe('/api/shop/move', () => {
 							success: false,
 							error: 'Missing required fields',
 							code: 'VALIDATION_ERROR',
-							details: 'All fields (id, fresh, sort, week, year) are required',
+							details: 'All fields (id/ids, fresh, sort, week, year) are required',
 						});
 					},
 				});
@@ -146,7 +146,7 @@ describe('/api/shop/move', () => {
 							success: false,
 							error: 'Missing required fields',
 							code: 'VALIDATION_ERROR',
-							details: 'All fields (id, fresh, sort, week, year) are required',
+							details: 'All fields (id/ids, fresh, sort, week, year) are required',
 						});
 					},
 				});
@@ -175,7 +175,7 @@ describe('/api/shop/move', () => {
 							success: false,
 							error: 'Missing required fields',
 							code: 'VALIDATION_ERROR',
-							details: 'All fields (id, fresh, sort, week, year) are required',
+							details: 'All fields (id/ids, fresh, sort, week, year) are required',
 						});
 					},
 				});
@@ -204,7 +204,7 @@ describe('/api/shop/move', () => {
 							success: false,
 							error: 'Missing required fields',
 							code: 'VALIDATION_ERROR',
-							details: 'All fields (id, fresh, sort, week, year) are required',
+							details: 'All fields (id/ids, fresh, sort, week, year) are required',
 						});
 					},
 				});
@@ -233,7 +233,7 @@ describe('/api/shop/move', () => {
 							success: false,
 							error: 'Missing required fields',
 							code: 'VALIDATION_ERROR',
-							details: 'All fields (id, fresh, sort, week, year) are required',
+							details: 'All fields (id/ids, fresh, sort, week, year) are required',
 						});
 					},
 				});
@@ -400,13 +400,13 @@ describe('/api/shop/move', () => {
 
 						// Verify the moved item was updated with household context
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ? AND household_id = ?',
+							'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id IN (?) AND week = ? AND year = ? AND household_id = ?',
 							[true, 0, 1, 45, 2024, 1]
 						);
 
 						// Verify getting items excludes the moved item and includes household
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id != ? ORDER BY sort ASC',
+							'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id NOT IN (?) ORDER BY sort ASC',
 							[true, 45, 2024, 1, 1]
 						);
 
@@ -461,7 +461,7 @@ describe('/api/shop/move', () => {
 
 						// Verify the moved item was updated
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ? AND household_id = ?',
+							'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id IN (?) AND week = ? AND year = ? AND household_id = ?',
 							[false, 1, 1, 45, 2024, 1]
 						);
 
@@ -757,7 +757,7 @@ describe('/api/shop/move', () => {
 
 						// Verify the SELECT query specifically includes household_id
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id != ? ORDER BY sort ASC',
+							'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id NOT IN (?) ORDER BY sort ASC',
 							[true, 45, 2024, 1, 1]
 						);
 					},
@@ -789,14 +789,14 @@ describe('/api/shop/move', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found or access denied',
+							error: 'Item(s) not found or access denied',
 							code: 'ITEM_NOT_FOUND',
-							details: 'Shopping list item with ID 999 not found in week 45/2024 for your household',
+							details: 'Shopping list item(s) not found in week 45/2024 for your household',
 						});
 
 						// Verify the update was attempted with household_id constraint
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ? AND household_id = ?',
+							'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id IN (?) AND week = ? AND year = ? AND household_id = ?',
 							[true, 0, 999, 45, 2024, 1]
 						);
 

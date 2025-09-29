@@ -12,6 +12,7 @@ export interface Ingredient {
 
 export interface ListItem {
 	id: number;
+	ids?: number[]; // Array of all IDs that were grouped together
 	ingredient: string;
 	name: string;
 	cost?: number;

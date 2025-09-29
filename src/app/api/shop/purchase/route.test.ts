@@ -157,7 +157,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -203,7 +203,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID and purchased status are required',
+							error: 'Item ID(s) and purchased status are required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -226,7 +226,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -293,14 +293,13 @@ describe('/api/shop/purchase', () => {
 							body: JSON.stringify({ id: 0, purchased: true }),
 						});
 
-						// Should proceed with the update (even though it affects 0 rows)
-						// This test expects production quality - should return 404
-						expect(response.status).toBe(404);
+						// Should return 400 for invalid ID
+						expect(response.status).toBe(400);
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
-							code: 'RESOURCE_NOT_FOUND',
+							error: 'Item ID(s) required',
+							code: 'VALIDATION_ERROR',
 						});
 					},
 				});
@@ -331,7 +330,7 @@ describe('/api/shop/purchase', () => {
 						expect(mockPoolGetConnection).toHaveBeenCalled();
 						expect(mockConnection.beginTransaction).toHaveBeenCalled();
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?',
+							'UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?',
 							[1, 123, 1] // 1 for true, household_id from mockAuthenticatedUser
 						);
 						expect(mockConnection.commit).toHaveBeenCalled();
@@ -359,7 +358,7 @@ describe('/api/shop/purchase', () => {
 						expect(data).toEqual({ success: true });
 
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?',
+							'UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?',
 							[0, 456, 1] // 0 for false
 						);
 					},
@@ -384,7 +383,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 
@@ -439,7 +438,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found', // Generic message to prevent information leakage
+							error: 'Item(s) not found', // Generic message to prevent information leakage
 							code: 'RESOURCE_NOT_FOUND',
 						});
 					},
@@ -478,7 +477,10 @@ describe('/api/shop/purchase', () => {
 						expect(response.status).toBe(200);
 
 						// Verify household_id 42 is used in the query
-						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [0, 1, 42]);
+						expect(mockConnection.execute).toHaveBeenCalledWith(
+							'UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?',
+							[0, 1, 42]
+						);
 					},
 				});
 			});
@@ -503,7 +505,7 @@ describe('/api/shop/purchase', () => {
 						// Should not reveal that item exists in another household
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 						expect(data.error).not.toContain('household');
@@ -560,7 +562,7 @@ describe('/api/shop/purchase', () => {
 				expect(response1Data).toEqual(response2Data);
 				expect(response1Data).toEqual({
 					success: false,
-					error: 'Item not found',
+					error: 'Item(s) not found',
 					code: 'RESOURCE_NOT_FOUND',
 				});
 			});
@@ -601,7 +603,10 @@ describe('/api/shop/purchase', () => {
 						expect(data).toEqual({ success: true });
 
 						// Verify same household_id is used
-						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [1, 1, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith(
+							'UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?',
+							[1, 1, 1]
+						);
 					},
 				});
 			});
@@ -865,7 +870,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
@@ -893,7 +898,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
@@ -950,7 +955,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true });
 
-						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [
+						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?', [
 							1,
 							largeId,
 							1,
@@ -977,7 +982,7 @@ describe('/api/shop/purchase', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 					},
@@ -1008,7 +1013,10 @@ describe('/api/shop/purchase', () => {
 						expect(data).toEqual({ success: true });
 
 						// Should still work with just id and purchased
-						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [0, 1, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith(
+							'UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?',
+							[0, 1, 1]
+						);
 					},
 				});
 			});
@@ -1055,7 +1063,7 @@ describe('/api/shop/purchase', () => {
 						expect(data).toEqual({ success: true });
 
 						// Should convert string to number
-						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [
+						expect(mockConnection.execute).toHaveBeenCalledWith('UPDATE shopping_lists SET purchased = ? WHERE id IN (?) AND household_id = ?', [
 							1,
 							'123',
 							1,

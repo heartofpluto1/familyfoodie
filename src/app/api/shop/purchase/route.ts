@@ -23,11 +23,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 			);
 		}
 
-		const { id, purchased } = body;
+		const { id, ids, purchased } = body;
+
+		// Handle both single ID and multiple IDs for backward compatibility
+		const itemIds = ids || (id ? [id] : null);
 
 		// Validate required fields
 		const missingFields = [];
-		if (id === null || id === undefined || id === '') missingFields.push('id');
+		if (!itemIds || itemIds.length === 0) missingFields.push('id');
 		if (purchased === null || purchased === undefined) missingFields.push('purchased');
 
 		if (missingFields.length > 0) {
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 				return NextResponse.json(
 					{
 						success: false,
-						error: field === 'id' ? 'Item ID is required' : 'Purchased status is required',
+						error: field === 'id' ? 'Item ID(s) required' : 'Purchased status is required',
 						code: 'VALIDATION_ERROR',
 					},
 					{ status: 400 }
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 			return NextResponse.json(
 				{
 					success: false,
-					error: 'Item ID and purchased status are required',
+					error: 'Item ID(s) and purchased status are required',
 					code: 'VALIDATION_ERROR',
 				},
 				{ status: 400 }
@@ -69,16 +72,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 		try {
 			await connection.beginTransaction();
 
-			// Update the shopping list item (household-scoped for security)
-			const [result] = await connection.execute('UPDATE shopping_lists SET purchased = ? WHERE id = ? AND household_id = ?', [
+			// Update all shopping list items (household-scoped for security)
+			const placeholders = itemIds.map(() => '?').join(',');
+			const [result] = await connection.execute(`UPDATE shopping_lists SET purchased = ? WHERE id IN (${placeholders}) AND household_id = ?`, [
 				purchased ? 1 : 0,
-				id,
+				...itemIds,
 				auth.household_id,
 			]);
 
 			const updateResult = result as { affectedRows: number };
 
-			// Check if the item was found and updated
+			// Check if any items were found and updated
 			if (updateResult.affectedRows === 0) {
 				await connection.rollback();
 				// Generic message to prevent information leakage
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 				return NextResponse.json(
 					{
 						success: false,
-						error: 'Item not found',
+						error: 'Item(s) not found',
 						code: 'RESOURCE_NOT_FOUND',
 					},
 					{ status: 404 }

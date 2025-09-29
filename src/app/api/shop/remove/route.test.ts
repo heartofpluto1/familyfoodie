@@ -145,7 +145,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -168,7 +168,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -191,7 +191,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -214,7 +214,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 					},
@@ -242,7 +242,7 @@ describe('/api/shop/remove', () => {
 
 						// Verify the DELETE query was called with correct parameters
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'DELETE FROM shopping_lists WHERE id = ? AND household_id = ?',
+							'DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?',
 							['123', 1] // household_id from mockAuthenticatedUser
 						);
 					},
@@ -270,7 +270,7 @@ describe('/api/shop/remove', () => {
 
 						// Verify the DELETE query was called with correct parameters
 						expect(mockConnection.execute).toHaveBeenCalledWith(
-							'DELETE FROM shopping_lists WHERE id = ? AND household_id = ?',
+							'DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?',
 							[456, 1] // household_id from mockAuthenticatedUser
 						);
 					},
@@ -300,7 +300,7 @@ describe('/api/shop/remove', () => {
 
 						// Verify transaction flow
 						expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [1, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?', [1, 1]);
 						expect(mockConnection.commit).toHaveBeenCalledTimes(1);
 						expect(mockConnection.rollback).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
@@ -327,13 +327,13 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 
 						// Verify transaction was rolled back
 						expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [999, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?', [999, 1]);
 						expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
 						expect(mockConnection.commit).not.toHaveBeenCalled();
 						expect(mockConnection.release).toHaveBeenCalledTimes(1);
@@ -400,7 +400,7 @@ describe('/api/shop/remove', () => {
 						expect(response.status).toBe(200);
 
 						// Verify household_id 42 is used in the query
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [1, 42]);
+						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?', [1, 42]);
 					},
 				});
 			});
@@ -666,7 +666,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item ID is required',
+							error: 'Item ID(s) required',
 							code: 'VALIDATION_ERROR',
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
@@ -694,7 +694,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 						expect(Object.keys(data).sort()).toEqual(['code', 'error', 'success']);
@@ -751,7 +751,7 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({ success: true });
 
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [largeId, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?', [largeId, 1]);
 					},
 				});
 			});
@@ -774,11 +774,11 @@ describe('/api/shop/remove', () => {
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
+							error: 'Item(s) not found',
 							code: 'RESOURCE_NOT_FOUND',
 						});
 
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [-1, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?', [-1, 1]);
 					},
 				});
 			});
@@ -797,15 +797,16 @@ describe('/api/shop/remove', () => {
 							body: JSON.stringify({ id: 0 }),
 						});
 
-						expect(response.status).toBe(404);
+						expect(response.status).toBe(400);
 						const data = await response.json();
 						expect(data).toEqual({
 							success: false,
-							error: 'Item not found',
-							code: 'RESOURCE_NOT_FOUND',
+							error: 'Item ID(s) required',
+							code: 'VALIDATION_ERROR',
 						});
 
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [0, 1]);
+						// Should not execute query for invalid ID
+						expect(mockConnection.execute).not.toHaveBeenCalled();
 					},
 				});
 			});
@@ -833,7 +834,7 @@ describe('/api/shop/remove', () => {
 						expect(data).toEqual({ success: true });
 
 						// Should still work with just the id
-						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id = ? AND household_id = ?', [1, 1]);
+						expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM shopping_lists WHERE id IN (?) AND household_id = ?', [1, 1]);
 					},
 				});
 			});

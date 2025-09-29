@@ -11,16 +11,19 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
 	try {
 		const body = await request.json();
-		const { id, fresh, sort, week, year } = body;
+		const { id, ids, fresh, sort, week, year } = body;
+
+		// Handle both single ID and multiple IDs for backward compatibility
+		const itemIds = ids || (id ? [id] : null);
 
 		// Input validation
-		if (!id || fresh === undefined || sort === undefined || !week || !year) {
+		if (!itemIds || itemIds.length === 0 || fresh === undefined || sort === undefined || !week || !year) {
 			return NextResponse.json(
 				{
 					success: false,
 					error: 'Missing required fields',
 					code: 'VALIDATION_ERROR',
-					details: 'All fields (id, fresh, sort, week, year) are required',
+					details: 'All fields (id/ids, fresh, sort, week, year) are required',
 				},
 				{ status: 400 }
 			);
@@ -39,14 +42,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 			);
 		}
 
-		// Validate other numeric fields
-		if (typeof id !== 'number' || id <= 0) {
+		// Validate item IDs
+		if (!Array.isArray(itemIds) || itemIds.some(id => typeof id !== 'number' || id <= 0)) {
 			return NextResponse.json(
 				{
 					success: false,
-					error: 'Invalid item ID',
+					error: 'Invalid item ID(s)',
 					code: 'VALIDATION_ERROR',
-					details: 'Item ID must be a positive number',
+					details: 'Item ID(s) must be positive numbers',
 				},
 				{ status: 400 }
 			);
@@ -93,46 +96,49 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		try {
 			await connection.beginTransaction();
 
-			// Update the moved item (household-scoped)
+			// Update all moved items (household-scoped)
+			const placeholders = itemIds.map(() => '?').join(',');
 			const [updateResult] = await connection.execute<ResultSetHeader>(
-				'UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id = ? AND week = ? AND year = ? AND household_id = ?',
-				[fresh, sort, id, week, year, auth.household_id]
+				`UPDATE shopping_lists SET fresh = ?, sort = ? WHERE id IN (${placeholders}) AND week = ? AND year = ? AND household_id = ?`,
+				[fresh, sort, ...itemIds, week, year, auth.household_id]
 			);
 
-			// Check if the item was actually updated (exists and belongs to user's household)
+			// Check if any items were actually updated (exists and belongs to user's household)
 			if (updateResult.affectedRows === 0) {
 				await connection.rollback();
 				return NextResponse.json(
 					{
 						success: false,
-						error: 'Item not found or access denied',
+						error: 'Item(s) not found or access denied',
 						code: 'ITEM_NOT_FOUND',
-						details: `Shopping list item with ID ${id} not found in week ${week}/${year} for your household`,
+						details: `Shopping list item(s) not found in week ${week}/${year} for your household`,
 					},
 					{ status: 404 }
 				);
 			}
 
 			// Get all items in the target list (fresh or pantry) for this week/year/household
+			const idPlaceholders = itemIds.map(() => '?').join(',');
 			const [items] = await connection.execute(
-				'SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id != ? ORDER BY sort ASC',
-				[fresh, week, year, auth.household_id, id]
+				`SELECT id, sort FROM shopping_lists WHERE fresh = ? AND week = ? AND year = ? AND household_id = ? AND id NOT IN (${idPlaceholders}) ORDER BY sort ASC`,
+				[fresh, week, year, auth.household_id, ...itemIds]
 			);
 
 			// Update sort values for items that need to be shifted
 			const itemsArray = items as { id: number; sort: number }[];
+			let currentSort = 0;
 			for (let i = 0; i < itemsArray.length; i++) {
 				const item = itemsArray[i];
-				let newSort = i;
 
-				// If the moved item should be inserted before this position, increment
-				if (i >= sort) {
-					newSort = i + 1;
+				// Skip the sort position(s) reserved for the moved items
+				if (currentSort === sort) {
+					currentSort += itemIds.length;
 				}
 
-				if (item.sort !== newSort) {
-					await connection.execute('UPDATE shopping_lists SET sort = ? WHERE id = ?', [newSort, item.id]);
+				if (item.sort !== currentSort) {
+					await connection.execute('UPDATE shopping_lists SET sort = ? WHERE id = ?', [currentSort, item.id]);
 				}
+				currentSort++;
 			}
 
 			await connection.commit();
