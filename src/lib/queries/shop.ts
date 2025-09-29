@@ -101,27 +101,28 @@ function groupShoppingListItems(items: Record<string, unknown>[]): ListItem[] {
 
 export async function getShoppingList(week: string, year: string, household_id: number) {
 	// Get fresh ingredients from shopping list with household scope
+	// Now using denormalized data - no need to join with recipe_ingredients
 	const [freshRows] = await pool.execute(
 		`
         SELECT
             sl.id,
-            COALESCE(i.name, sl.name) as name,
+            sl.name,
             sl.cost,
             sl.stockcode,
             sl.purchased,
             sl.sort,
-            ri.quantity,
-            ri.quantity4,
-            m.name as quantityMeasure,
-            ri.ingredient_id as ingredientId,
-            sc.name as supermarketCategory,
-            pc.name as pantryCategory,
+            sl.quantity,
+            sl.quantity4,
+            sl.measurement as quantityMeasure,
             sl.fresh,
-            sl.household_id
+            sl.household_id,
+            sl.recipe_id,
+            -- Get ingredient details if we still have the reference
+            i.id as ingredientId,
+            sc.name as supermarketCategory,
+            pc.name as pantryCategory
         FROM shopping_lists sl
-        LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
-        LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-        LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
+        LEFT JOIN ingredients i ON sl.name = i.name AND (i.household_id = sl.household_id OR i.public = 1)
         LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
         LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.household_id = ? AND sl.fresh = 1
@@ -131,27 +132,28 @@ export async function getShoppingList(week: string, year: string, household_id: 
 	);
 
 	// Get pantry ingredients from shopping list with household scope
+	// Now using denormalized data - no need to join with recipe_ingredients
 	const [pantryRows] = await pool.execute(
 		`
         SELECT
             sl.id,
-            COALESCE(i.name, sl.name) as name,
+            sl.name,
             sl.cost,
             sl.stockcode,
             sl.purchased,
             sl.sort,
-            ri.quantity,
-            ri.quantity4,
-            m.name as quantityMeasure,
-            ri.ingredient_id as ingredientId,
-            sc.name as supermarketCategory,
-            pc.name as pantryCategory,
+            sl.quantity,
+            sl.quantity4,
+            sl.measurement as quantityMeasure,
             sl.fresh,
-            sl.household_id
+            sl.household_id,
+            sl.recipe_id,
+            -- Get ingredient details if we still have the reference
+            i.id as ingredientId,
+            sc.name as supermarketCategory,
+            pc.name as pantryCategory
         FROM shopping_lists sl
-        LEFT JOIN recipe_ingredients ri ON sl.recipeIngredient_id = ri.id
-        LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-        LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
+        LEFT JOIN ingredients i ON sl.name = i.name AND (i.household_id = sl.household_id OR i.public = 1)
         LEFT JOIN category_supermarket sc ON i.supermarketCategory_id = sc.id
         LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
         WHERE sl.week = ? AND sl.year = ? AND sl.household_id = ? AND sl.fresh = 0
