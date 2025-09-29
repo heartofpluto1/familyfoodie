@@ -84,7 +84,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 			);
 		});
 
-		it('should group ingredients correctly by ingredient_id and quantityMeasure_id', async () => {
+		it('should NOT group ingredients during insertion - grouping happens during READ', async () => {
 			const mockDuplicateIngredients = [
 				{
 					recipeIngredient_id: 1,
@@ -123,14 +123,14 @@ describe('Household-Scoped Shopping List Reset', () => {
 
 			await resetShoppingListFromRecipesHousehold(32, 2024, 1);
 
-			// Verify only one ingredient entry is created with aggregated quantities
+			// Verify both ingredients are inserted separately (no grouping during INSERT)
 			const insertCall = mockConnection.execute.mock.calls.find(call => call[0].includes('INSERT INTO shopping_lists'));
 
 			expect(insertCall).toBeTruthy();
 			const insertValues = insertCall![1];
 
-			// Should have only one grouped entry (10 values per ingredient)
-			expect(insertValues.length).toBe(10);
+			// Should have two separate entries (10 values per ingredient)
+			expect(insertValues.length).toBe(20);
 		});
 
 		it('should handle empty ingredients list', async () => {

@@ -21,11 +21,12 @@ export class ShoppingListService {
 		return result.data;
 	}
 
-	static async removeItem(id: number) {
+	static async removeItem(id: number | number[]) {
+		const isArray = Array.isArray(id);
 		const response = await fetch('/api/shop/remove', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ id }),
+			body: JSON.stringify(isArray ? { ids: id } : { id }),
 		});
 
 		if (!response.ok) {
@@ -35,11 +36,12 @@ export class ShoppingListService {
 		return response.json();
 	}
 
-	static async moveItem(id: number, fresh: boolean, sort: number, week: number, year: number) {
+	static async moveItem(id: number | number[], fresh: boolean, sort: number, week: number, year: number) {
+		const isArray = Array.isArray(id);
 		const response = await fetch('/api/shop/move', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ id, fresh, sort, week, year }),
+			body: JSON.stringify({ ...(isArray ? { ids: id } : { id }), fresh, sort, week, year }),
 		});
 
 		if (!response.ok) {
@@ -49,11 +51,12 @@ export class ShoppingListService {
 		return response.json();
 	}
 
-	static async togglePurchase(id: number, purchased: boolean) {
+	static async togglePurchase(id: number | number[], purchased: boolean) {
+		const isArray = Array.isArray(id);
 		const response = await fetch('/api/shop/purchase', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ id, purchased }),
+			body: JSON.stringify({ ...(isArray ? { ids: id } : { id }), purchased }),
 		});
 
 		if (!response.ok) {

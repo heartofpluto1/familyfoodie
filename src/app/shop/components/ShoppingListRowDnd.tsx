@@ -9,8 +9,8 @@ import { useSortable } from '@dnd-kit/sortable';
 interface ShoppingListRowDndProps {
 	item: ListItem;
 	index: number;
-	onTogglePurchase: (itemId: number, purchased: boolean) => void;
-	onRemoveItem: (itemId: number, itemName: string) => void;
+	onTogglePurchase: (itemId: number | number[], purchased: boolean) => void;
+	onRemoveItem: (itemId: number | number[], itemName: string) => void;
 	isDragOverlay?: boolean;
 	isOver?: boolean;
 }
@@ -51,7 +51,7 @@ export function ShoppingListRowDnd({ item, onTogglePurchase, onRemoveItem, isDra
 						<input
 							type="checkbox"
 							checked={item.purchased || false}
-							onChange={() => onTogglePurchase(item.id, item.purchased || false)}
+							onChange={() => onTogglePurchase(item.ids || item.id, item.purchased || false)}
 							className="ml-1 mr-2 sm:ml-1 sm:mr-3 h-4 w-4 text-blue-600 rounded cursor-pointer"
 							disabled={isDragOverlay}
 						/>
@@ -80,7 +80,12 @@ export function ShoppingListRowDnd({ item, onTogglePurchase, onRemoveItem, isDra
 						)}
 						<div className="flex items-center w-4 h-4">
 							{(item.quantity === null || typeof item.quantity === 'undefined') && (
-								<button title="Remove item" onClick={() => onRemoveItem(item.id, item.name)} className="focus:outline-none" disabled={isDragOverlay}>
+								<button
+									title="Remove item"
+									onClick={() => onRemoveItem(item.ids || item.id, item.name)}
+									className="focus:outline-none"
+									disabled={isDragOverlay}
+								>
 									<DeleteIcon className="w-4 h-4" />
 								</button>
 							)}

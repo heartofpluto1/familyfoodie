@@ -6,8 +6,8 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 interface ShoppingListTableDndProps {
 	items: ListItem[];
-	onTogglePurchase: (itemId: number, purchased: boolean) => void;
-	onRemoveItem: (itemId: number, itemName: string) => void;
+	onTogglePurchase: (itemId: number | number[], purchased: boolean) => void;
+	onRemoveItem: (itemId: number | number[], itemName: string) => void;
 	overId?: string | number | null;
 }
 

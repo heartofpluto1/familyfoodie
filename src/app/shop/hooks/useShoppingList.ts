@@ -57,14 +57,17 @@ export function useShoppingList(initialData: ShoppingListData, datestamp: DateSt
 		}
 	};
 
-	const removeItem = async (itemId: number, itemName: string) => {
+	const removeItem = async (itemId: number | number[], itemName: string) => {
 		try {
 			await ShoppingListService.removeItem(itemId);
 
-			// Update local state - remove item from shopping list
+			// Get all IDs to remove (either single ID or array of IDs)
+			const idsToRemove = Array.isArray(itemId) ? itemId : [itemId];
+
+			// Update local state - remove all grouped items from shopping list
 			setIngredients(prev => ({
 				...prev,
-				fresh: prev.fresh.filter(item => item.id !== itemId),
+				fresh: prev.fresh.filter(item => !idsToRemove.includes(item.id)),
 			}));
 
 			showToast('success', 'Removed', itemName);
@@ -73,16 +76,19 @@ export function useShoppingList(initialData: ShoppingListData, datestamp: DateSt
 		}
 	};
 
-	const togglePurchase = async (itemId: number, currentPurchased: boolean) => {
+	const togglePurchase = async (itemId: number | number[], currentPurchased: boolean) => {
 		const newPurchased = !currentPurchased;
 
 		try {
 			await ShoppingListService.togglePurchase(itemId, newPurchased);
 
-			// Update local state
+			// Get all IDs to update (either single ID or array of IDs)
+			const idsToUpdate = Array.isArray(itemId) ? itemId : [itemId];
+
+			// Update local state for all grouped items
 			setIngredients(prev => ({
 				...prev,
-				fresh: prev.fresh.map(item => (item.id === itemId ? { ...item, purchased: newPurchased } : item)),
+				fresh: prev.fresh.map(item => (idsToUpdate.includes(item.id) ? { ...item, purchased: newPurchased } : item)),
 			}));
 		} catch (error) {
 			showToast('error', 'Error', error instanceof Error ? error.message : 'Failed to update purchase status');

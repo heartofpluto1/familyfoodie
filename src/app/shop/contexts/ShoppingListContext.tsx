@@ -18,8 +18,8 @@ interface ShoppingListContextType {
 
 	// Shopping list actions
 	addItem: () => Promise<void>;
-	removeItem: (itemId: number, itemName: string) => Promise<void>;
-	togglePurchase: (itemId: number, currentPurchased: boolean) => Promise<void>;
+	removeItem: (itemId: number | number[], itemName: string) => Promise<void>;
+	togglePurchase: (itemId: number | number[], currentPurchased: boolean) => Promise<void>;
 	resetListClick: () => void;
 	resetListConfirm: () => Promise<void>;
 	resetListCancel: () => void;

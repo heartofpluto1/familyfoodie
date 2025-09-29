@@ -347,34 +347,9 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, householdId]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
 
-		// Group ingredients by ingredient_id AND quantityMeasure_id (only group if same ingredient with same measurement)
-		const groupedIngredients = ingredients.reduce((acc: Record<string, GroupedIngredient>, ingredient) => {
-			// Create composite key from ingredient_id and quantityMeasure_id to ensure we only group same ingredients with same measurements
-			const key = `${ingredient.ingredient_id}-${ingredient.quantityMeasure_id || 'null'}`;
-			if (!acc[key]) {
-				acc[key] = {
-					recipeIngredient_id: ingredient.recipeIngredient_id,
-					ingredient_id: ingredient.ingredient_id,
-					ingredient_name: ingredient.ingredient_name,
-					quantity: 0,
-					quantity4: 0,
-					quantityMeasure_id: ingredient.quantityMeasure_id,
-					pantryCategory_id: ingredient.pantryCategory_id,
-					supermarketCategory_id: ingredient.supermarketCategory_id,
-					fresh: ingredient.fresh,
-					cost: ingredient.cost,
-					stockcode: ingredient.stockcode,
-					measure_name: ingredient.measure_name,
-				};
-			}
-			acc[key].quantity += parseFloat(ingredient.quantity || '');
-			acc[key].quantity4 += parseFloat(ingredient.quantity4 || '');
-			return acc;
-		}, {});
-
-		// Insert grouped ingredients into shopping list with household_id
-		if (Object.keys(groupedIngredients).length > 0) {
-			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient, index: number) => [
+		// Insert each ingredient separately without grouping (grouping will happen at read time)
+		if (ingredients.length > 0) {
+			const insertValues = ingredients.map((ingredient: ShoppingIngredientRow, index: number) => [
 				week,
 				year,
 				householdId, // Add household_id
@@ -475,21 +450,6 @@ interface ShoppingIngredientRow {
 	measure_name: string | null;
 }
 
-interface GroupedIngredient {
-	recipeIngredient_id: number;
-	ingredient_id: number;
-	ingredient_name: string;
-	quantity: number;
-	quantity4: number;
-	quantityMeasure_id: number | null;
-	pantryCategory_id: number | null;
-	supermarketCategory_id: number | null;
-	fresh: number;
-	cost: number | null;
-	stockcode: string | null;
-	measure_name: string | null;
-}
-
 /**
  * Reset and rebuild shopping list from planned recipes for a given week
  */
@@ -535,34 +495,9 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, household_id]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
 
-		// Group ingredients by ingredient_id AND quantityMeasure_id (only group if same ingredient with same measurement)
-		const groupedIngredients = ingredients.reduce((acc: Record<string, GroupedIngredient>, ingredient) => {
-			// Create composite key from ingredient_id and quantityMeasure_id to ensure we only group same ingredients with same measurements
-			const key = `${ingredient.ingredient_id}-${ingredient.quantityMeasure_id || 'null'}`;
-			if (!acc[key]) {
-				acc[key] = {
-					recipeIngredient_id: ingredient.recipeIngredient_id,
-					ingredient_id: ingredient.ingredient_id,
-					ingredient_name: ingredient.ingredient_name,
-					quantity: 0,
-					quantity4: 0,
-					quantityMeasure_id: ingredient.quantityMeasure_id,
-					pantryCategory_id: ingredient.pantryCategory_id,
-					supermarketCategory_id: ingredient.supermarketCategory_id,
-					fresh: ingredient.fresh,
-					cost: ingredient.cost,
-					stockcode: ingredient.stockcode,
-					measure_name: ingredient.measure_name,
-				};
-			}
-			acc[key].quantity += parseFloat(ingredient.quantity || '');
-			acc[key].quantity4 += parseFloat(ingredient.quantity4 || '');
-			return acc;
-		}, {});
-
-		// Insert grouped ingredients into shopping list
-		if (Object.keys(groupedIngredients).length > 0) {
-			const insertValues = Object.values(groupedIngredients).map((ingredient: GroupedIngredient, index: number) => [
+		// Insert each ingredient separately without grouping (grouping will happen at read time)
+		if (ingredients.length > 0) {
+			const insertValues = ingredients.map((ingredient: ShoppingIngredientRow, index: number) => [
 				week,
 				year,
 				household_id, // household_id for isolation
