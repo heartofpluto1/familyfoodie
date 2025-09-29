@@ -108,16 +108,21 @@ WHERE sl.recipe_id IS NULL
    OR sl.measurement IS NULL;
 
 -- Drop foreign key constraint to recipe_ingredients if it exists
-SET @fk_ri_exists = (
-    SELECT COUNT(*)
+-- Check for both possible constraint names (new and Django-generated)
+SET @fk_name = (
+    SELECT CONSTRAINT_NAME
     FROM information_schema.TABLE_CONSTRAINTS
     WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'shopping_lists'
-    AND CONSTRAINT_NAME = 'fk_shopping_lists_recipe_ingredients'
+    AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+    AND (CONSTRAINT_NAME = 'fk_shopping_lists_recipe_ingredients'
+         OR CONSTRAINT_NAME = 'menus_shoppinglist_recipeIngredient_id_1b4f44ab_fk_menus_rec'
+         OR CONSTRAINT_NAME LIKE '%recipeIngredient%')
+    LIMIT 1
 );
 
-SET @sql = IF(@fk_ri_exists > 0,
-    'ALTER TABLE shopping_lists DROP FOREIGN KEY fk_shopping_lists_recipe_ingredients',
+SET @sql = IF(@fk_name IS NOT NULL,
+    CONCAT('ALTER TABLE shopping_lists DROP FOREIGN KEY ', @fk_name),
     'SELECT "FK to recipe_ingredients does not exist"'
 );
 
