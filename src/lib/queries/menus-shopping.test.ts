@@ -26,6 +26,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 			const mockIngredients = [
 				{
 					recipeIngredient_id: 1,
+					recipe_id: 123,
 					ingredient_id: 101,
 					quantity: '2',
 					quantity4: '4',
@@ -40,6 +41,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 				},
 				{
 					recipeIngredient_id: 2,
+					recipe_id: 123,
 					ingredient_id: 102,
 					quantity: '1',
 					quantity4: '2',
@@ -75,10 +77,10 @@ describe('Household-Scoped Shopping List Reset', () => {
 				[32, 2024, 1]
 			);
 
-			// Verify INSERT includes household_id
+			// Verify INSERT includes household_id and denormalized fields
 			expect(mockConnection.execute).toHaveBeenCalledWith(
 				expect.stringContaining(
-					'INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode)'
+					'INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement)'
 				),
 				expect.any(Array)
 			);
@@ -88,6 +90,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 			const mockDuplicateIngredients = [
 				{
 					recipeIngredient_id: 1,
+					recipe_id: 123,
 					ingredient_id: 101,
 					quantity: '1',
 					quantity4: '2',
@@ -102,6 +105,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 				},
 				{
 					recipeIngredient_id: 2,
+					recipe_id: 124,
 					ingredient_id: 101, // Same ingredient
 					quantity: '2',
 					quantity4: '4',
@@ -129,8 +133,8 @@ describe('Household-Scoped Shopping List Reset', () => {
 			expect(insertCall).toBeTruthy();
 			const insertValues = insertCall![1];
 
-			// Should have two separate entries (10 values per ingredient)
-			expect(insertValues.length).toBe(20);
+			// Should have two separate entries (14 values per ingredient with denormalized fields)
+			expect(insertValues.length).toBe(28);
 		});
 
 		it('should handle empty ingredients list', async () => {
@@ -180,6 +184,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 		it('should preserve cost and stockcode from ingredients table', async () => {
 			const mockIngredient = {
 				recipeIngredient_id: 1,
+				recipe_id: 456,
 				ingredient_id: 101,
 				quantity: '2',
 				quantity4: '4',
@@ -224,6 +229,75 @@ describe('Household-Scoped Shopping List Reset', () => {
 				expect.stringContaining('WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?'),
 				[32, 2024, 5]
 			);
+		});
+
+		it('should store denormalized data to allow recipe ingredient deletion', async () => {
+			const mockIngredient = {
+				recipeIngredient_id: 1,
+				recipe_id: 789,
+				ingredient_id: 101,
+				quantity: '3',
+				quantity4: '6',
+				quantityMeasure_id: 1,
+				ingredient_name: 'Denormalized Test',
+				pantryCategory_id: 1,
+				supermarketCategory_id: 1,
+				fresh: 1,
+				cost: 1.99,
+				stockcode: 'DT001',
+				measure_name: 'cups',
+			};
+
+			mockConnection.execute
+				.mockResolvedValueOnce(undefined) // DELETE
+				.mockResolvedValueOnce([[mockIngredient], []]) // SELECT
+				.mockResolvedValueOnce(undefined); // INSERT
+
+			await resetShoppingListFromRecipesHousehold(32, 2024, 1);
+
+			const insertCall = mockConnection.execute.mock.calls.find(call => call[0].includes('INSERT INTO shopping_lists'));
+			const insertValues = insertCall![1];
+
+			// Verify denormalized data is included
+			expect(insertValues).toContain(789); // recipe_id
+			expect(insertValues).toContain('3'); // quantity
+			expect(insertValues).toContain('6'); // quantity4
+			expect(insertValues).toContain('cups'); // measurement
+
+			// These values should be stored directly, not referenced via FK
+			// This allows the recipe_ingredients row to be deleted without breaking shopping lists
+		});
+
+		it('should handle recipes with no measurement units gracefully', async () => {
+			const mockIngredient = {
+				recipeIngredient_id: 1,
+				recipe_id: 999,
+				ingredient_id: 101,
+				quantity: '1',
+				quantity4: '2',
+				quantityMeasure_id: null,
+				ingredient_name: 'Salt',
+				pantryCategory_id: 1,
+				supermarketCategory_id: 1,
+				fresh: 0,
+				cost: 0.5,
+				stockcode: 'S001',
+				measure_name: null,
+			};
+
+			mockConnection.execute
+				.mockResolvedValueOnce(undefined) // DELETE
+				.mockResolvedValueOnce([[mockIngredient], []]) // SELECT
+				.mockResolvedValueOnce(undefined); // INSERT
+
+			await resetShoppingListFromRecipesHousehold(32, 2024, 1);
+
+			const insertCall = mockConnection.execute.mock.calls.find(call => call[0].includes('INSERT INTO shopping_lists'));
+			const insertValues = insertCall![1];
+
+			// Verify null measurement is handled correctly
+			expect(insertValues).toContain(null); // measurement should be null
+			expect(insertValues).toContain('1'); // quantity should still be present
 		});
 	});
 });
