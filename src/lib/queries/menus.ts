@@ -317,8 +317,9 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 
 		// Get all ingredients from recipes planned for this week by this household
 		const ingredientsQuery = `
-			SELECT 
+			SELECT
 				ri.id as recipeIngredient_id,
+				ri.recipe_id,
 				ri.ingredient_id,
 				ri.quantity,
 				ri.quantity4,
@@ -336,8 +337,8 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 			JOIN ingredients i ON ri.ingredient_id = i.id
 			LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
 			WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
-			ORDER BY 
-				CASE 
+			ORDER BY
+				CASE
 					WHEN i.fresh = 1 THEN i.supermarketCategory_id
 					WHEN i.fresh = 0 THEN i.pantryCategory_id
 					ELSE 999
@@ -347,7 +348,7 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, householdId]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
 
-		// Insert each ingredient separately without grouping (grouping will happen at read time)
+		// Insert each ingredient separately with denormalized data
 		if (ingredients.length > 0) {
 			const insertValues = ingredients.map((ingredient: ShoppingIngredientRow, index: number) => [
 				week,
@@ -360,11 +361,15 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 				ingredient.recipeIngredient_id,
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
+				ingredient.recipe_id, // NEW: recipe reference
+				ingredient.quantity, // NEW: denormalized quantity
+				ingredient.quantity4, // NEW: denormalized quantity4
+				ingredient.measure_name, // NEW: denormalized measurement name
 			]);
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
@@ -437,6 +442,7 @@ export async function getRecipesForRandomization(household_id: number): Promise<
 
 interface ShoppingIngredientRow {
 	recipeIngredient_id: number;
+	recipe_id: number;
 	ingredient_id: number;
 	quantity: string;
 	quantity4: string;
@@ -464,8 +470,9 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 
 		// Get all ingredients from recipes planned for this week by this household
 		const ingredientsQuery = `
-			SELECT 
+			SELECT
 				ri.id as recipeIngredient_id,
+				ri.recipe_id,
 				ri.ingredient_id,
 				ri.quantity,
 				ri.quantity4,
@@ -483,8 +490,8 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 			JOIN ingredients i ON ri.ingredient_id = i.id
 			LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
 			WHERE rw.week = ? AND rw.year = ? AND rw.household_id = ?
-			ORDER BY 
-				CASE 
+			ORDER BY
+				CASE
 					WHEN i.fresh = 1 THEN i.supermarketCategory_id
 					WHEN i.fresh = 0 THEN i.pantryCategory_id
 					ELSE 999
@@ -495,7 +502,7 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 		const [ingredientRows] = await connection.execute(ingredientsQuery, [week, year, household_id]);
 		const ingredients = ingredientRows as ShoppingIngredientRow[];
 
-		// Insert each ingredient separately without grouping (grouping will happen at read time)
+		// Insert each ingredient separately with denormalized data
 		if (ingredients.length > 0) {
 			const insertValues = ingredients.map((ingredient: ShoppingIngredientRow, index: number) => [
 				week,
@@ -505,16 +512,20 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 				ingredient.ingredient_name,
 				index, // sort = increasing integer
 				ingredient.cost, // cost from ingredients table
-				ingredient.recipeIngredient_id,
+				ingredient.recipeIngredient_id, // Keep for backward compatibility
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
+				ingredient.recipe_id, // NEW: recipe reference
+				ingredient.quantity, // NEW: denormalized quantity
+				ingredient.quantity4, // NEW: denormalized quantity4
+				ingredient.measure_name, // NEW: denormalized measurement name
 			]);
 
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
