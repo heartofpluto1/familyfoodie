@@ -17,6 +17,7 @@ interface RecipeCardProps {
 	isSelecting?: boolean;
 	isSelected?: boolean;
 	onToggleSelection?: (recipeId: number) => void;
+	openInNewTab?: boolean;
 }
 
 const RecipeCard = ({
@@ -31,6 +32,7 @@ const RecipeCard = ({
 	isSelecting = false,
 	isSelected = false,
 	onToggleSelection,
+	openInNewTab = false,
 }: RecipeCardProps) => {
 	const [displayRecipe, setDisplayRecipe] = useState(recipe);
 	const [isFlipping, setIsFlipping] = useState(false);
@@ -195,7 +197,12 @@ const RecipeCard = ({
 					) : (
 						// Normal mode, render with links
 						<>
-							<Link href={generateRecipeUrl(displayRecipe)} className="block">
+							<Link
+								href={generateRecipeUrl(displayRecipe)}
+								className="block"
+								target={openInNewTab ? '_blank' : undefined}
+								rel={openInNewTab ? 'noopener noreferrer' : undefined}
+							>
 								<img
 									className="w-full aspect-square object-cover"
 									alt={`${name} recipe`}
@@ -207,7 +214,11 @@ const RecipeCard = ({
 							</Link>
 
 							<div className="p-4 flex flex-col flex-grow">
-								<Link href={generateRecipeUrl(displayRecipe)}>
+								<Link
+									href={generateRecipeUrl(displayRecipe)}
+									target={openInNewTab ? '_blank' : undefined}
+									rel={openInNewTab ? 'noopener noreferrer' : undefined}
+								>
 									<h3 className="text-lg text-foreground mb-2">{name}</h3>
 								</Link>
 

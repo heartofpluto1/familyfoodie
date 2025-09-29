@@ -31,6 +31,7 @@ export function RecipeGrid({ recipes, allRecipes, isEditMode, isLoading, recipeA
 						onRemoveRecipe={recipeActions.handleRemoveRecipe}
 						triggerAnimation={animatingAutomate}
 						newRecipe={newRecipe}
+						openInNewTab={isEditMode}
 					/>
 				);
 			})}
