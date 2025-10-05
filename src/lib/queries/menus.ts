@@ -157,6 +157,8 @@ interface RecipeRow {
 	collection_title: string;
 	collection_url_slug?: string;
 	seasonName?: string;
+	primaryTypeName?: string;
+	secondaryTypeName?: string;
 	ingredients?: string;
 	household_id: number;
 }
@@ -776,12 +778,16 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
 			s.name as seasonName,
+			pt.name as primaryTypeName,
+			st.name as secondaryTypeName,
 			GROUP_CONCAT(DISTINCT i.name SEPARATOR ', ') as ingredients
 		FROM recipes r
 		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
 		INNER JOIN collections c ON cr.collection_id = c.id
 		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
 		LEFT JOIN seasons s ON r.season_id = s.id
+		LEFT JOIN type_proteins pt ON r.primaryType_id = pt.id
+		LEFT JOIN type_carbs st ON r.secondaryType_id = st.id
 		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
 		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
 		WHERE r.archived = 0
@@ -798,7 +804,7 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 		params.push(collectionId);
 	}
 
-	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name
+	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name, pt.name, st.name
 		ORDER BY r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);
