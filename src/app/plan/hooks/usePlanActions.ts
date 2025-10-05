@@ -73,7 +73,7 @@ export function usePlanActions({
 					setAnimatingAutomate(false);
 					setLoading(false);
 					setRecipes(randomRecipes);
-				}, 400);
+				}, 300);
 			} else {
 				// Fallback to immediate update if animation props not provided
 				setRecipes(randomRecipes);
