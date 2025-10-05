@@ -3,6 +3,7 @@ import { planService } from '../services/planService';
 import { useShoppingListSync } from './useShoppingListSync';
 import { Recipe } from '@/types/menus';
 import { selectRandomRecipes } from '../utils/randomizeRecipes';
+import { useRef } from 'react';
 
 interface UsePlanActionsProps {
 	recipes: Recipe[];
@@ -34,6 +35,7 @@ export function usePlanActions({
 	allRecipes,
 }: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
+	const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	const handleEdit = async (): Promise<void> => {
 		setEditMode(true);
@@ -63,16 +65,22 @@ export function usePlanActions({
 			const randomRecipes = selectRandomRecipes(allRecipes, new Set(), count);
 
 			if (setAnimatingAutomate && setPendingRecipes) {
+				// Cancel any pending animation timeout to prevent overlapping state updates
+				if (animationTimeoutRef.current) {
+					clearTimeout(animationTimeoutRef.current);
+				}
+
 				// Store the new recipes and trigger animations
 				setPendingRecipes(randomRecipes);
 				setAnimatingAutomate(true);
 
 				// After animations complete, update the actual state and clear loading
-				setTimeout(() => {
+				animationTimeoutRef.current = setTimeout(() => {
 					setPendingRecipes(null);
 					setAnimatingAutomate(false);
 					setLoading(false);
 					setRecipes(randomRecipes);
+					animationTimeoutRef.current = null;
 				}, 300);
 			} else {
 				// Fallback to immediate update if animation props not provided
