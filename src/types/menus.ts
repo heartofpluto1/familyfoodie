@@ -55,6 +55,8 @@ export interface Recipe {
 	url_slug: string;
 	collection_url_slug: string;
 	household_id: number;
+	primaryTypeName?: string;
+	secondaryTypeName?: string;
 }
 
 export interface RecipeDetail {

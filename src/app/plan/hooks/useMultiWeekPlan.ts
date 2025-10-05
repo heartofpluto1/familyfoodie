@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Recipe } from '@/types/menus';
 import { WeekPlan, MultiWeekPlanState } from '@/types/plan';
 import { getNextWeek, createWeekId } from '../utils/weekUtils';
-import { planService } from '../services/planService';
+import { selectRandomRecipes } from '../utils/randomizeRecipes';
 
 interface UseMultiWeekPlanProps {
 	initialWeeks: WeekPlan[];
@@ -47,16 +47,7 @@ export function useMultiWeekPlan({ initialWeeks, allRecipes }: UseMultiWeekPlanP
 		}
 
 		// Get automated recipe suggestions
-		let suggestedRecipes: Recipe[] = [];
-		try {
-			const result = await planService.randomizeRecipes();
-			if (result.success && result.recipes) {
-				suggestedRecipes = result.recipes;
-			}
-		} catch (error) {
-			console.error('Error fetching automated recipes:', error);
-			// Continue with empty recipes if automation fails
-		}
+		const suggestedRecipes = selectRandomRecipes(multiWeekState.allRecipes, new Set(), 3);
 
 		// Create new week with automated recipes and set to edit mode
 		const newWeek: WeekPlan = {

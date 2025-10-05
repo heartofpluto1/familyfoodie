@@ -23,7 +23,7 @@ export function RecipeGrid({ recipes, allRecipes, isEditMode, isLoading, recipeA
 
 				return (
 					<RecipeCard
-						key={recipe.id}
+						key={animatingAutomate ? `current-${recipe.id}` : recipe.id}
 						recipe={recipe}
 						showControls={isEditMode}
 						onSwapRecipe={recipeActions.handleSwapRecipe}
