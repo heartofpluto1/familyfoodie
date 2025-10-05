@@ -189,6 +189,24 @@ describe('selectRandomRecipes', () => {
 			// All recipes should be selectable since no conflicts
 			expect(result).toHaveLength(3);
 		});
+
+		it('should never return duplicate recipe IDs even with undefined types', () => {
+			const recipes = [
+				createRecipe(1, undefined, undefined),
+				createRecipe(2, undefined, undefined),
+				createRecipe(3, undefined, undefined),
+				createRecipe(4, undefined, undefined),
+				createRecipe(5, undefined, undefined),
+			];
+
+			const result = selectRandomRecipes(recipes, new Set(), 3);
+
+			// Verify no duplicate IDs in result
+			const ids = result.map(r => r.id);
+			const uniqueIds = new Set(ids);
+			expect(ids.length).toBe(uniqueIds.size);
+			expect(result).toHaveLength(3);
+		});
 	});
 
 	describe('Randomness', () => {

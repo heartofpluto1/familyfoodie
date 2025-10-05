@@ -54,6 +54,11 @@ export function selectRandomRecipes(allRecipes: Recipe[], excludeRecipeIds: Set<
 		// Add to selection
 		selected.push(selectedRecipe);
 
+		// CRITICAL: Remove the selected recipe from pool immediately to prevent duplicates
+		// This must happen before type filtering, as recipes with undefined types won't be
+		// filtered out by type conflicts and could be selected again
+		availableRecipes.splice(randomIndex, 1);
+
 		// Track protein/carb types from selected recipe
 		const primaryType = selectedRecipe.primaryTypeName;
 		const secondaryType = selectedRecipe.secondaryTypeName;
