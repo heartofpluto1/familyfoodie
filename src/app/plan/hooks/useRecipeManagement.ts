@@ -1,26 +1,24 @@
 import { Recipe } from '@/types/menus';
 import { RecipeManagementActions } from '@/types/plan';
-import { planService } from '../services/planService';
+import { selectRandomRecipes } from '../utils/randomizeRecipes';
 
 interface UseRecipeManagementProps {
 	recipes: Recipe[];
 	setRecipes: (recipes: Recipe[]) => void;
 	setLoading: (loading: boolean) => void;
+	allRecipes: Recipe[];
 }
 
-export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseRecipeManagementProps): RecipeManagementActions {
+export function useRecipeManagement({ recipes, setRecipes, setLoading, allRecipes }: UseRecipeManagementProps): RecipeManagementActions {
 	const handleSwapRecipe = async (): Promise<Recipe | null> => {
 		setLoading(true);
 		try {
-			// Request just 1 recipe for swapping
-			const result = await planService.randomizeRecipes(1);
+			// Exclude recipes already in the plan
+			const excludeSet = new Set(recipes.map(r => r.id));
+			const [replacement] = selectRandomRecipes(allRecipes, excludeSet, 1);
 
-			if (result.success && result.recipes && result.recipes.length > 0) {
-				const replacement = result.recipes[0];
-				// Don't update state here - just return the new recipe
-				return replacement;
-			}
-			return null;
+			// Don't update state here - just return the new recipe
+			return replacement || null;
 		} catch (error) {
 			console.error('Error swapping recipe:', error);
 			return null;
@@ -44,11 +42,11 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading }: UseReci
 	const handleAddRandomRecipe = async (): Promise<void> => {
 		setLoading(true);
 		try {
-			// Request just 1 recipe to add
-			const result = await planService.randomizeRecipes(1);
+			// Exclude recipes already in the plan
+			const excludeSet = new Set(recipes.map(r => r.id));
+			const [newRecipe] = selectRandomRecipes(allRecipes, excludeSet, 1);
 
-			if (result.success && result.recipes && result.recipes.length > 0) {
-				const newRecipe = result.recipes[0];
+			if (newRecipe) {
 				setRecipes([...recipes, newRecipe]);
 			}
 		} finally {
