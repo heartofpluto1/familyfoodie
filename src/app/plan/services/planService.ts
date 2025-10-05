@@ -14,11 +14,6 @@ class PlanService {
 		return { success: response.ok, ...data };
 	}
 
-	async randomizeRecipes(count?: number): Promise<ApiResponse> {
-		const url = count !== undefined ? `/api/plan/randomize?count=${count}` : '/api/plan/randomize';
-		return this.makeRequest(url);
-	}
-
 	async saveWeekPlan(week: number, year: number, recipeIds: number[]): Promise<ApiResponse> {
 		return this.makeRequest('/api/plan/save', {
 			method: 'POST',

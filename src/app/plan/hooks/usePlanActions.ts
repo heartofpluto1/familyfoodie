@@ -2,6 +2,8 @@ import { PlanActions } from '@/types/plan';
 import { planService } from '../services/planService';
 import { useShoppingListSync } from './useShoppingListSync';
 import { Recipe } from '@/types/menus';
+import { selectRandomRecipes } from '../utils/randomizeRecipes';
+import { useRef } from 'react';
 
 interface UsePlanActionsProps {
 	recipes: Recipe[];
@@ -15,6 +17,7 @@ interface UsePlanActionsProps {
 	setPendingRecipes?: (recipes: Recipe[] | null) => void;
 	onWeekDelete?: () => void;
 	wasInitialEditMode?: boolean; // Track if we started in edit mode
+	allRecipes: Recipe[];
 }
 
 export function usePlanActions({
@@ -29,23 +32,18 @@ export function usePlanActions({
 	setPendingRecipes,
 	onWeekDelete,
 	wasInitialEditMode,
+	allRecipes,
 }: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
+	const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	const handleEdit = async (): Promise<void> => {
 		setEditMode(true);
 
 		// If no recipes exist for the week, pre-populate with automated selection
 		if (recipes.length === 0) {
-			setLoading(true);
-			try {
-				const result = await planService.randomizeRecipes(3);
-				if (result.success && result.recipes && Array.isArray(result.recipes)) {
-					setRecipes(result.recipes);
-				}
-			} finally {
-				setLoading(false);
-			}
+			const randomRecipes = selectRandomRecipes(allRecipes, new Set(), 3);
+			setRecipes(randomRecipes);
 		}
 	};
 
@@ -64,26 +62,29 @@ export function usePlanActions({
 		try {
 			// Use current recipe count if recipes exist, otherwise default to 3
 			const count = recipes.length > 0 ? recipes.length : 3;
-			const result = await planService.randomizeRecipes(count);
-			if (result.success && result.recipes && Array.isArray(result.recipes)) {
-				if (setAnimatingAutomate && setPendingRecipes) {
-					// Store the new recipes and trigger animations
-					setPendingRecipes(result.recipes);
-					setAnimatingAutomate(true);
+			const randomRecipes = selectRandomRecipes(allRecipes, new Set(), count);
 
-					// After animations complete, update the actual state and clear loading
-					setTimeout(() => {
-						setPendingRecipes(null);
-						setAnimatingAutomate(false);
-						setLoading(false);
-						setRecipes(result.recipes!);
-					}, 400);
-				} else {
-					// Fallback to immediate update if animation props not provided
-					setRecipes(result.recipes);
-					setLoading(false);
+			if (setAnimatingAutomate && setPendingRecipes) {
+				// Cancel any pending animation timeout to prevent overlapping state updates
+				if (animationTimeoutRef.current) {
+					clearTimeout(animationTimeoutRef.current);
 				}
+
+				// Store the new recipes and trigger animations
+				setPendingRecipes(randomRecipes);
+				setAnimatingAutomate(true);
+
+				// After animations complete, update the actual state and clear loading
+				animationTimeoutRef.current = setTimeout(() => {
+					setPendingRecipes(null);
+					setAnimatingAutomate(false);
+					setLoading(false);
+					setRecipes(randomRecipes);
+					animationTimeoutRef.current = null;
+				}, 300);
 			} else {
+				// Fallback to immediate update if animation props not provided
+				setRecipes(randomRecipes);
 				setLoading(false);
 			}
 		} catch (error) {

@@ -67,12 +67,14 @@ export function PlanProvider({
 		setPendingRecipes,
 		onWeekDelete,
 		wasInitialEditMode: initialEditMode,
+		allRecipes,
 	});
 
 	const recipeActions = useRecipeManagement({
 		recipes: state.recipes,
 		setRecipes,
 		setLoading,
+		allRecipes,
 	});
 
 	const contextValue: PlanContextType = {

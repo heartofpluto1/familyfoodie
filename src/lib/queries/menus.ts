@@ -390,56 +390,6 @@ export async function deleteWeekRecipes(week: number, year: number, household_id
 	await pool.execute('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [week, year, household_id]);
 }
 
-/**
- * Get recipes for randomization (excluding recent weeks and with ingredient constraints)
- */
-export async function getRecipesForRandomization(household_id: number): Promise<Recipe[]> {
-	const { year: currentYear } = getCurrentWeek();
-
-	// Calculate 6 months ago
-	const sixMonthsAgo = new Date();
-	sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-	const sixMonthsAgoWeek = getWeekNumber(sixMonthsAgo);
-	const sixMonthsAgoYear = sixMonthsAgo.getFullYear();
-
-	const query = `
-		SELECT DISTINCT
-			r.id,
-			r.name,
-			r.image_filename,
-			r.pdf_filename,
-			r.prepTime,
-			r.cookTime,
-			r.description,
-			r.url_slug,
-			c.url_slug as collection_url_slug,
-			GROUP_CONCAT(DISTINCT i.name ORDER BY ri.id ASC SEPARATOR ', ') as ingredients
-		FROM recipes r
-		INNER JOIN collection_recipes cr ON r.id = cr.recipe_id
-		INNER JOIN collections c ON cr.collection_id = c.id
-		LEFT JOIN collection_subscriptions cs ON c.id = cs.collection_id AND cs.household_id = ?
-		LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-		LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-		WHERE r.archived = 0 
-		  AND (c.household_id = ? OR cs.household_id IS NOT NULL)
-		  AND r.id NOT IN (
-			SELECT DISTINCT recipe_id 
-			FROM plans 
-			WHERE household_id = ? AND ((year = ? AND week >= ?) OR (year > ? AND year <= ?))
-		  )
-		GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, c.url_slug
-		ORDER BY r.name ASC
-	`;
-
-	const [rows] = await pool.execute(query, [household_id, household_id, household_id, sixMonthsAgoYear, sixMonthsAgoWeek, sixMonthsAgoYear, currentYear]);
-
-	const recipes = rows as (Recipe & { ingredients: string })[];
-	return recipes.map(row => ({
-		...row,
-		ingredients: row.ingredients ? row.ingredients.split(', ') : [],
-	}));
-}
-
 interface ShoppingIngredientRow {
 	recipeIngredient_id: number;
 	recipe_id: number;

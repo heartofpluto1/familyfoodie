@@ -10,7 +10,6 @@ import {
 	getRecipeWeeks,
 	getNextWeekRecipes,
 	deleteWeekRecipes,
-	getRecipesForRandomization,
 	saveWeekRecipes,
 } from './menus';
 import pool from '@/lib/db.js';
@@ -491,40 +490,6 @@ describe('Household-Aware Recipe Queries', () => {
 
 				// Verify the household filter is included
 				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('household_id = ?'), expect.arrayContaining([2]));
-			});
-		});
-
-		describe('getRecipesForRandomization', () => {
-			it('should return recipes only from the specified household', async () => {
-				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
-
-				await getRecipesForRandomization(1);
-
-				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.household_id = ?'), expect.arrayContaining([1]));
-			});
-
-			it('should isolate randomization by household_id in both collections and plans filters', async () => {
-				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
-
-				await getRecipesForRandomization(2);
-
-				// Should filter collections by household_id
-				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.household_id = ?'), expect.arrayContaining([2]));
-
-				// Should filter plans subquery by household_id
-				expect(mockPool.execute).toHaveBeenCalledWith(
-					expect.stringContaining('WHERE household_id = ? AND'),
-					expect.arrayContaining([2, 2]) // household_id appears twice in parameters
-				);
-			});
-
-			it('should not return recipes from other households', async () => {
-				mockPool.execute.mockResolvedValueOnce([[] as RowDataPacket[], []]);
-
-				await getRecipesForRandomization(3);
-
-				// Verify household filtering is applied
-				expect(mockPool.execute).toHaveBeenCalledWith(expect.stringContaining('c.household_id = ?'), expect.arrayContaining([3]));
 			});
 		});
 

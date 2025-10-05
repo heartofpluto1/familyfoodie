@@ -54,7 +54,7 @@ const RecipeCard = ({
 			setTimeout(() => {
 				setDisplayRecipe(newRecipe);
 				setShowNewContent(true);
-			}, 200);
+			}, 150);
 
 			// After full animation, notify completion
 			setTimeout(() => {
@@ -63,7 +63,7 @@ const RecipeCard = ({
 				if (onAnimationComplete) {
 					onAnimationComplete();
 				}
-			}, 400);
+			}, 300);
 		}
 	}, [triggerAnimation, newRecipe, displayRecipe.id, onAnimationComplete]);
 
@@ -90,7 +90,7 @@ const RecipeCard = ({
 				setTimeout(() => {
 					setDisplayRecipe(newRecipe);
 					setShowNewContent(true);
-				}, 200);
+				}, 150);
 
 				// After full animation, update parent state and reset
 				setTimeout(() => {
@@ -99,7 +99,7 @@ const RecipeCard = ({
 					}
 					setIsFlipping(false);
 					setShowNewContent(false);
-				}, 400);
+				}, 300);
 			};
 
 			// Handle image load error - start animation anyway to avoid hanging
@@ -109,7 +109,7 @@ const RecipeCard = ({
 				setTimeout(() => {
 					setDisplayRecipe(newRecipe);
 					setShowNewContent(true);
-				}, 200);
+				}, 150);
 
 				setTimeout(() => {
 					if (onCommitSwap) {
@@ -117,7 +117,7 @@ const RecipeCard = ({
 					}
 					setIsFlipping(false);
 					setShowNewContent(false);
-				}, 400);
+				}, 300);
 			};
 		}
 	};
@@ -175,10 +175,10 @@ const RecipeCard = ({
 	return (
 		<div className="recipe-card-container" style={{ perspective: '1000px' }}>
 			<article
-				className={`relative bg-surface border ${isSelected ? 'border-blue-500 ring-2 ring-blue-500' : 'border-custom'} rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-400 max-w-[310px] w-full flex flex-col ${isSelecting ? 'cursor-pointer' : ''}`}
+				className={`relative bg-surface border ${isSelected ? 'border-blue-500 ring-2 ring-blue-500' : 'border-custom'} rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 max-w-[310px] w-full flex flex-col ${isSelecting ? 'cursor-pointer' : ''}`}
 				style={{
 					transformStyle: 'preserve-3d',
-					transition: 'transform 0.4s ease-in-out',
+					transition: 'transform 0.3s ease-in-out',
 					transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
 				}}
 			>

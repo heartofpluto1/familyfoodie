@@ -2,52 +2,14 @@ import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
-import { getCurrentAndPlannedWeeks, getAllRecipesWithDetailsHousehold, getCurrentWeek, getRecipesForRandomization } from '@/lib/queries/menus';
+import { getCurrentAndPlannedWeeks, getAllRecipesWithDetailsHousehold, getCurrentWeek } from '@/lib/queries/menus';
 import MultiWeekPlanClient from './plan-client-multiweek';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
 import { WeekPlan } from '@/types/plan';
-import { Recipe } from '@/types/menus';
+import { selectRandomRecipes } from './utils/randomizeRecipes';
 
 export const dynamic = 'force-dynamic'; // Important for authenticated pages
 export const revalidate = 0;
-
-// Randomization logic with ingredient constraints (same as API)
-function selectRandomRecipes(availableRecipes: Recipe[], count: number = 3): Recipe[] {
-	const selected: Recipe[] = [];
-	const usedPrimaryIngredients = new Set<string>();
-	const usedSecondaryIngredients = new Set<string>();
-	const availableCopy = [...availableRecipes];
-
-	// Shuffle the available recipes
-	for (let i = availableCopy.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[availableCopy[i], availableCopy[j]] = [availableCopy[j], availableCopy[i]];
-	}
-
-	for (const recipe of availableCopy) {
-		if (selected.length >= count) break;
-
-		const ingredients = recipe.ingredients || [];
-		if (ingredients.length === 0) continue;
-
-		const primaryIngredient = ingredients[0];
-		const secondaryIngredient = ingredients.length > 1 ? ingredients[1] : null;
-
-		// Check constraints
-		const primaryConflict = usedPrimaryIngredients.has(primaryIngredient);
-		const secondaryConflict = secondaryIngredient && usedSecondaryIngredients.has(secondaryIngredient);
-
-		if (!primaryConflict && !secondaryConflict) {
-			selected.push(recipe);
-			usedPrimaryIngredients.add(primaryIngredient);
-			if (secondaryIngredient) {
-				usedSecondaryIngredients.add(secondaryIngredient);
-			}
-		}
-	}
-
-	return selected;
-}
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -75,8 +37,7 @@ export default async function PlanPage() {
 
 			// If this is the current week and it has no recipes, get randomized recipes and set to edit mode
 			if (isCurrentWeek && hasNoRecipes) {
-				const availableRecipes = await getRecipesForRandomization(household_id);
-				const randomizedRecipes = selectRandomRecipes(availableRecipes, 3);
+				const randomizedRecipes = selectRandomRecipes(allRecipes, new Set(), 3);
 
 				return {
 					week,
