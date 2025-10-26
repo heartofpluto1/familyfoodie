@@ -171,6 +171,7 @@ interface RecipeDetailRow {
 	description: string;
 	prepTime?: number;
 	cookTime?: number;
+	shop_qty?: number;
 	url_slug?: string;
 	collection_id: number;
 	collection_title: string;
@@ -603,6 +604,7 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		description: recipe.description || '',
 		prepTime: recipe.prepTime,
 		cookTime: recipe.cookTime,
+		shop_qty: recipe.shop_qty as 2 | 4 | undefined,
 		url_slug: recipe.url_slug || `${recipe.id}-fallback`,
 		collection_id: recipe.collection_id,
 		collection_title: recipe.collection_title,
@@ -933,6 +935,7 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 		description: recipe.description,
 		prepTime: recipe.prepTime,
 		cookTime: recipe.cookTime,
+		shop_qty: recipe.shop_qty as 2 | 4 | undefined,
 		url_slug: recipe.url_slug || `${recipe.id}-fallback`,
 		collection_id: recipe.collection_id,
 		collection_title: recipe.collection_title,
