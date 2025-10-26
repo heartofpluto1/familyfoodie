@@ -99,7 +99,7 @@ export function usePlanActions({
 			const result = await planService.saveWeekPlan(
 				week,
 				year,
-				recipes.map(r => r.id)
+				recipes.map(r => ({ id: r.id, shop_qty: r.shop_qty }))
 			);
 
 			if (result.success) {

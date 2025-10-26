@@ -527,13 +527,13 @@ describe('Household-Aware Recipe Queries', () => {
 			});
 
 			it('should delete existing plans only for specified household', async () => {
-				await saveWeekRecipes(45, 2024, [1, 2, 3], 1);
+				await saveWeekRecipes(45, 2024, [{ id: 1 }, { id: 2 }, { id: 3 }], 1);
 
 				expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [45, 2024, 1]);
 			});
 
 			it('should insert new plans with household_id', async () => {
-				await saveWeekRecipes(46, 2024, [4, 5], 2);
+				await saveWeekRecipes(46, 2024, [{ id: 4 }, { id: 5 }], 2);
 
 				// Should delete with household filter
 				expect(mockConnection.execute).toHaveBeenCalledWith(
@@ -549,7 +549,7 @@ describe('Household-Aware Recipe Queries', () => {
 			});
 
 			it('should isolate save operations by household_id', async () => {
-				await saveWeekRecipes(47, 2024, [6], 3);
+				await saveWeekRecipes(47, 2024, [{ id: 6 }], 3);
 
 				// Verify household isolation in both DELETE and INSERT
 				expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('household_id = ?'), expect.arrayContaining([3]));

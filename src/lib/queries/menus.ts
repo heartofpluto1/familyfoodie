@@ -281,7 +281,7 @@ export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]
  * Save recipes for a specific week
  * Copies shop_qty from recipes at time of saving to maintain immutable plan history
  */
-export async function saveWeekRecipes(week: number, year: number, recipeIds: number[], household_id: number): Promise<void> {
+export async function saveWeekRecipes(week: number, year: number, recipes: Array<{ id: number; shop_qty?: 2 | 4 }>, household_id: number): Promise<void> {
 	const connection = await pool.getConnection();
 
 	try {
@@ -290,18 +290,17 @@ export async function saveWeekRecipes(week: number, year: number, recipeIds: num
 		// Delete existing recipes for the week and household
 		await connection.execute('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [week, year, household_id]);
 
-		// Insert new recipes with household_id and shop_qty copied from recipes
-		if (recipeIds.length > 0) {
-			// Fetch shop_qty from recipes for each recipe_id
+		// Insert new recipes with household_id and shop_qty from the provided data
+		if (recipes.length > 0) {
+			// If shop_qty is not provided, fetch default from recipes table
+			const recipeIds = recipes.map(r => r.id);
 			const placeholders = recipeIds.map(() => '?').join(', ');
 			const [recipeRows] = await connection.execute(`SELECT id, shop_qty FROM recipes WHERE id IN (${placeholders})`, recipeIds);
-			const recipes = recipeRows as Array<{ id: number; shop_qty: number }>;
+			const defaultShopQtys = recipeRows as Array<{ id: number; shop_qty: number }>;
+			const defaultShopQtyMap = new Map(defaultShopQtys.map(r => [r.id, r.shop_qty]));
 
-			// Create a map of recipe_id -> shop_qty for efficient lookup
-			const shopQtyMap = new Map(recipes.map(r => [r.id, r.shop_qty]));
-
-			// Build values array with shop_qty from recipes
-			const values = recipeIds.map(id => [week, year, id, household_id, shopQtyMap.get(id) || 2]);
+			// Build values array using provided shop_qty or default from recipes table
+			const values = recipes.map(r => [week, year, r.id, household_id, r.shop_qty ?? defaultShopQtyMap.get(r.id) ?? 2]);
 			const insertPlaceholders = values.map(() => '(?, ?, ?, ?, ?)').join(', ');
 			const flatValues = values.flat();
 

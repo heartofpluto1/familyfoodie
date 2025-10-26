@@ -22,6 +22,7 @@ export interface RecipeManagementActions {
 	handleRemoveRecipe: (recipeToRemove: Recipe) => void;
 	handleAddRecipe: (recipe: Recipe) => void;
 	handleAddRandomRecipe: () => Promise<void>;
+	handleShopQtyChange: (recipeId: number, shopQty: 2 | 4) => Promise<void>;
 }
 
 export interface ApiResponse<T = unknown> {

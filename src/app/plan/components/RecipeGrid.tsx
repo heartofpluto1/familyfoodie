@@ -32,6 +32,8 @@ export function RecipeGrid({ recipes, allRecipes, isEditMode, isLoading, recipeA
 						triggerAnimation={animatingAutomate}
 						newRecipe={newRecipe}
 						openInNewTab={isEditMode}
+						shop_qty={recipe.shop_qty}
+						onShopQtyChange={recipeActions.handleShopQtyChange}
 					/>
 				);
 			})}
