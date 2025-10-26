@@ -795,6 +795,7 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 			r.description,
 			r.url_slug,
 			r.household_id,
+			r.shop_qty,
 			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
@@ -825,7 +826,7 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 		params.push(collectionId);
 	}
 
-	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name, pt.name, st.name
+	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, r.shop_qty, cr.collection_id, c.title, c.url_slug, s.name, pt.name, st.name
 		ORDER BY r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);
