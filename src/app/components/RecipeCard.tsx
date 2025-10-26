@@ -166,11 +166,17 @@ const RecipeCard = ({
 
 				{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
 
-				<div className="mt-auto">
+				<div className="mt-auto flex items-center justify-between">
 					{totalTime > 0 && (
 						<p className="text-sm text-muted flex items-center">
 							<TimeIcon />
 							{formatTime(totalTime)}
+						</p>
+					)}
+					{shouldDisplayShopQty && shop_qty && (
+						<p className="text-sm text-muted flex items-center">
+							<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
+							{shop_qty}p
 						</p>
 					)}
 				</div>
@@ -256,14 +262,6 @@ const RecipeCard = ({
 								<CheckCircleIcon className="w-6 h-6 text-blue-500" />
 							</div>
 						)}
-					</div>
-				)}
-
-				{/* Display shop_qty when not editing */}
-				{shouldDisplayShopQty && shop_qty && (
-					<div className="absolute bottom-2 right-2 flex items-center text-sm text-muted bg-surface px-2 py-1 rounded">
-						<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
-						{shop_qty}p
 					</div>
 				)}
 
