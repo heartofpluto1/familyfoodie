@@ -299,8 +299,73 @@ a,
 		background-color: #2e2e2e;
 		color: white;
 	}
-	
+
 	.btn-default:hover {
 		background-color: #404040;
 	}
+}
+
+/* Markdown styles for recipe descriptions */
+.recipe-description {
+	white-space: pre-wrap;
+	line-height: 1.6;
+}
+
+.recipe-description a {
+	color: #2563eb;
+	text-decoration: underline;
+	transition: color 0.15s ease;
+}
+
+.recipe-description a:hover {
+	color: #1d4ed8;
+}
+
+@media (prefers-color-scheme: dark) {
+	.recipe-description a {
+		color: #60a5fa;
+	}
+
+	.recipe-description a:hover {
+		color: #93c5fd;
+	}
+}
+
+.recipe-description ul,
+.recipe-description ol {
+	margin: 0.5rem 0;
+	padding-left: 1.5rem;
+}
+
+.recipe-description ul {
+	list-style-type: disc;
+}
+
+.recipe-description ol {
+	list-style-type: decimal;
+}
+
+.recipe-description li {
+	margin: 0.25rem 0;
+}
+
+.recipe-description strong {
+	font-weight: 600;
+	color: var(--foreground);
+}
+
+.recipe-description em {
+	font-style: italic;
+}
+
+.recipe-description p {
+	margin: 0.5rem 0;
+}
+
+.recipe-description p:first-child {
+	margin-top: 0;
+}
+
+.recipe-description p:last-child {
+	margin-bottom: 0;
 }
