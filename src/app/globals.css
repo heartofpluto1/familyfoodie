@@ -333,7 +333,7 @@ a,
 
 .recipe-description ul,
 .recipe-description ol {
-	margin: 0.5rem 0;
+	margin: -2rem 0;
 	padding-left: 1.5rem;
 }
 
@@ -345,10 +345,6 @@ a,
 	list-style-type: decimal;
 }
 
-.recipe-description li {
-	margin: 0.25rem 0;
-}
-
 .recipe-description strong {
 	font-weight: 600;
 	color: var(--foreground);
@@ -356,10 +352,6 @@ a,
 
 .recipe-description em {
 	font-style: italic;
-}
-
-.recipe-description p {
-	margin: 0.5rem 0;
 }
 
 .recipe-description p:first-child {
