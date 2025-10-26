@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db.js';
-import { ResultSetHeader } from 'mysql2';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { requireAuth } from '@/lib/auth/helpers';
 import { cascadeCopyWithContext } from '@/lib/copy-on-write';
 import { validateRecipeInCollection, canEditResource } from '@/lib/permissions';
@@ -158,6 +158,24 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 			return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
 		}
 
+		// Fetch the type names to return consistent data structure with initial load
+		const [typeRows] = (await pool.execute(
+			`SELECT
+				s.name as seasonName,
+				pt.name as primaryTypeName,
+				st.name as secondaryTypeName
+			FROM recipes r
+			LEFT JOIN seasons s ON r.season_id = s.id
+			LEFT JOIN type_proteins pt ON r.primaryType_id = pt.id
+			LEFT JOIN type_carbs st ON r.secondaryType_id = st.id
+			WHERE r.id = ?`,
+			[actualRecipeId]
+		)) as [RowDataPacket[], unknown];
+
+		const seasonName = typeRows[0]?.seasonName ?? null;
+		const primaryTypeName = typeRows[0]?.primaryTypeName ?? null;
+		const secondaryTypeName = typeRows[0]?.secondaryTypeName ?? null;
+
 		// Check if the user requested a collection move (comparing the original request, not actual IDs after copy-on-write)
 		const isMovingCollections = currentCollectionId !== newCollectionId;
 		let recipeMoved = false;
@@ -213,9 +231,9 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 			description: safeDescription,
 			prepTime: safePrepTime,
 			cookTime: safeCookTime,
-			seasonId: safeSeasonId,
-			primaryTypeId: safePrimaryTypeId,
-			secondaryTypeId: safeSecondaryTypeId,
+			seasonName,
+			primaryTypeName,
+			secondaryTypeName,
 		};
 
 		return NextResponse.json(response);

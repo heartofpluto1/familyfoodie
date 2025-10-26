@@ -67,9 +67,14 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([
-				{ affectedRows: 1 }, // Successful update
-			]);
+			mockExecute
+				.mockResolvedValueOnce([
+					{ affectedRows: 1 }, // Successful update
+				])
+				.mockResolvedValueOnce([
+					[{ seasonName: 'Summer', primaryTypeName: 'Chicken', secondaryTypeName: 'Rice' }],
+					[], // fields metadata
+				]);
 
 			await testApiHandler({
 				appHandler,
@@ -102,9 +107,9 @@ describe('/api/recipe/update-details', () => {
 						description: 'Updated detailed description',
 						prepTime: 20,
 						cookTime: 45,
-						seasonId: 3,
-						primaryTypeId: 4,
-						secondaryTypeId: 5,
+						seasonName: 'Summer',
+						primaryTypeName: 'Chicken',
+						secondaryTypeName: 'Rice',
 					});
 
 					// Verify database call with all parameters
@@ -127,7 +132,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -154,9 +161,9 @@ describe('/api/recipe/update-details', () => {
 						description: null,
 						prepTime: null,
 						cookTime: null,
-						seasonId: null,
-						primaryTypeId: null,
-						secondaryTypeId: null,
+						seasonName: null,
+						primaryTypeName: null,
+						secondaryTypeName: null,
 					});
 
 					// Verify optional fields are passed as null
@@ -190,7 +197,9 @@ describe('/api/recipe/update-details', () => {
 				newCollectionSlug: 'copied-collection',
 			});
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -221,9 +230,9 @@ describe('/api/recipe/update-details', () => {
 						description: 'Copied description',
 						prepTime: null,
 						cookTime: null,
-						seasonId: null,
-						primaryTypeId: null,
-						secondaryTypeId: null,
+						seasonName: null,
+						primaryTypeName: null,
+						secondaryTypeName: null,
 					});
 
 					// Verify copy-on-write was called
@@ -253,7 +262,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -282,9 +293,9 @@ describe('/api/recipe/update-details', () => {
 						description: null,
 						prepTime: null,
 						cookTime: null,
-						seasonId: null,
-						primaryTypeId: null,
-						secondaryTypeId: null,
+						seasonName: null,
+						primaryTypeName: null,
+						secondaryTypeName: null,
 					});
 
 					// Verify zero values are converted to null in database call
@@ -491,7 +502,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -622,7 +635,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -725,7 +740,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -760,7 +777,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -792,7 +811,9 @@ describe('/api/recipe/update-details', () => {
 			mockValidateRecipeInCollection.mockResolvedValueOnce(true);
 			mockCanEditResource.mockResolvedValueOnce(true); // User owns the recipe
 
-			mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+			mockExecute
+				.mockResolvedValueOnce([{ affectedRows: 1 }])
+				.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 			await testApiHandler({
 				appHandler,
@@ -808,9 +829,9 @@ describe('/api/recipe/update-details', () => {
 							description: 'Description',
 							prepTime: null,
 							cookTime: null,
-							seasonId: null,
-							primaryTypeId: null,
-							secondaryTypeId: null,
+							seasonName: null,
+							primaryTypeName: null,
+							secondaryTypeName: null,
 							currentCollectionId: 1,
 							newCollectionId: 1,
 						}),
@@ -950,7 +971,9 @@ describe('/api/recipe/update-details', () => {
 				mockCanEditResource.mockResolvedValueOnce(true);
 
 				// Recipe update succeeds
-				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+				mockExecute
+					.mockResolvedValueOnce([{ affectedRows: 1 }])
+					.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]);
 
 				await testApiHandler({
 					appHandler,
@@ -975,7 +998,7 @@ describe('/api/recipe/update-details', () => {
 						expect(data.recipeMoved).toBeUndefined();
 
 						// Verify no DELETE/INSERT for collection move
-						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).toHaveBeenCalledTimes(2); // UPDATE + type names query
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 					},
 				});
@@ -991,6 +1014,7 @@ describe('/api/recipe/update-details', () => {
 				// Recipe update succeeds
 				mockExecute
 					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE
+					.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]) // Type names query
 					.mockResolvedValueOnce([{ affectedRows: 1 }]) // DELETE from old collection
 					.mockResolvedValueOnce([{ affectedRows: 1 }]) // INSERT to new collection
 					.mockResolvedValueOnce([[{ url_slug: 'new-collection' }], []]); // SELECT collection slug
@@ -1051,6 +1075,7 @@ describe('/api/recipe/update-details', () => {
 				// Recipe update and move succeed
 				mockExecute
 					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE copied recipe
+					.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]) // Type names query
 					.mockResolvedValueOnce([{ affectedRows: 1 }]) // DELETE from old collection
 					.mockResolvedValueOnce([{ affectedRows: 1 }]) // INSERT to new collection
 					.mockResolvedValueOnce([[{ url_slug: 'target-collection' }], []]); // SELECT collection slug
@@ -1110,7 +1135,9 @@ describe('/api/recipe/update-details', () => {
 					.mockResolvedValueOnce(false); // NO access to new collection
 
 				// Recipe update succeeds, but no move operations
-				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE only
+				mockExecute
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE only
+					.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]); // Type names query
 
 				await testApiHandler({
 					appHandler,
@@ -1144,7 +1171,7 @@ describe('/api/recipe/update-details', () => {
 						);
 
 						// Verify no DELETE/INSERT operations
-						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).toHaveBeenCalledTimes(2); // UPDATE + type names query
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
 					},
@@ -1168,7 +1195,9 @@ describe('/api/recipe/update-details', () => {
 				});
 
 				// Only UPDATE should happen, no move operations
-				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE only
+				mockExecute
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE only
+					.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]); // Type names query
 
 				await testApiHandler({
 					appHandler,
@@ -1204,7 +1233,7 @@ describe('/api/recipe/update-details', () => {
 						);
 
 						// Verify no DELETE/INSERT operations (no move attempted)
-						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).toHaveBeenCalledTimes(2); // UPDATE + type names query
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
 					},
@@ -1230,7 +1259,9 @@ describe('/api/recipe/update-details', () => {
 				});
 
 				// Only UPDATE should happen, move is skipped
-				mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE only
+				mockExecute
+					.mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE only
+					.mockResolvedValueOnce([[{ seasonName: null, primaryTypeName: null, secondaryTypeName: null }]]); // Type names query
 
 				await testApiHandler({
 					appHandler,
@@ -1274,7 +1305,7 @@ describe('/api/recipe/update-details', () => {
 						);
 
 						// Verify no DELETE/INSERT operations (move was denied)
-						expect(mockExecute).toHaveBeenCalledTimes(1); // Only UPDATE
+						expect(mockExecute).toHaveBeenCalledTimes(2); // UPDATE + type names query
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM collection_recipes'), expect.any(Array));
 						expect(mockExecute).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO collection_recipes'), expect.any(Array));
 					},

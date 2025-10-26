@@ -3,6 +3,9 @@
 import { RecipeDetail } from '@/types/menus';
 import { TimeIcon, DownloadIcon } from '@/app/components/Icons';
 import { getRecipePdfUrl } from '@/lib/utils/secureFilename';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import styles from './RecipeView.module.css';
 
 interface RecipeViewProps {
 	recipe: RecipeDetail;
@@ -72,8 +75,8 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 
 			{/* Description */}
 			{recipe.description && (
-				<div className="mb-6">
-					<p className="text-foreground whitespace-pre-wrap">{recipe.description}</p>
+				<div className={`mb-6 ${styles.recipeDescription} text-foreground`}>
+					<ReactMarkdown remarkPlugins={[remarkGfm]}>{recipe.description}</ReactMarkdown>
 				</div>
 			)}
 		</>
