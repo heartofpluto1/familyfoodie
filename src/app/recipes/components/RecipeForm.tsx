@@ -56,10 +56,13 @@ const RecipeForm = ({ formData, onChange, options, collections, isNewRecipe = fa
 				<textarea
 					value={formData.description}
 					onChange={e => handleFieldChange('description', e.target.value)}
-					rows={4}
+					rows={8}
 					className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent dark:focus:ring-blue-500"
 					placeholder={isNewRecipe ? 'Enter recipe description' : undefined}
 				/>
+				<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+					Markdown supported: **bold**, *italic*, [link text](url), - bullet list, 1. numbered list
+				</p>
 			</div>
 
 			{/* Times */}
