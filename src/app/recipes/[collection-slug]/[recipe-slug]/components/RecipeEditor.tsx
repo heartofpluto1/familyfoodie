@@ -81,6 +81,7 @@ const RecipeEditor = ({ recipe, collections, isOwned }: RecipeEditorProps) => {
 		seasonId: undefined,
 		primaryTypeId: undefined,
 		secondaryTypeId: undefined,
+		shop_qty: recipe?.shop_qty,
 		collectionId: recipe?.collection_id,
 	});
 
@@ -139,6 +140,7 @@ const RecipeEditor = ({ recipe, collections, isOwned }: RecipeEditorProps) => {
 			seasonId: undefined,
 			primaryTypeId: undefined,
 			secondaryTypeId: undefined,
+			shop_qty: recipe?.shop_qty,
 			collectionId: recipe?.collection_id,
 		});
 

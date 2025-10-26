@@ -59,19 +59,27 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 				</a>
 			</div>
 
-			{/* Timing */}
-			{totalTime > 0 && (
-				<div className="flex items-center text-muted text-sm py-3">
-					<TimeIcon className="w-5 h-5 mr-2" />
-					{recipe.prepTime && recipe.cookTime ? (
-						<span>
-							Prep: {formatTime(recipe.prepTime)} • Cook: {formatTime(recipe.cookTime)} • Total: {formatTime(totalTime)}
-						</span>
-					) : (
-						<span>Total Time: {formatTime(totalTime)}</span>
-					)}
-				</div>
-			)}
+			{/* Timing and Shop Quantity */}
+			<div className="flex flex-col gap-2 py-3">
+				{totalTime > 0 && (
+					<div className="flex items-center text-muted text-sm">
+						<TimeIcon className="w-5 h-5 mr-2" />
+						{recipe.prepTime && recipe.cookTime ? (
+							<span>
+								Prep: {formatTime(recipe.prepTime)} • Cook: {formatTime(recipe.cookTime)} • Total: {formatTime(totalTime)}
+							</span>
+						) : (
+							<span>Total Time: {formatTime(totalTime)}</span>
+						)}
+					</div>
+				)}
+				{recipe.shop_qty && (
+					<div className="flex items-center text-muted text-sm">
+						<span className="w-5 h-5 mr-2 flex items-center justify-center text-xs font-semibold">🛒</span>
+						<span>Default Shop Qty: {recipe.shop_qty}p</span>
+					</div>
+				)}
+			</div>
 
 			{/* Description */}
 			{recipe.description && (
