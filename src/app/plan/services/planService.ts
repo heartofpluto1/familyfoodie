@@ -14,10 +14,10 @@ class PlanService {
 		return { success: response.ok, ...data };
 	}
 
-	async saveWeekPlan(week: number, year: number, recipeIds: number[]): Promise<ApiResponse> {
+	async saveWeekPlan(week: number, year: number, recipes: Array<{ id: number; shop_qty?: 2 | 4 }>): Promise<ApiResponse> {
 		return this.makeRequest('/api/plan/save', {
 			method: 'POST',
-			body: JSON.stringify({ week, year, recipeIds }),
+			body: JSON.stringify({ week, year, recipes }),
 		});
 	}
 

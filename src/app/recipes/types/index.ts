@@ -8,6 +8,7 @@ export interface RecipeFormData {
 	seasonId?: number;
 	primaryTypeId?: number;
 	secondaryTypeId?: number;
+	shop_qty?: 2 | 4;
 	collectionId?: number;
 }
 

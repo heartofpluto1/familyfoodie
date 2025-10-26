@@ -14,6 +14,7 @@ interface UpdateRecipeDetailsRequest {
 	seasonId?: number | null;
 	primaryTypeId?: number | null;
 	secondaryTypeId?: number | null;
+	shop_qty?: 2 | 4;
 	currentCollectionId: number;
 	newCollectionId: number;
 }
@@ -40,7 +41,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
 	}
 
-	const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId, currentCollectionId, newCollectionId } = body;
+	const { id, name, description, prepTime, cookTime, seasonId, primaryTypeId, secondaryTypeId, shop_qty, currentCollectionId, newCollectionId } = body;
 
 	// Validate required fields
 	if (id === undefined || id === null || !currentCollectionId || !newCollectionId) {
@@ -109,6 +110,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		}
 	}
 
+	// Validate shop_qty
+	if (shop_qty !== undefined && shop_qty !== null) {
+		if (shop_qty !== 2 && shop_qty !== 4) {
+			return NextResponse.json({ error: 'Shop quantity must be either 2 or 4' }, { status: 400 });
+		}
+	}
+
 	// Convert undefined values to null for database, also convert zero times to null for backward compatibility
 	const safeDescription = description === undefined ? null : description;
 	const safePrepTime = prepTime === undefined || prepTime === 0 ? null : prepTime;
@@ -116,6 +124,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 	const safeSeasonId = seasonId === undefined ? null : seasonId;
 	const safePrimaryTypeId = primaryTypeId === undefined ? null : primaryTypeId;
 	const safeSecondaryTypeId = secondaryTypeId === undefined ? null : secondaryTypeId;
+	const safeShopQty = shop_qty === undefined ? 2 : shop_qty; // Default to 2 if not provided
 
 	try {
 		// Validate that the recipe belongs to the current collection and household has access
@@ -148,10 +157,10 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 		// Update the recipe details (using the potentially new recipe ID after copy-on-write)
 
 		const [result] = await pool.execute<ResultSetHeader>(
-			`UPDATE recipes 
-			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?
+			`UPDATE recipes
+			 SET name = ?, description = ?, prepTime = ?, cookTime = ?, season_id = ?, primaryType_id = ?, secondaryType_id = ?, shop_qty = ?
 			 WHERE id = ?`,
-			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, actualRecipeId]
+			[trimmedName, safeDescription, safePrepTime, safeCookTime, safeSeasonId, safePrimaryTypeId, safeSecondaryTypeId, safeShopQty, actualRecipeId]
 		);
 
 		if (result.affectedRows === 0) {
@@ -231,6 +240,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 			description: safeDescription,
 			prepTime: safePrepTime,
 			cookTime: safeCookTime,
+			shop_qty: safeShopQty,
 			seasonName,
 			primaryTypeName,
 			secondaryTypeName,

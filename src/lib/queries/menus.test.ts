@@ -505,7 +505,20 @@ describe('Household-Aware Recipe Queries', () => {
 			beforeEach(() => {
 				mockConnection = {
 					beginTransaction: jest.fn().mockResolvedValue(undefined),
-					execute: jest.fn().mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]),
+					execute: jest
+						.fn()
+						.mockResolvedValueOnce([{ affectedRows: 1 } as ResultSetHeader, []]) // DELETE
+						.mockResolvedValueOnce([
+							[
+								{ id: 1, shop_qty: 2 },
+								{ id: 2, shop_qty: 2 },
+								{ id: 3, shop_qty: 2 },
+								{ id: 4, shop_qty: 2 },
+								{ id: 5, shop_qty: 2 },
+							],
+							[],
+						]) // SELECT recipes with shop_qty
+						.mockResolvedValue([{ affectedRows: 1 } as ResultSetHeader, []]), // INSERT
 					commit: jest.fn().mockResolvedValue(undefined),
 					rollback: jest.fn().mockResolvedValue(undefined),
 					release: jest.fn().mockResolvedValue(undefined),
@@ -514,13 +527,13 @@ describe('Household-Aware Recipe Queries', () => {
 			});
 
 			it('should delete existing plans only for specified household', async () => {
-				await saveWeekRecipes(45, 2024, [1, 2, 3], 1);
+				await saveWeekRecipes(45, 2024, [{ id: 1 }, { id: 2 }, { id: 3 }], 1);
 
 				expect(mockConnection.execute).toHaveBeenCalledWith('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [45, 2024, 1]);
 			});
 
 			it('should insert new plans with household_id', async () => {
-				await saveWeekRecipes(46, 2024, [4, 5], 2);
+				await saveWeekRecipes(46, 2024, [{ id: 4 }, { id: 5 }], 2);
 
 				// Should delete with household filter
 				expect(mockConnection.execute).toHaveBeenCalledWith(
@@ -528,19 +541,22 @@ describe('Household-Aware Recipe Queries', () => {
 					[46, 2024, 2]
 				);
 
-				// Should insert with household_id included
+				// Should insert with household_id and shop_qty included
 				expect(mockConnection.execute).toHaveBeenCalledWith(
-					expect.stringContaining('INSERT INTO plans (week, year, recipe_id, household_id) VALUES'),
-					[46, 2024, 4, 2, 46, 2024, 5, 2]
+					expect.stringContaining('INSERT INTO plans (week, year, recipe_id, household_id, shop_qty) VALUES'),
+					[46, 2024, 4, 2, 2, 46, 2024, 5, 2, 2]
 				);
 			});
 
 			it('should isolate save operations by household_id', async () => {
-				await saveWeekRecipes(47, 2024, [6], 3);
+				await saveWeekRecipes(47, 2024, [{ id: 6 }], 3);
 
 				// Verify household isolation in both DELETE and INSERT
 				expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('household_id = ?'), expect.arrayContaining([3]));
-				expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringContaining('household_id) VALUES'), expect.arrayContaining([47, 2024, 6, 3]));
+				expect(mockConnection.execute).toHaveBeenCalledWith(
+					expect.stringContaining('household_id, shop_qty) VALUES'),
+					expect.arrayContaining([47, 2024, 6, 3, 2])
+				);
 			});
 
 			it('should handle empty recipe list with household isolation', async () => {

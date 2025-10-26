@@ -54,11 +54,17 @@ export function useRecipeManagement({ recipes, setRecipes, setLoading, allRecipe
 		}
 	};
 
+	const handleShopQtyChange = async (recipeId: number, shopQty: 2 | 4): Promise<void> => {
+		// Update local state - will be saved when user clicks "Save Plan"
+		setRecipes(recipes.map(r => (r.id === recipeId ? { ...r, shop_qty: shopQty } : r)));
+	};
+
 	return {
 		handleSwapRecipe,
 		commitSwapRecipe,
 		handleRemoveRecipe,
 		handleAddRecipe,
 		handleAddRandomRecipe,
+		handleShopQtyChange,
 	};
 }

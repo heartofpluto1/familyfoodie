@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
-import { SwapIcon, RemoveIcon, TimeIcon, CheckCircleIcon } from './Icons';
+import { SwapIcon, RemoveIcon, TimeIcon, CheckCircleIcon, IntroShoppingCartIcon } from './Icons';
 import React, { useState } from 'react';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
@@ -18,6 +18,9 @@ interface RecipeCardProps {
 	isSelected?: boolean;
 	onToggleSelection?: (recipeId: number) => void;
 	openInNewTab?: boolean;
+	shop_qty?: 2 | 4;
+	onShopQtyChange?: (recipeId: number, shopQty: 2 | 4) => void;
+	shouldDisplayShopQty?: boolean;
 }
 
 const RecipeCard = ({
@@ -33,6 +36,9 @@ const RecipeCard = ({
 	isSelected = false,
 	onToggleSelection,
 	openInNewTab = false,
+	shop_qty,
+	onShopQtyChange,
+	shouldDisplayShopQty = false,
 }: RecipeCardProps) => {
 	const [displayRecipe, setDisplayRecipe] = useState(recipe);
 	const [isFlipping, setIsFlipping] = useState(false);
@@ -160,11 +166,17 @@ const RecipeCard = ({
 
 				{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
 
-				<div className="mt-auto">
+				<div className="mt-auto flex items-center justify-between">
 					{totalTime > 0 && (
 						<p className="text-sm text-muted flex items-center">
 							<TimeIcon />
 							{formatTime(totalTime)}
+						</p>
+					)}
+					{shouldDisplayShopQty && shop_qty && (
+						<p className="text-sm text-muted flex items-center">
+							<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
+							{shop_qty}p
 						</p>
 					)}
 				</div>
@@ -224,11 +236,17 @@ const RecipeCard = ({
 
 								{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
 
-								<div className="mt-auto">
+								<div className="mt-auto flex items-center justify-between">
 									{totalTime > 0 && (
 										<p className="text-sm text-muted flex items-center">
 											<TimeIcon />
 											{formatTime(totalTime)}
+										</p>
+									)}
+									{shouldDisplayShopQty && shop_qty && (
+										<p className="text-sm text-muted flex items-center">
+											<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
+											{shop_qty}p
 										</p>
 									)}
 								</div>
@@ -280,6 +298,23 @@ const RecipeCard = ({
 								}}
 							>
 								<RemoveIcon />
+							</button>
+						)}
+						{onShopQtyChange && shop_qty && (
+							<button
+								onClick={e => {
+									e.stopPropagation();
+									const newQty = shop_qty === 2 ? 4 : 2;
+									onShopQtyChange(recipe.id, newQty as 2 | 4);
+								}}
+								className={`absolute bottom-2 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all text-xs font-semibold ${showNewContent ? 'left-2' : 'right-2'}`}
+								title="Shop quantity"
+								style={{
+									transform: showNewContent ? 'scaleX(-1)' : 'none',
+									transition: 'none',
+								}}
+							>
+								{shop_qty}p
 							</button>
 						)}
 					</>

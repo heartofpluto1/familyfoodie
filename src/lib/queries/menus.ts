@@ -171,6 +171,7 @@ interface RecipeDetailRow {
 	description: string;
 	prepTime?: number;
 	cookTime?: number;
+	shop_qty?: number;
 	url_slug?: string;
 	collection_id: number;
 	collection_title: string;
@@ -230,10 +231,11 @@ export async function getCurrentWeekRecipes(household_id: number): Promise<Recip
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			(SELECT c.url_slug 
-			 FROM collection_recipes cr 
-			 INNER JOIN collections c ON cr.collection_id = c.id 
-			 WHERE cr.recipe_id = r.id 
+			rw.shop_qty,
+			(SELECT c.url_slug
+			 FROM collection_recipes cr
+			 INNER JOIN collections c ON cr.collection_id = c.id
+			 WHERE cr.recipe_id = r.id
 			 LIMIT 1) as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
@@ -261,10 +263,11 @@ export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]
 			r.cookTime,
 			r.description,
 			r.url_slug,
-			(SELECT c.url_slug 
-			 FROM collection_recipes cr 
-			 INNER JOIN collections c ON cr.collection_id = c.id 
-			 WHERE cr.recipe_id = r.id 
+			rw.shop_qty,
+			(SELECT c.url_slug
+			 FROM collection_recipes cr
+			 INNER JOIN collections c ON cr.collection_id = c.id
+			 WHERE cr.recipe_id = r.id
 			 LIMIT 1) as collection_url_slug
 		FROM plans rw
 		JOIN recipes r ON rw.recipe_id = r.id
@@ -278,8 +281,9 @@ export async function getNextWeekRecipes(household_id: number): Promise<Recipe[]
 
 /**
  * Save recipes for a specific week
+ * Copies shop_qty from recipes at time of saving to maintain immutable plan history
  */
-export async function saveWeekRecipes(week: number, year: number, recipeIds: number[], household_id: number): Promise<void> {
+export async function saveWeekRecipes(week: number, year: number, recipes: Array<{ id: number; shop_qty?: 2 | 4 }>, household_id: number): Promise<void> {
 	const connection = await pool.getConnection();
 
 	try {
@@ -288,13 +292,21 @@ export async function saveWeekRecipes(week: number, year: number, recipeIds: num
 		// Delete existing recipes for the week and household
 		await connection.execute('DELETE FROM plans WHERE week = ? AND year = ? AND household_id = ?', [week, year, household_id]);
 
-		// Insert new recipes with household_id
-		if (recipeIds.length > 0) {
-			const values = recipeIds.map(id => [week, year, id, household_id]);
-			const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
+		// Insert new recipes with household_id and shop_qty from the provided data
+		if (recipes.length > 0) {
+			// If shop_qty is not provided, fetch default from recipes table
+			const recipeIds = recipes.map(r => r.id);
+			const placeholders = recipeIds.map(() => '?').join(', ');
+			const [recipeRows] = await connection.execute(`SELECT id, shop_qty FROM recipes WHERE id IN (${placeholders})`, recipeIds);
+			const defaultShopQtys = recipeRows as Array<{ id: number; shop_qty: number }>;
+			const defaultShopQtyMap = new Map(defaultShopQtys.map(r => [r.id, r.shop_qty]));
+
+			// Build values array using provided shop_qty or default from recipes table
+			const values = recipes.map(r => [week, year, r.id, household_id, r.shop_qty ?? defaultShopQtyMap.get(r.id) ?? 2]);
+			const insertPlaceholders = values.map(() => '(?, ?, ?, ?, ?)').join(', ');
 			const flatValues = values.flat();
 
-			await connection.execute(`INSERT INTO plans (week, year, recipe_id, household_id) VALUES ${placeholders}`, flatValues);
+			await connection.execute(`INSERT INTO plans (week, year, recipe_id, household_id, shop_qty) VALUES ${insertPlaceholders}`, flatValues);
 		}
 
 		await connection.commit();
@@ -323,6 +335,10 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 				ri.id as recipeIngredient_id,
 				ri.recipe_id,
 				ri.ingredient_id,
+				CASE
+					WHEN rw.shop_qty = 4 THEN ri.quantity4
+					ELSE ri.quantity
+				END as selected_quantity,
 				ri.quantity,
 				ri.quantity4,
 				ri.quantityMeasure_id,
@@ -364,14 +380,13 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
 				ingredient.recipe_id, // NEW: recipe reference
-				ingredient.quantity, // NEW: denormalized quantity
-				ingredient.quantity4, // NEW: denormalized quantity4
-				ingredient.measure_name, // NEW: denormalized measurement name
+				ingredient.selected_quantity, // Selected quantity based on shop_qty
+				ingredient.measure_name, // Denormalized measurement name
 			]);
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, measurement) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
@@ -396,8 +411,10 @@ interface ShoppingIngredientRow {
 	recipeIngredient_id: number;
 	recipe_id: number;
 	ingredient_id: number;
+	selected_quantity: string; // The correct quantity based on shop_qty (either quantity or quantity4)
 	quantity: string;
 	quantity4: string;
+	default_shop_quantity: number; // The shop_qty from plans (2 or 4) at time of list generation
 	quantityMeasure_id: number | null;
 	ingredient_name: string;
 	pantryCategory_id: number | null;
@@ -426,8 +443,13 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 				ri.id as recipeIngredient_id,
 				ri.recipe_id,
 				ri.ingredient_id,
+				CASE
+					WHEN rw.shop_qty = 4 THEN ri.quantity4
+					ELSE ri.quantity
+				END as selected_quantity,
 				ri.quantity,
 				ri.quantity4,
+				rw.shop_qty as default_shop_quantity,
 				ri.quantityMeasure_id,
 				i.name as ingredient_name,
 				i.pantryCategory_id,
@@ -468,16 +490,15 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
 				ingredient.recipe_id, // NEW: recipe reference
-				ingredient.quantity, // NEW: denormalized quantity
-				ingredient.quantity4, // NEW: denormalized quantity4
-				ingredient.measure_name, // NEW: denormalized measurement name
+				ingredient.selected_quantity, // Selected quantity based on shop_qty
+				ingredient.measure_name, // Denormalized measurement name
 			]);
 
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, measurement) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
@@ -496,7 +517,7 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
  */
 export async function getRecipeDetails(id: string): Promise<RecipeDetail | null> {
 	const query = `
-		SELECT 
+		SELECT
 			r.id,
 			r.name,
 			r.image_filename,
@@ -505,6 +526,7 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 			r.prepTime,
 			r.cookTime,
 			r.url_slug,
+			r.shop_qty,
 			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
@@ -532,7 +554,7 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		LEFT JOIN category_pantry pc ON i.pantryCategory_id = pc.id
 		LEFT JOIN preparations p ON ri.preperation_id = p.id
 		LEFT JOIN measurements m ON ri.quantityMeasure_id = m.id
-		WHERE r.id = ? AND r.archived = 0 
+		WHERE r.id = ? AND r.archived = 0
 		ORDER BY pc.id ASC, i.name ASC
 	`;
 
@@ -586,6 +608,7 @@ export async function getRecipeDetails(id: string): Promise<RecipeDetail | null>
 		description: recipe.description || '',
 		prepTime: recipe.prepTime,
 		cookTime: recipe.cookTime,
+		shop_qty: recipe.shop_qty as 2 | 4 | undefined,
 		url_slug: recipe.url_slug || `${recipe.id}-fallback`,
 		collection_id: recipe.collection_id,
 		collection_title: recipe.collection_title,
@@ -631,10 +654,11 @@ export async function getAllPlannedWeeks(household_id: number): Promise<Array<{ 
 					r.cookTime,
 					r.description,
 					r.url_slug,
-					(SELECT c.url_slug 
-					 FROM collection_recipes cr 
-					 INNER JOIN collections c ON cr.collection_id = c.id 
-					 WHERE cr.recipe_id = r.id 
+					rw.shop_qty,
+					(SELECT c.url_slug
+					 FROM collection_recipes cr
+					 INNER JOIN collections c ON cr.collection_id = c.id
+					 WHERE cr.recipe_id = r.id
 					 LIMIT 1) as collection_url_slug
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id
@@ -774,6 +798,7 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 			r.description,
 			r.url_slug,
 			r.household_id,
+			r.shop_qty,
 			cr.collection_id,
 			c.title as collection_title,
 			c.url_slug as collection_url_slug,
@@ -804,7 +829,7 @@ export async function getAllRecipesWithDetailsHousehold(householdId: number, col
 		params.push(collectionId);
 	}
 
-	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, cr.collection_id, c.title, c.url_slug, s.name, pt.name, st.name
+	query += ` GROUP BY r.id, r.name, r.image_filename, r.pdf_filename, r.prepTime, r.cookTime, r.description, r.url_slug, r.household_id, r.shop_qty, cr.collection_id, c.title, c.url_slug, s.name, pt.name, st.name
 		ORDER BY r.name ASC`;
 
 	const [rows] = await pool.execute(query, params);
@@ -916,6 +941,7 @@ export async function getRecipeDetailsHousehold(id: string, householdId: number)
 		description: recipe.description,
 		prepTime: recipe.prepTime,
 		cookTime: recipe.cookTime,
+		shop_qty: recipe.shop_qty as 2 | 4 | undefined,
 		url_slug: recipe.url_slug || `${recipe.id}-fallback`,
 		collection_id: recipe.collection_id,
 		collection_title: recipe.collection_title,

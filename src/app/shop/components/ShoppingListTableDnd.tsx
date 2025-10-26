@@ -24,7 +24,7 @@ export function ShoppingListTableDnd({ items, onTogglePurchase, onRemoveItem, ov
 				<thead>
 					<tr className="border-b border-light">
 						<th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">Ingredients</th>
-						<th className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-30 sm:w-30">2p</th>
+						<th className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-30 sm:w-30">Qty</th>
 						<th className="px-0 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium w-16 sm:w-16">Price</th>
 						<th className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-16"></th>
 					</tr>
