@@ -80,7 +80,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 			// Verify INSERT includes household_id and denormalized fields
 			expect(mockConnection.execute).toHaveBeenCalledWith(
 				expect.stringContaining(
-					'INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement)'
+					'INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, measurement)'
 				),
 				expect.any(Array)
 			);
@@ -236,6 +236,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 				recipeIngredient_id: 1,
 				recipe_id: 789,
 				ingredient_id: 101,
+				selected_quantity: '3', // Selected based on shop_qty (2p in this case)
 				quantity: '3',
 				quantity4: '6',
 				quantityMeasure_id: 1,
@@ -260,8 +261,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 
 			// Verify denormalized data is included
 			expect(insertValues).toContain(789); // recipe_id
-			expect(insertValues).toContain('3'); // quantity
-			expect(insertValues).toContain('6'); // quantity4
+			expect(insertValues).toContain('3'); // selected_quantity (no longer stores both)
 			expect(insertValues).toContain('cups'); // measurement
 
 			// These values should be stored directly, not referenced via FK
