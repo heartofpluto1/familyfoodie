@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Recipe } from '@/types/menus';
-import { SwapIcon, RemoveIcon, TimeIcon, CheckCircleIcon } from './Icons';
+import { SwapIcon, RemoveIcon, TimeIcon, CheckCircleIcon, IntroShoppingCartIcon } from './Icons';
 import React, { useState } from 'react';
 import { getRecipeImageUrl } from '@/lib/utils/secureFilename';
 import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
@@ -20,6 +20,7 @@ interface RecipeCardProps {
 	openInNewTab?: boolean;
 	shop_qty?: 2 | 4;
 	onShopQtyChange?: (recipeId: number, shopQty: 2 | 4) => void;
+	shouldDisplayShopQty?: boolean;
 }
 
 const RecipeCard = ({
@@ -37,6 +38,7 @@ const RecipeCard = ({
 	openInNewTab = false,
 	shop_qty,
 	onShopQtyChange,
+	shouldDisplayShopQty = false,
 }: RecipeCardProps) => {
 	const [displayRecipe, setDisplayRecipe] = useState(recipe);
 	const [isFlipping, setIsFlipping] = useState(false);
@@ -254,6 +256,14 @@ const RecipeCard = ({
 								<CheckCircleIcon className="w-6 h-6 text-blue-500" />
 							</div>
 						)}
+					</div>
+				)}
+
+				{/* Display shop_qty when not editing */}
+				{shouldDisplayShopQty && shop_qty && (
+					<div className="absolute bottom-2 right-2 flex items-center text-sm text-muted bg-surface px-2 py-1 rounded">
+						<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
+						{shop_qty}p
 					</div>
 				)}
 
