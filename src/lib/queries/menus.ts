@@ -651,10 +651,11 @@ export async function getAllPlannedWeeks(household_id: number): Promise<Array<{ 
 					r.cookTime,
 					r.description,
 					r.url_slug,
-					(SELECT c.url_slug 
-					 FROM collection_recipes cr 
-					 INNER JOIN collections c ON cr.collection_id = c.id 
-					 WHERE cr.recipe_id = r.id 
+					rw.shop_qty,
+					(SELECT c.url_slug
+					 FROM collection_recipes cr
+					 INNER JOIN collections c ON cr.collection_id = c.id
+					 WHERE cr.recipe_id = r.id
 					 LIMIT 1) as collection_url_slug
 				FROM plans rw
 				JOIN recipes r ON rw.recipe_id = r.id
