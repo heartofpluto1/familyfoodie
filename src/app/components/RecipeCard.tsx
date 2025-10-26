@@ -18,6 +18,8 @@ interface RecipeCardProps {
 	isSelected?: boolean;
 	onToggleSelection?: (recipeId: number) => void;
 	openInNewTab?: boolean;
+	shop_qty?: 2 | 4;
+	onShopQtyChange?: (recipeId: number, shopQty: 2 | 4) => void;
 }
 
 const RecipeCard = ({
@@ -33,6 +35,8 @@ const RecipeCard = ({
 	isSelected = false,
 	onToggleSelection,
 	openInNewTab = false,
+	shop_qty,
+	onShopQtyChange,
 }: RecipeCardProps) => {
 	const [displayRecipe, setDisplayRecipe] = useState(recipe);
 	const [isFlipping, setIsFlipping] = useState(false);
@@ -281,6 +285,26 @@ const RecipeCard = ({
 							>
 								<RemoveIcon />
 							</button>
+						)}
+						{onShopQtyChange && shop_qty && (
+							<div
+								className={`absolute bottom-2 right-2 z-20`}
+								style={{
+									transform: showNewContent ? 'scaleX(-1)' : 'none',
+									transition: 'none',
+								}}
+							>
+								<select
+									value={shop_qty}
+									onChange={e => onShopQtyChange(recipe.id, parseInt(e.target.value) as 2 | 4)}
+									onClick={e => e.stopPropagation()}
+									className="px-2 py-1 text-sm bg-black bg-opacity-70 hover:bg-opacity-90 text-white border border-white border-opacity-30 rounded-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+									title="Shop quantity"
+								>
+									<option value="2">2p</option>
+									<option value="4">4p</option>
+								</select>
+							</div>
 						)}
 					</>
 				)}

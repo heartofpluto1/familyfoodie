@@ -32,6 +32,7 @@ interface ExtractedRecipe {
 	seasonId?: number; // For form data
 	primaryTypeId?: number; // For form data
 	secondaryTypeId?: number; // For form data
+	shop_qty?: 2 | 4; // For form data
 	collectionId?: number; // For form data
 }
 
@@ -372,8 +373,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 			const placeholderSlug = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 			const [recipeResult] = await connection.execute<ResultSetHeader>(
-				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, url_slug, archived, public, household_id) 
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1, ?)`,
+				`INSERT INTO recipes (name, description, prepTime, cookTime, season_id, primaryType_id, secondaryType_id, shop_qty, url_slug, archived, public, household_id)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, ?)`,
 				[
 					recipe.title,
 					recipe.description,
@@ -382,6 +383,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 					recipe.seasonId || null,
 					recipe.primaryTypeId || null,
 					recipe.secondaryTypeId || null,
+					recipe.shop_qty || 2,
 					placeholderSlug,
 					auth.household_id,
 				]

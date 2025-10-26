@@ -57,6 +57,7 @@ export interface Recipe {
 	household_id: number;
 	primaryTypeName?: string;
 	secondaryTypeName?: string;
+	shop_qty?: 2 | 4;
 }
 
 export interface RecipeDetail {
@@ -75,6 +76,7 @@ export interface RecipeDetail {
 	url_slug: string;
 	collection_url_slug: string;
 	ingredients: RecipeIngredient[];
+	shop_qty?: 2 | 4;
 }
 
 export interface RecipeIngredient {
