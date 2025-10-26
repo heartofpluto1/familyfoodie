@@ -205,6 +205,7 @@ const RecipeEditor = ({ recipe, collections, isOwned }: RecipeEditorProps) => {
 						description: recipeForm.description,
 						prepTime: recipeForm.prepTime,
 						cookTime: recipeForm.cookTime,
+						shop_qty: result.shop_qty,
 						seasonName: result.seasonName,
 						primaryTypeName: result.primaryTypeName,
 						secondaryTypeName: result.secondaryTypeName,
