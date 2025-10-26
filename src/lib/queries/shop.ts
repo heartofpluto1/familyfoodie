@@ -44,7 +44,6 @@ interface GroupedItem {
 	[key: string]: unknown;
 	ids: number[];
 	quantity: number;
-	quantity4: number;
 	sort: number;
 	purchased?: boolean;
 	name: string;
@@ -65,7 +64,6 @@ function groupShoppingListItems(items: Record<string, unknown>[]): ListItem[] {
 				...item,
 				ids: [item.id as number], // Store array of IDs instead of single ID
 				quantity: parseFloat((item.quantity as string) || '0'),
-				quantity4: parseFloat((item.quantity4 as string) || '0'),
 				sort: item.sort as number,
 				name: item.name as string,
 			} as GroupedItem;
@@ -73,7 +71,6 @@ function groupShoppingListItems(items: Record<string, unknown>[]): ListItem[] {
 			// Add to existing group
 			grouped[key].ids.push(item.id as number);
 			grouped[key].quantity += parseFloat((item.quantity as string) || '0');
-			grouped[key].quantity4 += parseFloat((item.quantity4 as string) || '0');
 
 			// If any item in the group is purchased, mark the group as purchased
 			if (item.purchased) {
@@ -93,7 +90,6 @@ function groupShoppingListItems(items: Record<string, unknown>[]): ListItem[] {
 		id: item.ids.length === 1 ? item.ids[0] : item.ids[0], // For backward compatibility, use first ID as main ID
 		ids: item.ids, // Include the full array of IDs
 		quantity: item.quantity ? item.quantity.toString() : undefined,
-		quantity4: item.quantity4 ? item.quantity4.toString() : undefined,
 		ingredient: item.name, // For backward compatibility
 		fresh: item.fresh, // Preserve fresh property from database
 	})) as ListItem[];

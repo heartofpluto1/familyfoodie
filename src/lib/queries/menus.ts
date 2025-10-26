@@ -380,14 +380,13 @@ export async function resetShoppingListFromRecipesHousehold(week: number, year: 
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
 				ingredient.recipe_id, // NEW: recipe reference
-				ingredient.quantity, // Denormalized 2p quantity
-				ingredient.quantity4, // Denormalized 4p quantity
+				ingredient.selected_quantity, // Selected quantity based on shop_qty
 				ingredient.measure_name, // Denormalized measurement name
 			]);
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, measurement) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
@@ -412,6 +411,7 @@ interface ShoppingIngredientRow {
 	recipeIngredient_id: number;
 	recipe_id: number;
 	ingredient_id: number;
+	selected_quantity: string; // The correct quantity based on shop_qty (either quantity or quantity4)
 	quantity: string;
 	quantity4: string;
 	default_shop_quantity: number; // The shop_qty from plans (2 or 4) at time of list generation
@@ -443,6 +443,10 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 				ri.id as recipeIngredient_id,
 				ri.recipe_id,
 				ri.ingredient_id,
+				CASE
+					WHEN rw.shop_qty = 4 THEN ri.quantity4
+					ELSE ri.quantity
+				END as selected_quantity,
 				ri.quantity,
 				ri.quantity4,
 				rw.shop_qty as default_shop_quantity,
@@ -486,16 +490,15 @@ export async function resetShoppingListFromRecipes(week: number, year: number, h
 				0, // purchased = false
 				ingredient.stockcode, // stockcode from ingredients table
 				ingredient.recipe_id, // NEW: recipe reference
-				ingredient.quantity, // Denormalized 2p quantity
-				ingredient.quantity4, // Denormalized 4p quantity
+				ingredient.selected_quantity, // Selected quantity based on shop_qty
 				ingredient.measure_name, // Denormalized measurement name
 			]);
 
-			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+			const placeholders = insertValues.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 			const flatValues = insertValues.flat();
 
 			await connection.execute(
-				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, quantity4, measurement) VALUES ${placeholders}`,
+				`INSERT INTO shopping_lists (week, year, household_id, fresh, name, sort, cost, recipeIngredient_id, purchased, stockcode, recipe_id, quantity, measurement) VALUES ${placeholders}`,
 				flatValues
 			);
 		}
