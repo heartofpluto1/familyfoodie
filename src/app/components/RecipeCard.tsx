@@ -287,24 +287,21 @@ const RecipeCard = ({
 							</button>
 						)}
 						{onShopQtyChange && shop_qty && (
-							<div
-								className={`absolute bottom-2 right-2 z-20`}
+							<button
+								onClick={e => {
+									e.stopPropagation();
+									const newQty = shop_qty === 2 ? 4 : 2;
+									onShopQtyChange(recipe.id, newQty as 2 | 4);
+								}}
+								className={`absolute top-12 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all text-xs font-semibold ${showNewContent ? 'right-2' : 'left-2'}`}
+								title="Shop quantity"
 								style={{
 									transform: showNewContent ? 'scaleX(-1)' : 'none',
 									transition: 'none',
 								}}
 							>
-								<select
-									value={shop_qty}
-									onChange={e => onShopQtyChange(recipe.id, parseInt(e.target.value) as 2 | 4)}
-									onClick={e => e.stopPropagation()}
-									className="px-2 py-1 text-sm bg-black bg-opacity-70 hover:bg-opacity-90 text-white border border-white border-opacity-30 rounded-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-									title="Shop quantity"
-								>
-									<option value="2">2p</option>
-									<option value="4">4p</option>
-								</select>
-							</div>
+								{shop_qty}p
+							</button>
 						)}
 					</>
 				)}
