@@ -1,7 +1,7 @@
 'use client';
 
 import { RecipeDetail } from '@/types/menus';
-import { TimeIcon, DownloadIcon } from '@/app/components/Icons';
+import { TimeIcon, DownloadIcon, IntroShoppingCartIcon } from '@/app/components/Icons';
 import { getRecipePdfUrl } from '@/lib/utils/secureFilename';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -75,7 +75,7 @@ const RecipeView = ({ recipe }: RecipeViewProps) => {
 				)}
 				{recipe.shop_qty && (
 					<div className="flex items-center text-muted text-sm">
-						<span className="w-5 h-5 mr-2 flex items-center justify-center text-xs font-semibold">🛒</span>
+						<IntroShoppingCartIcon className="w-5 h-5 mr-2" />
 						<span>Default Shop Qty: {recipe.shop_qty}p</span>
 					</div>
 				)}
