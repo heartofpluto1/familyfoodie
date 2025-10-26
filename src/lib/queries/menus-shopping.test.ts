@@ -92,6 +92,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 					recipeIngredient_id: 1,
 					recipe_id: 123,
 					ingredient_id: 101,
+					selected_quantity: '1',
 					quantity: '1',
 					quantity4: '2',
 					quantityMeasure_id: 1,
@@ -107,6 +108,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 					recipeIngredient_id: 2,
 					recipe_id: 124,
 					ingredient_id: 101, // Same ingredient
+					selected_quantity: '2',
 					quantity: '2',
 					quantity4: '4',
 					quantityMeasure_id: 1, // Same measure
@@ -133,8 +135,8 @@ describe('Household-Scoped Shopping List Reset', () => {
 			expect(insertCall).toBeTruthy();
 			const insertValues = insertCall![1];
 
-			// Should have two separate entries (14 values per ingredient with denormalized fields)
-			expect(insertValues.length).toBe(28);
+			// Should have two separate entries (13 values per ingredient with denormalized fields, no quantity4)
+			expect(insertValues.length).toBe(26);
 		});
 
 		it('should handle empty ingredients list', async () => {
@@ -273,6 +275,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 				recipeIngredient_id: 1,
 				recipe_id: 999,
 				ingredient_id: 101,
+				selected_quantity: '1', // Selected based on shop_qty (2p)
 				quantity: '1',
 				quantity4: '2',
 				quantityMeasure_id: null,
@@ -297,7 +300,7 @@ describe('Household-Scoped Shopping List Reset', () => {
 
 			// Verify null measurement is handled correctly
 			expect(insertValues).toContain(null); // measurement should be null
-			expect(insertValues).toContain('1'); // quantity should still be present
+			expect(insertValues).toContain('1'); // selected_quantity should still be present
 		});
 	});
 });
