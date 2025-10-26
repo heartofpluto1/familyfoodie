@@ -293,7 +293,7 @@ const RecipeCard = ({
 									const newQty = shop_qty === 2 ? 4 : 2;
 									onShopQtyChange(recipe.id, newQty as 2 | 4);
 								}}
-								className={`absolute top-12 w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all text-xs font-semibold ${showNewContent ? 'right-2' : 'left-2'}`}
+								className={`absolute top-[238px] w-8 h-8 rounded-full bg-black bg-opacity-70 hover:bg-opacity-90 text-white flex items-center justify-center transition-all text-xs font-semibold ${showNewContent ? 'right-2' : 'left-2'}`}
 								title="Shop quantity"
 								style={{
 									transform: showNewContent ? 'scaleX(-1)' : 'none',
