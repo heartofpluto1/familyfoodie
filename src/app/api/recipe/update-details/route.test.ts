@@ -107,6 +107,7 @@ describe('/api/recipe/update-details', () => {
 						description: 'Updated detailed description',
 						prepTime: 20,
 						cookTime: 45,
+						shop_qty: 2,
 						seasonName: 'Summer',
 						primaryTypeName: 'Chicken',
 						secondaryTypeName: 'Rice',
@@ -121,6 +122,7 @@ describe('/api/recipe/update-details', () => {
 						3,
 						4,
 						5,
+						2,
 						1,
 					]);
 				},
@@ -161,6 +163,7 @@ describe('/api/recipe/update-details', () => {
 						description: null,
 						prepTime: null,
 						cookTime: null,
+						shop_qty: 2,
 						seasonName: null,
 						primaryTypeName: null,
 						secondaryTypeName: null,
@@ -175,6 +178,7 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
+						2, // shop_qty
 						1,
 					]);
 				},
@@ -230,6 +234,7 @@ describe('/api/recipe/update-details', () => {
 						description: 'Copied description',
 						prepTime: null,
 						cookTime: null,
+						shop_qty: 2,
 						seasonName: null,
 						primaryTypeName: null,
 						secondaryTypeName: null,
@@ -251,6 +256,7 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
+						2, // shop_qty
 						copiedRecipeId, // NEW ID after copy
 					]);
 				},
@@ -293,6 +299,7 @@ describe('/api/recipe/update-details', () => {
 						description: null,
 						prepTime: null,
 						cookTime: null,
+						shop_qty: 2,
 						seasonName: null,
 						primaryTypeName: null,
 						secondaryTypeName: null,
@@ -307,6 +314,7 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
+						2, // shop_qty
 						1,
 					]);
 				},
@@ -533,6 +541,7 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
+						2, // shop_qty
 						1,
 					]);
 				},
@@ -667,6 +676,7 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
+						2, // shop_qty
 						123, // ID should be parsed to integer
 					]);
 				},
@@ -848,6 +858,7 @@ describe('/api/recipe/update-details', () => {
 						null, // seasonId
 						null, // primaryTypeId
 						null, // secondaryTypeId
+						2, // shop_qty
 						1,
 					]);
 				},

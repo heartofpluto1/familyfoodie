@@ -10,6 +10,7 @@ interface RecipeFormData {
 	seasonId?: number;
 	primaryTypeId?: number;
 	secondaryTypeId?: number;
+	shop_qty?: 2 | 4;
 	collectionId?: number;
 }
 
@@ -65,8 +66,8 @@ const RecipeForm = ({ formData, onChange, options, collections, isNewRecipe = fa
 				/>
 			</div>
 
-			{/* Times */}
-			<div className="grid grid-cols-2 gap-4">
+			{/* Times and Shop Quantity */}
+			<div className="grid grid-cols-3 gap-4">
 				<div>
 					<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prep Time (min)</label>
 					<input
@@ -86,6 +87,17 @@ const RecipeForm = ({ formData, onChange, options, collections, isNewRecipe = fa
 						className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent dark:focus:ring-blue-500"
 						placeholder="0"
 					/>
+				</div>
+				<div>
+					<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Shop Qty</label>
+					<select
+						value={formData.shop_qty || 2}
+						onChange={e => handleFieldChange('shop_qty', parseInt(e.target.value) as 2 | 4)}
+						className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent dark:focus:ring-blue-500"
+					>
+						<option value="2">2p</option>
+						<option value="4">4p</option>
+					</select>
 				</div>
 			</div>
 

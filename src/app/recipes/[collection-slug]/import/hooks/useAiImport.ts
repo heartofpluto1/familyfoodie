@@ -37,6 +37,7 @@ export const useAiImport = (options: RecipeOptions | null, collection: Collectio
 		seasonId: undefined,
 		primaryTypeId: undefined,
 		secondaryTypeId: undefined,
+		shop_qty: 2,
 		collectionId: collection.id,
 	});
 	const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
@@ -61,6 +62,7 @@ export const useAiImport = (options: RecipeOptions | null, collection: Collectio
 			seasonId: undefined,
 			primaryTypeId: undefined,
 			secondaryTypeId: undefined,
+			shop_qty: 2,
 			collectionId: collection.id,
 		});
 		setIngredients([]);
@@ -245,6 +247,7 @@ export const useAiImport = (options: RecipeOptions | null, collection: Collectio
 				seasonId: seasonId,
 				primaryTypeId: primaryTypeId,
 				secondaryTypeId: secondaryTypeId,
+				shop_qty: 2,
 				collectionId: convertedRecipeDetail.collection_id,
 			});
 			setIngredients(convertedIngredients);
@@ -323,6 +326,7 @@ export const useAiImport = (options: RecipeOptions | null, collection: Collectio
 				seasonId: recipeForm.seasonId,
 				primaryTypeId: recipeForm.primaryTypeId,
 				secondaryTypeId: recipeForm.secondaryTypeId,
+				shop_qty: recipeForm.shop_qty || 2,
 				collectionId: recipeForm.collectionId,
 				ingredients: ingredients.map(ing => {
 					const extendedIng = ing as RecipeIngredient & {

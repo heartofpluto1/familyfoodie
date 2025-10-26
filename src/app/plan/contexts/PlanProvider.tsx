@@ -47,9 +47,13 @@ export function PlanProvider({
 	const [animatingAutomate, setAnimatingAutomate] = React.useState(false);
 	const [pendingRecipes, setPendingRecipes] = React.useState<Recipe[] | null>(null);
 
-	// Wrapped setRecipes that calls the callback
+	// Wrapped setRecipes - callback should only be called after save, not during editing
 	const setRecipes = (recipes: Recipe[]) => {
 		originalSetRecipes(recipes);
+	};
+
+	// Separate function to update parent after successful save
+	const updateParentRecipes = (recipes: Recipe[]) => {
 		if (onRecipesChange) {
 			onRecipesChange(recipes);
 		}
@@ -68,6 +72,7 @@ export function PlanProvider({
 		onWeekDelete,
 		wasInitialEditMode: initialEditMode,
 		allRecipes,
+		updateParentRecipes,
 	});
 
 	const recipeActions = useRecipeManagement({

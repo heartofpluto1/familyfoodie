@@ -58,7 +58,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -82,7 +82,7 @@ describe('/api/plan/save', () => {
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
 							year: 2024,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -103,7 +103,7 @@ describe('/api/plan/save', () => {
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
 							week: 1,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -146,7 +146,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: 'not-an-array',
+							recipes: 'not-an-array',
 						}),
 					});
 
@@ -168,7 +168,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 0,
 							year: 2024,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -190,7 +190,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 0,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -215,7 +215,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -223,7 +223,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [1, 2, 3], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [{ id: 1 }, { id: 2 }, { id: 3 }], 1);
 					expect(mockSaveWeekRecipes).toHaveBeenCalledTimes(1);
 				},
 			});
@@ -241,7 +241,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 52,
 							year: 2024,
-							recipeIds: [],
+							recipes: [],
 						}),
 					});
 
@@ -255,7 +255,7 @@ describe('/api/plan/save', () => {
 		});
 
 		it('should successfully save large number of recipes', async () => {
-			const manyRecipeIds = Array.from({ length: 20 }, (_, i) => i + 1);
+			const manyRecipes = Array.from({ length: 20 }, (_, i) => ({ id: i + 1 }));
 			mockSaveWeekRecipes.mockResolvedValueOnce(undefined);
 
 			await testApiHandler({
@@ -267,7 +267,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 26,
 							year: 2025,
-							recipeIds: manyRecipeIds,
+							recipes: manyRecipes,
 						}),
 					});
 
@@ -275,7 +275,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(26, 2025, manyRecipeIds, 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(26, 2025, manyRecipes, 1);
 				},
 			});
 		});
@@ -293,7 +293,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 53,
 							year: 2024,
-							recipeIds: [10, 20],
+							recipes: [{ id: 10 }, { id: 20 }],
 						}),
 					});
 
@@ -301,7 +301,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(53, 2024, [10, 20], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(53, 2024, [{ id: 10 }, { id: 20 }], 1);
 				},
 			});
 		});
@@ -318,7 +318,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 15,
 							year: 2024,
-							recipeIds: [1, 2, 2, 3, 1],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 2 }, { id: 3 }, { id: 1 }],
 						}),
 					});
 
@@ -327,7 +327,7 @@ describe('/api/plan/save', () => {
 					expect(data).toEqual({ success: true });
 
 					// The function receives the array as-is, deduplication is handled by saveWeekRecipes
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(15, 2024, [1, 2, 2, 3, 1], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(15, 2024, [{ id: 1 }, { id: 2 }, { id: 2 }, { id: 3 }, { id: 1 }], 1);
 				},
 			});
 		});
@@ -345,7 +345,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -368,7 +368,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -391,7 +391,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: [999999], // Non-existent recipe ID
+							recipes: [{ id: 999999 }], // Non-existent recipe ID
 						}),
 					});
 
@@ -435,7 +435,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 10,
 							year: 2024,
-							recipeIds: [5, 6, 7],
+							recipes: [{ id: 5 }, { id: 6 }, { id: 7 }],
 						}),
 					});
 
@@ -444,7 +444,7 @@ describe('/api/plan/save', () => {
 					expect(data).toEqual({ success: true });
 
 					// Verify household_id is passed correctly
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(10, 2024, [5, 6, 7], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(10, 2024, [{ id: 5 }, { id: 6 }, { id: 7 }], 1);
 				},
 			});
 		});
@@ -462,12 +462,12 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 5,
 							year: 2024,
-							recipeIds: [1, 2],
+							recipes: [{ id: 1 }, { id: 2 }],
 						}),
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [1, 2], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [{ id: 1 }, { id: 2 }], 1);
 				},
 			});
 
@@ -481,12 +481,12 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 5,
 							year: 2024,
-							recipeIds: [3, 4],
+							recipes: [{ id: 3 }, { id: 4 }],
 						}),
 					});
 
 					expect(response.status).toBe(200);
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [3, 4], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(5, 2024, [{ id: 3 }, { id: 4 }], 1);
 				},
 			});
 
@@ -506,7 +506,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2024,
-							recipeIds: [1, '2', 3], // String in the array
+							recipes: [{ id: 1 }, { id: '2' }, { id: 3 }], // String in the array
 						}),
 					});
 
@@ -515,7 +515,7 @@ describe('/api/plan/save', () => {
 					expect(data).toEqual({ success: true });
 
 					// The route passes the data as-is to saveWeekRecipes
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [1, '2', 3], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2024, [{ id: 1 }, { id: '2' }, { id: 3 }], 1);
 				},
 			});
 		});
@@ -532,7 +532,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 1,
 							year: 2030,
-							recipeIds: [1, 2, 3],
+							recipes: [{ id: 1 }, { id: 2 }, { id: 3 }],
 						}),
 					});
 
@@ -540,7 +540,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2030, [1, 2, 3], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(1, 2030, [{ id: 1 }, { id: 2 }, { id: 3 }], 1);
 				},
 			});
 		});
@@ -557,7 +557,7 @@ describe('/api/plan/save', () => {
 						body: JSON.stringify({
 							week: 45,
 							year: 2020,
-							recipeIds: [10, 11],
+							recipes: [{ id: 10 }, { id: 11 }],
 						}),
 					});
 
@@ -565,7 +565,7 @@ describe('/api/plan/save', () => {
 					const data = await response.json();
 					expect(data).toEqual({ success: true });
 
-					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(45, 2020, [10, 11], 1);
+					expect(mockSaveWeekRecipes).toHaveBeenCalledWith(45, 2020, [{ id: 10 }, { id: 11 }], 1);
 				},
 			});
 		});

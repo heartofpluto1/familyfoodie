@@ -18,6 +18,7 @@ interface UsePlanActionsProps {
 	onWeekDelete?: () => void;
 	wasInitialEditMode?: boolean; // Track if we started in edit mode
 	allRecipes: Recipe[];
+	updateParentRecipes: (recipes: Recipe[]) => void;
 }
 
 export function usePlanActions({
@@ -33,6 +34,7 @@ export function usePlanActions({
 	onWeekDelete,
 	wasInitialEditMode,
 	allRecipes,
+	updateParentRecipes,
 }: UsePlanActionsProps): PlanActions {
 	const { resetShoppingList } = useShoppingListSync();
 	const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,10 +101,12 @@ export function usePlanActions({
 			const result = await planService.saveWeekPlan(
 				week,
 				year,
-				recipes.map(r => r.id)
+				recipes.map(r => ({ id: r.id, shop_qty: r.shop_qty }))
 			);
 
 			if (result.success) {
+				// Update parent state with saved recipes (including updated shop_qty values)
+				updateParentRecipes(recipes);
 				setEditMode(false);
 				await resetShoppingList(week, year);
 			}

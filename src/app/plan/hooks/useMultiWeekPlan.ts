@@ -75,7 +75,7 @@ export function useMultiWeekPlan({ initialWeeks, allRecipes }: UseMultiWeekPlanP
 	const updateWeekRecipes = (weekId: string, recipes: Recipe[]) => {
 		setMultiWeekState(prev => ({
 			...prev,
-			weeks: prev.weeks.map(w => (createWeekId(w.week, w.year) === weekId ? { ...w, recipes } : w)),
+			weeks: prev.weeks.map(w => (createWeekId(w.week, w.year) === weekId ? { ...w, recipes, initialRecipes: recipes } : w)),
 		}));
 	};
 

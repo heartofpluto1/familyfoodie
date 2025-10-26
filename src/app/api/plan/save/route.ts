@@ -9,13 +9,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 	}
 
 	try {
-		const { week, year, recipeIds } = await request.json();
+		const { week, year, recipes } = await request.json();
 
-		if (!week || !year || !Array.isArray(recipeIds)) {
+		if (!week || !year || !Array.isArray(recipes)) {
 			return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
 		}
 
-		await saveWeekRecipes(week, year, recipeIds, auth.household_id);
+		await saveWeekRecipes(week, year, recipes, auth.household_id);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

@@ -22,7 +22,7 @@ export function PantryTableDnd({ items, overId }: PantryTableDndProps) {
 				<thead>
 					<tr className="border-b border-light">
 						<th className="px-3 sm:px-3 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">Ingredients</th>
-						<th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-30 sm:w-30">2p</th>
+						<th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium w-30 sm:w-30">Qty</th>
 					</tr>
 				</thead>
 				<tbody ref={setNodeRef}>
