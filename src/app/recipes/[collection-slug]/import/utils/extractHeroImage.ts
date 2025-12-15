@@ -118,6 +118,7 @@ export const extractHeroImageFromPdf = async (
 		// Render the full page to canvas
 		const renderContext = {
 			canvasContext: context,
+			canvas: canvas,
 			viewport: viewport,
 		};
 

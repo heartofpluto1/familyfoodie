@@ -44,6 +44,7 @@ export const convertPdfToImages = async (file: File): Promise<string[]> => {
 				// Render PDF page to canvas
 				const renderContext = {
 					canvasContext: context,
+					canvas: canvas,
 					viewport: viewport,
 				};
 
