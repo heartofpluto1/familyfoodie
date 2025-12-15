@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import pool from '@/lib/db.js';
 import { QueryResult, Menu, PlannedMeal, Recipe, RecipeDetail } from '@/types/menus.js';
 

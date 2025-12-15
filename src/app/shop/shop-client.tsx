@@ -38,11 +38,7 @@ function ShoppingListContent({ weekDateRange }: { weekDateRange: string }) {
 		addItem,
 	} = useShoppingListContext();
 
-	const [isClient, setIsClient] = useState(false);
-
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
+	const [isClient, setIsClient] = useState(() => typeof window !== 'undefined');
 
 	// Check if both lists are empty
 	const isListEmpty = ingredients.fresh.length === 0 && ingredients.pantry.length === 0;

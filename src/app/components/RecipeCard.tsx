@@ -23,6 +23,52 @@ interface RecipeCardProps {
 	shouldDisplayShopQty?: boolean;
 }
 
+interface RecipeCardContentProps {
+	name: string;
+	imageFilename: string;
+	cost?: number;
+	totalTime: number;
+	shouldDisplayShopQty: boolean;
+	shopQty?: 2 | 4;
+	formatTime: (minutes: number) => string;
+}
+
+const RecipeCardContent: React.FC<RecipeCardContentProps> = ({ name, imageFilename, cost, totalTime, shouldDisplayShopQty, shopQty, formatTime }) => (
+	<>
+		<div className="block">
+			<img
+				className="w-full aspect-square object-cover"
+				alt={`${name} recipe`}
+				src={getRecipeImageUrl(imageFilename)}
+				onError={e => {
+					e.currentTarget.src = '/onerror_recipe.png';
+				}}
+			/>
+		</div>
+
+		<div className="p-4 flex flex-col flex-grow">
+			<h3 className="text-lg text-foreground mb-2">{name}</h3>
+
+			{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
+
+			<div className="mt-auto flex items-center justify-between">
+				{totalTime > 0 && (
+					<p className="text-sm text-muted flex items-center">
+						<TimeIcon />
+						{formatTime(totalTime)}
+					</p>
+				)}
+				{shouldDisplayShopQty && shopQty && (
+					<p className="text-sm text-muted flex items-center">
+						<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
+						{shopQty}p
+					</p>
+				)}
+			</div>
+		</div>
+	</>
+);
+
 const RecipeCard = ({
 	recipe,
 	showControls = false,
@@ -148,42 +194,6 @@ const RecipeCard = ({
 		}
 	};
 
-	const CardContent = () => (
-		<>
-			<div className="block">
-				<img
-					className="w-full aspect-square object-cover"
-					alt={`${name} recipe`}
-					src={getRecipeImageUrl(image_filename)}
-					onError={e => {
-						e.currentTarget.src = '/onerror_recipe.png';
-					}}
-				/>
-			</div>
-
-			<div className="p-4 flex flex-col flex-grow">
-				<h3 className="text-lg text-foreground mb-2">{name}</h3>
-
-				{cost && <div className="inline-block bg-accent text-background text-xs px-2 py-1 rounded-full mb-2 w-fit">£{cost.toFixed(2)}</div>}
-
-				<div className="mt-auto flex items-center justify-between">
-					{totalTime > 0 && (
-						<p className="text-sm text-muted flex items-center">
-							<TimeIcon />
-							{formatTime(totalTime)}
-						</p>
-					)}
-					{shouldDisplayShopQty && shop_qty && (
-						<p className="text-sm text-muted flex items-center">
-							<IntroShoppingCartIcon className="w-4 h-4 mr-1" />
-							{shop_qty}p
-						</p>
-					)}
-				</div>
-			</div>
-		</>
-	);
-
 	return (
 		<div className="recipe-card-container" style={{ perspective: '1000px' }}>
 			<article
@@ -204,7 +214,15 @@ const RecipeCard = ({
 					{isSelecting ? (
 						// In selection mode, render content without links
 						<div onClick={handleCardClick} className="w-full h-full flex flex-col">
-							<CardContent />
+							<RecipeCardContent
+								name={name}
+								imageFilename={image_filename}
+								cost={cost}
+								totalTime={totalTime}
+								shouldDisplayShopQty={shouldDisplayShopQty}
+								shopQty={shop_qty}
+								formatTime={formatTime}
+							/>
 						</div>
 					) : (
 						// Normal mode, render with links
