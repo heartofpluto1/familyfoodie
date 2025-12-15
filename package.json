@@ -14,7 +14,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --watchAll=false",
     "migrate": "node -r dotenv/config migrations/run-migrations.mjs dotenv_config_path=.env.local",
-    "migrate:prod": "NODE_ENV=production node migrations/run-migrations.mjs"
+    "migrate:prod": "NODE_ENV=production node migrations/run-migrations.mjs",
+    "update-pdf-worker": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
