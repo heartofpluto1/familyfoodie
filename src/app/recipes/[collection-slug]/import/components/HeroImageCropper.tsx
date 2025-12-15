@@ -26,19 +26,31 @@ const HeroImageCropper = ({ pageImageDataUrl, initialCrop, onCropChange }: HeroI
 	const [scale, setScale] = useState(1);
 	const [pageImage, setPageImage] = useState<HTMLImageElement | null>(null);
 
-	// Load the image from data URL
+	// Handle missing image data
 	useEffect(() => {
 		if (!pageImageDataUrl) {
-			setError('No image data provided');
-			setIsLoading(false);
-			return;
+			queueMicrotask(() => {
+				setError('No image data provided');
+				setIsLoading(false);
+			});
 		}
+	}, [pageImageDataUrl]);
 
-		setIsLoading(true);
-		setError(null);
+	// Load the image from data URL
+	useEffect(() => {
+		if (!pageImageDataUrl) return;
+
+		let mounted = true; // Cleanup flag
+
+		queueMicrotask(() => {
+			setIsLoading(true);
+			setError(null);
+		});
 
 		const img = new Image();
 		img.onload = () => {
+			if (!mounted) return; // Prevent setState if unmounted
+
 			// Calculate scale for display (fit to container)
 			const containerWidth = 600; // Max display width
 			const displayScale = Math.min(containerWidth / img.width, 1);
@@ -49,11 +61,17 @@ const HeroImageCropper = ({ pageImageDataUrl, initialCrop, onCropChange }: HeroI
 		};
 
 		img.onerror = () => {
+			if (!mounted) return; // Prevent setState if unmounted
+
 			setError('Failed to load image');
 			setIsLoading(false);
 		};
 
 		img.src = pageImageDataUrl;
+
+		return () => {
+			mounted = false; // Cleanup
+		};
 	}, [pageImageDataUrl]);
 
 	// Draw image to canvas when both image and canvas are ready
@@ -63,7 +81,7 @@ const HeroImageCropper = ({ pageImageDataUrl, initialCrop, onCropChange }: HeroI
 		const canvas = canvasRef.current;
 		const context = canvas.getContext('2d');
 		if (!context) {
-			setError('Could not get canvas context');
+			console.error('Could not get canvas 2D context');
 			return;
 		}
 

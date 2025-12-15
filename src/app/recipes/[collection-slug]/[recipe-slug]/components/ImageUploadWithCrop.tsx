@@ -34,35 +34,50 @@ const ImageUploadWithCrop = ({ currentImageSrc, onImageUploaded, recipeId, colle
 
 	const dragAndDrop = useDragAndDrop(imageUpload.validateAndSetFile);
 
-	// Handle file selection and show cropper
+	// Reset state when no file is selected
 	useEffect(() => {
-		if (imageUpload.selectedFile) {
-			const img = new Image();
-			img.onload = () => {
-				// Calculate scale for display (fit to container)
-				const containerWidth = 500; // Reduced from 600 to fit better in modals
-				const displayScale = Math.min(containerWidth / img.width, 1);
-				setScale(displayScale);
-
-				// Set initial crop to center with 3:2.2 aspect ratio
-				const aspectRatio = 3 / 2.2;
-				const cropWidth = Math.min(img.width * 0.8, 400);
-				const cropHeight = cropWidth / aspectRatio;
-				const cropX = (img.width - cropWidth) / 2;
-				const cropY = (img.height - cropHeight) / 2;
-
-				const initialCrop = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
-				setInitialCropRect(initialCrop);
-				setCropRect(initialCrop);
-				setOriginalImage(img);
-				setShowCropper(true);
-			};
-			img.src = imageUpload.previewUrl!;
-		} else {
-			setShowCropper(false);
-			setOriginalImage(null);
-			setCroppedImageDataUrl(null);
+		if (!imageUpload.selectedFile) {
+			queueMicrotask(() => {
+				setShowCropper(false);
+				setOriginalImage(null);
+				setCroppedImageDataUrl(null);
+			});
 		}
+	}, [imageUpload.selectedFile]);
+
+	// Load and setup image when file is selected
+	useEffect(() => {
+		if (!imageUpload.selectedFile || !imageUpload.previewUrl) return;
+
+		let mounted = true; // Cleanup flag
+
+		const img = new Image();
+		img.onload = () => {
+			if (!mounted) return; // Prevent setState if unmounted
+
+			// Calculate scale for display (fit to container)
+			const containerWidth = 500; // Reduced from 600 to fit better in modals
+			const displayScale = Math.min(containerWidth / img.width, 1);
+			setScale(displayScale);
+
+			// Set initial crop to center with 3:2.2 aspect ratio
+			const aspectRatio = 3 / 2.2;
+			const cropWidth = Math.min(img.width * 0.8, 400);
+			const cropHeight = cropWidth / aspectRatio;
+			const cropX = (img.width - cropWidth) / 2;
+			const cropY = (img.height - cropHeight) / 2;
+
+			const initialCrop = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
+			setInitialCropRect(initialCrop);
+			setCropRect(initialCrop);
+			setOriginalImage(img);
+			setShowCropper(true);
+		};
+		img.src = imageUpload.previewUrl;
+
+		return () => {
+			mounted = false; // Cleanup
+		};
 	}, [imageUpload.selectedFile, imageUpload.previewUrl]);
 
 	// Draw image to canvas when both image and canvas are ready

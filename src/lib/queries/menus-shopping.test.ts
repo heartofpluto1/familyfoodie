@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { resetShoppingListFromRecipesHousehold } from './menus';
 import pool from '@/lib/db.js';
 
