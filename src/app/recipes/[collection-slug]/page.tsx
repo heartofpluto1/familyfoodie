@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import CollectionClient from './collection-client';
 import { getAllRecipesWithDetailsHousehold } from '@/lib/queries/menus';
 import { getOwnedCollections, getCollectionByIdWithHousehold } from '@/lib/queries/collections';
@@ -20,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ 'collecti
 		};
 	}
 
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}
@@ -52,7 +51,7 @@ export default async function RecipesPage({ params }: RecipesPageProps) {
 		redirect('/recipes');
 	}
 
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

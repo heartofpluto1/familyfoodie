@@ -2,20 +2,20 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 
-// Mock NextAuth completely - just return a working handler
-jest.mock('next-auth', () => {
-	return jest.fn(() => {
-		return () =>
+// Mock @/auth — provide stub handlers
+jest.mock('@/auth', () => ({
+	handlers: {
+		GET: () =>
 			new Response(JSON.stringify({ success: true }), {
 				status: 200,
 				headers: { 'Content-Type': 'application/json' },
-			});
-	});
-});
-
-// Mock the auth config
-jest.mock('@/lib/auth/config', () => ({
-	authOptions: {},
+			}),
+		POST: () =>
+			new Response(JSON.stringify({ success: true }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			}),
+	},
 }));
 
 import * as appHandler from './route';

@@ -1,13 +1,13 @@
 /** @jest-environment node */
 
 import { requireAuth, requireAdminAuth } from './helpers';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import pool from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-// Mock next-auth
-jest.mock('next-auth', () => ({
-	getServerSession: jest.fn(),
+// Mock @/auth
+jest.mock('@/auth', () => ({
+	auth: jest.fn(),
 }));
 
 // Mock database
@@ -18,16 +18,7 @@ jest.mock('@/lib/db', () => ({
 	},
 }));
 
-// Mock auth config
-jest.mock('./config', () => ({
-	authOptions: {
-		providers: [],
-		adapter: {},
-		callbacks: {},
-	},
-}));
-
-const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockExecute = pool.execute as jest.Mock;
 
 describe('Auth Helpers', () => {
@@ -46,7 +37,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 
 			const result = await requireAuth();
 
@@ -59,7 +50,7 @@ describe('Auth Helpers', () => {
 		});
 
 		it('should reject when session is null', async () => {
-			mockGetServerSession.mockResolvedValueOnce(null);
+			mockAuth.mockResolvedValueOnce(null);
 
 			const result = await requireAuth();
 
@@ -74,8 +65,8 @@ describe('Auth Helpers', () => {
 		it('should reject when session has no user', async () => {
 			const mockSession = {
 				expires: new Date(Date.now() + 86400000).toISOString(),
-			} as unknown as Awaited<ReturnType<typeof getServerSession>>;
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			} as unknown as Awaited<ReturnType<typeof auth>>;
+			mockAuth.mockResolvedValueOnce(mockSession);
 
 			const result = await requireAuth();
 
@@ -90,8 +81,8 @@ describe('Auth Helpers', () => {
 					// Missing household_id and household_name which are required
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
-			} as unknown as Awaited<ReturnType<typeof getServerSession>>;
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			} as unknown as Awaited<ReturnType<typeof auth>>;
+			mockAuth.mockResolvedValueOnce(mockSession);
 
 			const result = await requireAuth();
 
@@ -112,7 +103,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() - 1000).toISOString(), // Expired
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 
 			// NextAuth handles expiry internally, so if we get a session, it's valid
 			const result = await requireAuth();
@@ -120,8 +111,8 @@ describe('Auth Helpers', () => {
 			expect(result.authorized).toBe(true);
 		});
 
-		it('should handle getServerSession errors', async () => {
-			mockGetServerSession.mockRejectedValueOnce(new Error('Database connection failed'));
+		it('should handle auth() errors', async () => {
+			mockAuth.mockRejectedValueOnce(new Error('Database connection failed'));
 
 			const result = await requireAuth();
 
@@ -142,7 +133,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 
 			const result = await requireAuth();
 
@@ -167,7 +158,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockResolvedValueOnce([[{ is_admin: 1 }], []]);
 
 			const result = await requireAdminAuth();
@@ -192,7 +183,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockResolvedValueOnce([[{ is_admin: 0 }], []]);
 
 			const result = await requireAdminAuth();
@@ -215,7 +206,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockResolvedValueOnce([[], []]);
 
 			const result = await requireAdminAuth();
@@ -228,7 +219,7 @@ describe('Auth Helpers', () => {
 		});
 
 		it('should reject when session is null', async () => {
-			mockGetServerSession.mockResolvedValueOnce(null);
+			mockAuth.mockResolvedValueOnce(null);
 
 			const result = await requireAdminAuth();
 
@@ -250,7 +241,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockRejectedValueOnce(new Error('Database connection failed'));
 
 			const result = await requireAdminAuth();
@@ -271,7 +262,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockResolvedValueOnce([[], []]);
 
 			const result = await requireAdminAuth();
@@ -291,7 +282,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockResolvedValueOnce([[{ is_admin: 'not_a_boolean' }], []]);
 
 			const result = await requireAdminAuth();
@@ -310,7 +301,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockResolvedValueOnce([[{ is_admin: null }], []]);
 
 			const result = await requireAdminAuth();
@@ -330,7 +321,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValue(mockSession);
+			mockAuth.mockResolvedValue(mockSession);
 
 			const results = await Promise.all([requireAuth(), requireAuth(), requireAuth()]);
 
@@ -352,7 +343,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValue(mockSession);
+			mockAuth.mockResolvedValue(mockSession);
 			mockExecute.mockResolvedValue([[{ is_admin: 1 }], []]);
 
 			const results = await Promise.all([requireAdminAuth(), requireAdminAuth(), requireAdminAuth()]);
@@ -368,7 +359,7 @@ describe('Auth Helpers', () => {
 
 	describe('Response format security', () => {
 		it('should not expose sensitive session data in unauthorized response', async () => {
-			mockGetServerSession.mockResolvedValueOnce(null);
+			mockAuth.mockResolvedValueOnce(null);
 
 			const result = await requireAuth();
 
@@ -392,7 +383,7 @@ describe('Auth Helpers', () => {
 				},
 				expires: new Date(Date.now() + 86400000).toISOString(),
 			};
-			mockGetServerSession.mockResolvedValueOnce(mockSession);
+			mockAuth.mockResolvedValueOnce(mockSession);
 			mockExecute.mockRejectedValueOnce(new Error('ECONNREFUSED: Connection to database failed at 192.168.1.100:3306'));
 
 			const result = await requireAdminAuth();

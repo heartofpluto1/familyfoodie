@@ -1,3 +1,3 @@
-import { mockGetServerSession } from '@/lib/test-utils';
+import { mockAuth } from '@/lib/test-utils';
 
-export const getServerSession = mockGetServerSession;
+export default { auth: mockAuth };
