@@ -16,13 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
 
@@ -37,7 +37,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     permissions:
       contents: read
       id-token: write
@@ -49,9 +49,8 @@ jobs:
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
-          # use a workload identity pool that impersonates my service account (more secure than service account keys)
-          workload_identity_provider: '${{ secrets.GCP_WIF_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
           token_format: 'access_token'
           create_credentials_file: true
 
@@ -67,7 +66,7 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }} \
-            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPO }}/${{env.SERVICE }}:${{ github.sha }} .
+            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE }}:${{ github.sha }} .
           docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE }}:${{ github.sha }}
 
       - name: Deploy to Cloud Run
