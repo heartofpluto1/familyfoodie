@@ -29,9 +29,13 @@ declare module 'next-auth' {
 
 interface DbUser extends RowDataPacket {
 	id: number;
+	email: string;
+	first_name: string;
+	last_name: string;
 	household_id: number;
 	household_name: string;
 	is_admin: boolean;
+	profile_image_url: string | null;
 }
 
 export const authConfig: NextAuthConfig = {
@@ -58,23 +62,24 @@ export const authConfig: NextAuthConfig = {
 			if (session.user) {
 				// Get household information from database
 				const [rows] = await pool.execute<DbUser[]>(
-					`SELECT u.id, u.household_id, h.name as household_name, u.is_admin
-           FROM users u
-           JOIN households h ON u.household_id = h.id
-           WHERE u.id = ?`,
+					`SELECT u.id, u.email, u.first_name, u.last_name,
+					        u.household_id, h.name as household_name,
+					        u.is_admin, u.profile_image_url
+					 FROM users u
+					 JOIN households h ON u.household_id = h.id
+					 WHERE u.id = ?`,
 					[user.id]
 				);
 
 				if (rows.length > 0) {
 					session.user.id = rows[0].id.toString();
+					session.user.email = rows[0].email;
+					session.user.name = `${rows[0].first_name} ${rows[0].last_name}`.trim();
+					session.user.image = rows[0].profile_image_url ?? null;
 					session.user.household_id = rows[0].household_id;
 					session.user.household_name = rows[0].household_name;
 					session.user.is_admin = Boolean(rows[0].is_admin);
 				}
-				// v5: explicitly forward user profile fields from the adapter
-				session.user.name = session.user.name ?? user.name ?? null;
-				session.user.email = session.user.email ?? user.email ?? null;
-				session.user.image = session.user.image ?? user.image ?? null;
 			}
 			return session;
 		},
