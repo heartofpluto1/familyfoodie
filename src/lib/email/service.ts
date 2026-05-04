@@ -9,7 +9,7 @@ interface SendInvitationEmailParams {
 }
 
 export async function sendInvitationEmail(params: SendInvitationEmailParams) {
-	const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/invite?token=${params.inviteToken}`;
+	const inviteUrl = `${process.env.AUTH_URL || 'http://localhost:3000'}/auth/invite?token=${params.inviteToken}`;
 
 	const html = `
 		<!DOCTYPE html>
