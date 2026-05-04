@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import CollectionsPageClient from './collections-client';
 import { getMyCollections, getPublicCollections } from '@/lib/queries/collections';
 
@@ -15,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RecipesPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

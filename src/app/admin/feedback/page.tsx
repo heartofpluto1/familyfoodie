@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
 import FeedbackDashboard from './feedback-dashboard';
 
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminFeedbackPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 
 	if (!session?.user?.is_admin) {
 		redirect('/');

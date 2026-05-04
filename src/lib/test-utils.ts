@@ -71,9 +71,9 @@ export const mockRequireAuth = jest.fn();
 export const mockRequireAdminAuth = jest.fn();
 
 /**
- * Mock for getServerSession from next-auth
+ * Mock for auth() from @/auth (replaces v4 getServerSession)
  */
-export const mockGetServerSession = jest.fn();
+export const mockAuth = jest.fn();
 
 /**
  * Standard auth helpers mock configuration
@@ -85,10 +85,10 @@ export const authHelpersMock = {
 };
 
 /**
- * Mock next-auth module
+ * Mock @/auth module
  */
-export const nextAuthMock = {
-	getServerSession: mockGetServerSession,
+export const authMock = {
+	auth: mockAuth,
 };
 
 /**
@@ -96,7 +96,7 @@ export const nextAuthMock = {
  */
 export const setupAuthenticatedUser = (isAdmin = false) => {
 	const session = isAdmin ? mockAdminSession : mockRegularSession;
-	mockGetServerSession.mockResolvedValue(session);
+	mockAuth.mockResolvedValue(session);
 	mockRequireAuth.mockResolvedValue({
 		authorized: true,
 		session,
@@ -123,7 +123,7 @@ export const setupAuthenticatedUser = (isAdmin = false) => {
  * Setup non-authenticated user mock - call in beforeEach for non-authenticated tests
  */
 export const setupNonAuthenticatedUser = () => {
-	mockGetServerSession.mockResolvedValue(null);
+	mockAuth.mockResolvedValue(null);
 	mockRequireAuth.mockResolvedValue({
 		authorized: false,
 		response: createMockNextResponse({ error: 'Unauthorized' }, { status: 401 }),
@@ -184,7 +184,7 @@ export const createMockFile = (name = 'test.jpg', type = 'image/jpeg', size = 10
 				uint8Array[2] = 0x4e; // N
 				uint8Array[3] = 0x47; // G
 				break;
-			case 'image/webp':
+			case 'image/webp': {
 				// WebP magic bytes: RIFF + 4 byte size + WEBP
 				const riff = new TextEncoder().encode('RIFF');
 				const webp = new TextEncoder().encode('WEBP');
@@ -192,6 +192,7 @@ export const createMockFile = (name = 'test.jpg', type = 'image/jpeg', size = 10
 				uint8Array.set(webp, 8);
 				// Size bytes (4-7) can remain 0 for testing
 				break;
+			}
 			default:
 				// Default to JPEG for other types
 				uint8Array[0] = 0xff;

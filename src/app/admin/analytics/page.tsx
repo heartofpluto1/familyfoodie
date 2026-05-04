@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
 import AnalyticsContent from './analytics-client';
 import pool from '@/lib/db';
@@ -402,7 +401,7 @@ async function getOrphanedRecipes(): Promise<OrphanedRecord[]> {
 }
 
 export default async function SystemAnalyticsPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.is_admin) {
 		redirect('/auth/signin');
 	}

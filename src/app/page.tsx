@@ -1,6 +1,5 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import HomeAuthenticated from './home/home-authenticated';
 import HomeUnauthenticated from './home/home-unauthenticated';
 import { getRecipeWeeks } from '@/lib/queries/menus';
@@ -17,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		// Fetch popular recipes for unauthenticated users
 		const popularRecipes = await getPopularRecipes(3);

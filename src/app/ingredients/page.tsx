@@ -1,6 +1,5 @@
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { getSupermarketCategories, getPantryCategories } from '@/lib/queries/shop';
 import { getMyIngredients } from '@/lib/queries/menus';
 import HeaderPage from '@/app/components/HeaderPage';
@@ -25,7 +24,7 @@ export interface CategoryData {
 }
 
 export default async function IngredientsPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

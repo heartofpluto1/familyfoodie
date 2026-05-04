@@ -3,13 +3,13 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { getFeedbackById, updateFeedback, deleteFeedback, addFeedbackResponse } from '@/lib/queries/feedback';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { setupConsoleMocks, mockAdminSession, mockRegularSession } from '@/lib/test-utils';
 import type { Feedback } from '@/types/feedback';
 
 // Mock next-auth
-jest.mock('next-auth', () => ({
-	getServerSession: jest.fn(),
+jest.mock('@/auth', () => ({
+	auth: jest.fn(),
 }));
 
 // Mock the feedback queries
@@ -21,7 +21,7 @@ jest.mock('@/lib/queries/feedback', () => ({
 }));
 
 // Type assertions for mocked modules
-const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockGetFeedbackById = getFeedbackById as jest.MockedFunction<typeof getFeedbackById>;
 const mockUpdateFeedback = updateFeedback as jest.MockedFunction<typeof updateFeedback>;
 const mockDeleteFeedback = deleteFeedback as jest.MockedFunction<typeof deleteFeedback>;
@@ -62,7 +62,7 @@ describe('/api/admin/feedback/[id]', () => {
 	describe('GET /api/admin/feedback/[id]', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -79,7 +79,7 @@ describe('/api/admin/feedback/[id]', () => {
 			});
 
 			it('returns 401 for non-admin users', async () => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 
 				await testApiHandler({
 					appHandler,
@@ -98,7 +98,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Validation Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 			});
 
 			it('returns 400 for invalid feedback ID', async () => {
@@ -135,7 +135,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Success Path Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockGetFeedbackById.mockResolvedValue(mockFeedback);
 			});
 
@@ -157,7 +157,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database operation fails', async () => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockGetFeedbackById.mockRejectedValue(new Error('Database error'));
 
 				await testApiHandler({
@@ -178,7 +178,7 @@ describe('/api/admin/feedback/[id]', () => {
 	describe('PATCH /api/admin/feedback/[id]', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -201,7 +201,7 @@ describe('/api/admin/feedback/[id]', () => {
 			});
 
 			it('returns 401 for non-admin users', async () => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 
 				await testApiHandler({
 					appHandler,
@@ -226,7 +226,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Validation Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 			});
 
 			it('returns 400 for invalid feedback ID', async () => {
@@ -274,7 +274,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Success Path Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockUpdateFeedback.mockResolvedValue(true);
 			});
 
@@ -362,7 +362,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database operation fails', async () => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockUpdateFeedback.mockRejectedValue(new Error('Database error'));
 
 				await testApiHandler({
@@ -389,7 +389,7 @@ describe('/api/admin/feedback/[id]', () => {
 	describe('DELETE /api/admin/feedback/[id]', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -406,7 +406,7 @@ describe('/api/admin/feedback/[id]', () => {
 			});
 
 			it('returns 401 for non-admin users', async () => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 
 				await testApiHandler({
 					appHandler,
@@ -425,7 +425,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Validation Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 			});
 
 			it('returns 400 for invalid feedback ID', async () => {
@@ -446,7 +446,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Success Path Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 			});
 
 			it('successfully deletes feedback', async () => {
@@ -489,7 +489,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database operation fails', async () => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockDeleteFeedback.mockRejectedValue(new Error('Database error'));
 
 				await testApiHandler({
@@ -510,7 +510,7 @@ describe('/api/admin/feedback/[id]', () => {
 	describe('POST /api/admin/feedback/[id]/response', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -533,7 +533,7 @@ describe('/api/admin/feedback/[id]', () => {
 			});
 
 			it('returns 401 for non-admin users', async () => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 
 				await testApiHandler({
 					appHandler,
@@ -558,7 +558,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Validation Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 			});
 
 			it('returns 400 for invalid feedback ID', async () => {
@@ -627,7 +627,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Success Path Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockAddFeedbackResponse.mockResolvedValue(456);
 			});
 
@@ -660,7 +660,7 @@ describe('/api/admin/feedback/[id]', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database operation fails', async () => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockAddFeedbackResponse.mockRejectedValue(new Error('Database error'));
 
 				await testApiHandler({
