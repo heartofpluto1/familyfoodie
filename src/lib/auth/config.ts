@@ -71,6 +71,10 @@ export const authConfig: NextAuthConfig = {
 					session.user.household_name = rows[0].household_name;
 					session.user.is_admin = Boolean(rows[0].is_admin);
 				}
+				// v5: explicitly forward user profile fields from the adapter
+				session.user.name = session.user.name ?? user.name ?? null;
+				session.user.email = session.user.email ?? user.email ?? null;
+				session.user.image = session.user.image ?? user.image ?? null;
 			}
 			return session;
 		},
