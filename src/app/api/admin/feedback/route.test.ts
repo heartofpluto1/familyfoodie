@@ -3,13 +3,13 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { getFeedback, getFeedbackStats } from '@/lib/queries/feedback';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { setupConsoleMocks, mockAdminSession, mockRegularSession } from '@/lib/test-utils';
 import type { Feedback, FeedbackStats } from '@/types/feedback';
 
 // Mock next-auth
-jest.mock('next-auth', () => ({
-	getServerSession: jest.fn(),
+jest.mock('@/auth', () => ({
+	auth: jest.fn(),
 }));
 
 // Mock the feedback queries
@@ -19,7 +19,7 @@ jest.mock('@/lib/queries/feedback', () => ({
 }));
 
 // Type assertions for mocked modules
-const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockGetFeedback = getFeedback as jest.MockedFunction<typeof getFeedback>;
 const mockGetFeedbackStats = getFeedbackStats as jest.MockedFunction<typeof getFeedbackStats>;
 
@@ -94,7 +94,7 @@ describe('/api/admin/feedback', () => {
 	describe('GET /api/admin/feedback', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -110,7 +110,7 @@ describe('/api/admin/feedback', () => {
 			});
 
 			it('returns 401 for non-admin users', async () => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 
 				await testApiHandler({
 					appHandler,
@@ -128,7 +128,7 @@ describe('/api/admin/feedback', () => {
 
 		describe('Success Path Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockGetFeedback.mockResolvedValue(mockFeedbackList);
 				mockGetFeedbackStats.mockResolvedValue(mockStats);
 			});
@@ -268,7 +268,7 @@ describe('/api/admin/feedback', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database operation fails', async () => {
-				mockGetServerSession.mockResolvedValue(mockAdminSession);
+				mockAuth.mockResolvedValue(mockAdminSession);
 				mockGetFeedback.mockRejectedValue(new Error('Database error'));
 
 				await testApiHandler({

@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { getIngredients, getShoppingList } from '@/lib/queries/shop';
 import { ShoppingListData, Ingredient, DateStamp } from '@/types/shop';
 import ShoppingListClient from '../../shop-client';
@@ -40,7 +39,7 @@ async function getShoppingData(
 }
 
 export default async function ShopPage({ params }: PageProps) {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

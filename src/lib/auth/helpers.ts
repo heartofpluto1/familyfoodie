@@ -1,15 +1,11 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from './config';
+import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import type { RowDataPacket } from 'mysql2/promise';
 
-/**
- * Require authenticated user for API routes
- */
 export async function requireAuth() {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 
 		if (!session || !session.user?.household_id) {
 			return {
@@ -25,7 +21,6 @@ export async function requireAuth() {
 			user_id: session.user.id,
 		};
 	} catch {
-		// Handle session fetch errors
 		return {
 			authorized: false as const,
 			response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
@@ -33,12 +28,9 @@ export async function requireAuth() {
 	}
 }
 
-/**
- * Require admin user for API routes
- */
 export async function requireAdminAuth() {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 
 		if (!session || !session.user?.household_id) {
 			return {
@@ -47,10 +39,8 @@ export async function requireAdminAuth() {
 			};
 		}
 
-		// Check if user is admin in database
 		const [rows] = await pool.execute<RowDataPacket[]>('SELECT is_admin FROM users WHERE id = ?', [session.user.id]);
 
-		// Strict check: is_admin must be exactly 1 or true
 		const isAdmin = rows.length > 0 && (rows[0].is_admin === 1 || rows[0].is_admin === true);
 
 		if (!isAdmin) {
@@ -68,7 +58,6 @@ export async function requireAdminAuth() {
 			is_admin: true,
 		};
 	} catch {
-		// Handle session fetch or database errors
 		return {
 			authorized: false as const,
 			response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),

@@ -1,3 +1,4 @@
+import { auth } from '@/auth';
 import './globals.css';
 import type { Metadata } from 'next';
 import { Source_Serif_4 } from 'next/font/google';
@@ -5,8 +6,6 @@ import HeaderLogo from './components/HeaderLogo';
 import Footer from './components/Footer';
 import { Providers } from './providers';
 import FeedbackWidget from './feedback/FeedbackWidget';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 
 const sourceSerif4 = Source_Serif_4({
 	subsets: ['latin'],
@@ -25,7 +24,7 @@ export default async function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 
 	return (
 		<html lang="en">

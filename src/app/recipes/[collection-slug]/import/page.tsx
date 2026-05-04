@@ -1,8 +1,7 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import AIRecipeImportClient from './ai-recipe-import-client';
 import { getCollectionById } from '@/lib/queries/collections';
 import { parseSlugPath } from '@/lib/utils/urlHelpers';
@@ -39,7 +38,7 @@ export default async function AIRecipeImportPage({ params }: ImportPageProps) {
 		notFound();
 	}
 
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

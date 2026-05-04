@@ -2,11 +2,11 @@
 
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { setupConsoleMocks } from '@/lib/test-utils';
 
 // Mock next-auth
-jest.mock('next-auth');
+jest.mock('@/auth', () => ({ auth: jest.fn() }));
 
 // Mock database pool
 jest.mock('@/lib/db', () => ({
@@ -22,7 +22,7 @@ jest.mock('@/lib/storage', () => ({
 import { deleteFile } from '@/lib/storage';
 
 // Get mocked functions
-const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockPool = jest.mocked(jest.requireMock('@/lib/db'));
 const mockDeleteFile = deleteFile as jest.MockedFunction<typeof deleteFile>;
 
@@ -45,7 +45,7 @@ describe('/api/admin/delete-orphaned', () => {
 	describe('DELETE /api/admin/delete-orphaned', () => {
 		describe('Authentication & Authorization Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -68,7 +68,7 @@ describe('/api/admin/delete-orphaned', () => {
 			});
 
 			it('returns 401 for non-admin users', async () => {
-				mockGetServerSession.mockResolvedValue({
+				mockAuth.mockResolvedValue({
 					user: { id: '1', is_admin: false },
 				});
 
@@ -94,7 +94,7 @@ describe('/api/admin/delete-orphaned', () => {
 
 		describe('Successful deletion operations', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue({
+				mockAuth.mockResolvedValue({
 					user: { id: '1', is_admin: true },
 				});
 			});
@@ -265,7 +265,7 @@ describe('/api/admin/delete-orphaned', () => {
 
 		describe('Error handling', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue({
+				mockAuth.mockResolvedValue({
 					user: { id: '1', is_admin: true },
 				});
 			});
@@ -334,7 +334,7 @@ describe('/api/admin/delete-orphaned', () => {
 
 		describe('Input validation', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue({
+				mockAuth.mockResolvedValue({
 					user: { id: '1', is_admin: true },
 				});
 			});

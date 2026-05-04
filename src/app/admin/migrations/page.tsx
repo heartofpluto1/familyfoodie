@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
 import MigrationsClient from './migrations-client';
 
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MigrationsPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.is_admin) {
 		redirect('/auth/signin');
 	}

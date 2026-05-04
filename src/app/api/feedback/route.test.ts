@@ -3,13 +3,13 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import * as appHandler from './route';
 import { createFeedback } from '@/lib/queries/feedback';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { setupConsoleMocks, mockRegularSession } from '@/lib/test-utils';
 import type { FeedbackSubmission } from '@/types/feedback';
 
 // Mock next-auth
-jest.mock('next-auth', () => ({
-	getServerSession: jest.fn(),
+jest.mock('@/auth', () => ({
+	auth: jest.fn(),
 }));
 
 // Mock the feedback queries
@@ -18,7 +18,7 @@ jest.mock('@/lib/queries/feedback', () => ({
 }));
 
 // Type assertions for mocked modules
-const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
+const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockCreateFeedback = createFeedback as jest.MockedFunction<typeof createFeedback>;
 
 // Test data
@@ -49,7 +49,7 @@ describe('/api/feedback', () => {
 	describe('POST /api/feedback', () => {
 		describe('Authentication Tests', () => {
 			it('returns 401 for unauthenticated users', async () => {
-				mockGetServerSession.mockResolvedValue(null);
+				mockAuth.mockResolvedValue(null);
 
 				await testApiHandler({
 					appHandler,
@@ -73,7 +73,7 @@ describe('/api/feedback', () => {
 
 		describe('Validation Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 			});
 
 			it('returns 400 when pageContext is missing', async () => {
@@ -149,7 +149,7 @@ describe('/api/feedback', () => {
 
 		describe('Success Path Tests', () => {
 			beforeEach(() => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 				mockCreateFeedback.mockResolvedValue(123);
 			});
 
@@ -219,7 +219,7 @@ describe('/api/feedback', () => {
 						household_id: null,
 					},
 				};
-				mockGetServerSession.mockResolvedValue(sessionWithoutHousehold);
+				mockAuth.mockResolvedValue(sessionWithoutHousehold);
 
 				await testApiHandler({
 					appHandler,
@@ -241,7 +241,7 @@ describe('/api/feedback', () => {
 
 		describe('Error Handling', () => {
 			it('returns 500 when database operation fails', async () => {
-				mockGetServerSession.mockResolvedValue(mockRegularSession);
+				mockAuth.mockResolvedValue(mockRegularSession);
 				mockCreateFeedback.mockRejectedValue(new Error('Database error'));
 
 				await testApiHandler({
