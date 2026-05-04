@@ -1,3 +1,4 @@
+import { auth } from '@/auth';
 import {
 	getAverageWeeklySpending,
 	getTopFruitsAndVegetables,
@@ -8,8 +9,6 @@ import {
 	getPlannedWeeksCount,
 } from '@/lib/queries/insights';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
 import { formatPrice } from '@/lib/utils/formatting';
 import Link from 'next/link';
@@ -20,7 +19,7 @@ import { generateRecipeUrl } from '@/lib/utils/urlHelpers';
 export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export default async function InsightsPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

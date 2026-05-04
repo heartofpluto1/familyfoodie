@@ -1,6 +1,5 @@
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 
 function getWeekNumber(date: Date): number {
 	const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -12,7 +11,7 @@ function getWeekNumber(date: Date): number {
 
 export default async function ShopPage() {
 	// Check authentication
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

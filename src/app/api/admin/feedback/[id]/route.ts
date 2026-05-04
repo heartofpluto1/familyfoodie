@@ -1,13 +1,12 @@
+import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { getFeedbackById, updateFeedback, addFeedbackResponse, deleteFeedback } from '@/lib/queries/feedback';
 import { FeedbackUpdate } from '@/types/feedback';
 
 // GET /api/feedback/[id] - Get single feedback item
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 		if (!session?.user?.is_admin) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 // PATCH /api/feedback/[id] - Update feedback status/notes
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 		if (!session?.user?.is_admin) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
@@ -73,7 +72,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
 // DELETE /api/feedback/[id] - Delete feedback
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 		if (!session?.user?.is_admin) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
@@ -104,7 +103,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
 // POST /api/feedback/[id]/response - Add admin response
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 		if (!session?.user?.is_admin) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}

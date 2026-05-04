@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { getCurrentAndPlannedWeeks, getAllRecipesWithDetailsHousehold, getCurrentWeek } from '@/lib/queries/menus';
 import MultiWeekPlanClient from './plan-client-multiweek';
 import { formatWeekDateRange } from '@/lib/utils/weekDates';
@@ -19,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PlanPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

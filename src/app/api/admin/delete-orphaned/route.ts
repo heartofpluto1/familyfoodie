@@ -1,11 +1,10 @@
+import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import pool from '@/lib/db';
 import { deleteFile } from '@/lib/storage';
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.is_admin) {
 		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 	}

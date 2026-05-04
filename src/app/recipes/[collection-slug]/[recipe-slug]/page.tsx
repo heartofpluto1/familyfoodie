@@ -1,7 +1,6 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { getRecipeDetailsHousehold } from '@/lib/queries/menus';
 import { getCollectionsForDisplay } from '@/lib/queries/collections';
 import { parseRecipeUrl } from '@/lib/utils/urlHelpers';
@@ -16,7 +15,7 @@ interface PageProps {
 export const dynamic = 'force-dynamic'; // Important for authenticated pages
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}
@@ -41,7 +40,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function RecipeDetailsPage({ params }: PageProps) {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.household_id) {
 		redirect('/auth/signin');
 	}

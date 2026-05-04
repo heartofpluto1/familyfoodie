@@ -1,13 +1,12 @@
+import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { getFeedback, getFeedbackStats } from '@/lib/queries/feedback';
 import { FeedbackQuery, FeedbackStatus, FeedbackCategory } from '@/types/feedback';
 
 // GET /api/admin/feedback - Get feedback (Admin only)
 export async function GET(request: NextRequest) {
 	try {
-		const session = await getServerSession(authOptions);
+		const session = await auth();
 		if (!session?.user?.is_admin) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}

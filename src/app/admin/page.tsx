@@ -1,8 +1,7 @@
+import { auth } from '@/auth';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import HeaderPage from '@/app/components/HeaderPage';
 import { FeedbackIcon } from '@/app/components/Icons';
 
@@ -14,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
-	const session = await getServerSession(authOptions);
+	const session = await auth();
 	if (!session || !session.user?.is_admin) {
 		redirect('/auth/signin');
 	}
