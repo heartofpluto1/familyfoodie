@@ -2,7 +2,7 @@ name: Stop Cloud SQL
 
 on:
   schedule:
-    - cron: '0 10 * * 1-4'  # 8pm AEST Mon–Thu (UTC+10)
+    - cron: '0 12 * * 1-4'  # 10pm AEST Mon–Thu (UTC+10)
     - cron: '0 14 * * 0'    # midnight AEST Sunday — end of weekend (UTC+10)
   workflow_dispatch:         # allow manual trigger from GitHub Actions UI
 
